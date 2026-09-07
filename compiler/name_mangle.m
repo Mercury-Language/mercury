@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2008 The University of Melbourne.
-% Copyright (C) 2014-2015, 2019-2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2019-2020, 2022, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -229,8 +229,8 @@ maybe_qualify_name(Module0, Name0) = Name :-
 
 make_base_typeclass_info_name(TCName, TypeNames) = Str :-
     TCName = tc_name(ModuleName, ClassName, ClassArity),
-    ClassSym = qualified(ModuleName, ClassName),
-    MangledClassString = sym_name_mangle(ClassSym),
+    ClassSymName = qualified(ModuleName, ClassName),
+    MangledClassString = sym_name_mangle(ClassSymName),
     MangledTypeNames = name_mangle(TypeNames),
     Str = string.format("base_typeclass_info_%s__arity%d__%s",
         [s(MangledClassString), i(ClassArity), s(MangledTypeNames)]).

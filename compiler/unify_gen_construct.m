@@ -159,9 +159,11 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             DataId = rtti_data_id(CtorRttiId),
             ConstRval = const(llconst_data_addr(DataId))
         ;
-            ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
+            ConsTag =
+                base_typeclass_info_tag(ModuleName, ClassId, InstanceStr),
             TCName = generate_class_name(ClassId),
-            TCRttiName = type_class_base_typeclass_info(ModuleName, Instance),
+            TCRttiName =
+                type_class_base_typeclass_info(ModuleName, InstanceStr),
             TCRttiId = tc_rtti_id(TCName, TCRttiName),
             DataId = rtti_data_id(TCRttiId),
             ConstRval = const(llconst_data_addr(DataId))

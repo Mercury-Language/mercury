@@ -168,52 +168,49 @@
     %
 :- type type_ctor_details
     --->    tcd_enum(
-                enum_axioms         :: equality_axioms,
-                enum_is_dummy       :: enum_maybe_dummy,
-                enum_functors       :: list(enum_functor),
-                enum_ordinal_table  :: map(uint32, enum_functor),
-                enum_name_table     :: map(string, enum_functor),
-                enum_functor_number_mapping
-                                    :: list(uint32),
-                enum_base_type_ctor :: maybe(type_ctor)
+                enum_axioms                 :: equality_axioms,
+                enum_is_dummy               :: enum_maybe_dummy,
+                enum_functors               :: list(enum_functor),
+                enum_ordinal_table          :: map(uint32, enum_functor),
+                enum_name_table             :: map(string, enum_functor),
+                enum_functor_number_mapping :: list(uint32),
+                enum_base_type_ctor         :: maybe(type_ctor)
             )
     ;       tcd_foreign_enum(
-                foreign_enum_language      :: foreign_language,
-                foreign_enum_axioms        :: equality_axioms,
-                foreign_enum_functors      :: list(foreign_enum_functor),
-                foreign_enum_ordinal_table :: map(uint32,
+                f_enum_language             :: foreign_language,
+                f_enum_axioms               :: equality_axioms,
+                f_enum_functors             :: list(foreign_enum_functor),
+                f_enum_ordinal_table        :: map(uint32,
                                                 foreign_enum_functor),
-                foreign_enum_name_table    :: map(string,
+                f_enum_name_table           :: map(string,
                                                 foreign_enum_functor),
-                foreign_enum_functor_number_mapping
-                                           :: list(uint32)
+                f_enum_functor_number_map   :: list(uint32)
             )
     ;       tcd_du(
-                du_axioms           :: equality_axioms,
-                du_functors         :: list(du_functor),
-                du_value_table      :: ptag_map,
-                du_name_table       :: map(string, map(uint16, du_functor)),
-                du_functor_number_mapping
-                                    :: list(uint32),
-                du_base_type_ctor   :: maybe(type_ctor)
+                du_axioms                   :: equality_axioms,
+                du_functors                 :: list(du_functor),
+                du_value_table              :: ptag_map,
+                du_name_table               :: map(string,
+                                                map(uint16, du_functor)),
+                du_functor_number_map       :: list(uint32),
+                du_base_type_ctor           :: maybe(type_ctor)
             )
     ;       tcd_notag(
-                notag_axioms        :: equality_axioms,
-                notag_functor       :: notag_functor,
-                notag_base_type_ctor
-                                    :: maybe(type_ctor)
+                notag_axioms                :: equality_axioms,
+                notag_functor               :: notag_functor,
+                notag_base_type_ctor        :: maybe(type_ctor)
             )
     ;       tcd_eqv(
-                eqv_type            :: rtti_maybe_pseudo_type_info
+                eqv_type                    :: rtti_maybe_pseudo_type_info
             )
     ;       tcd_builtin(
-                builtin_ctor        :: builtin_ctor
+                builtin_ctor                :: builtin_ctor
             )
     ;       tcd_impl_artifact(
-                impl_ctor           :: impl_ctor
+                impl_ctor                   :: impl_ctor
             )
     ;       tcd_foreign(
-                is_stable           :: is_stable
+                is_stable                   :: is_stable
             ).
 
 :- type enum_maybe_dummy
@@ -233,9 +230,9 @@
     %
 :- type enum_functor
     --->    enum_functor(
-                enum_name           :: string,
-                enum_ordinal        :: uint32,
-                enum_value          :: enum_value
+                enum_name                   :: string,
+                enum_ordinal                :: uint32,
+                enum_value                  :: enum_value
             ).
 
 :- type enum_value
@@ -247,9 +244,9 @@
     %
 :- type foreign_enum_functor
     --->    foreign_enum_functor(
-                foreign_enum_name    :: string,
-                foreign_enum_ordinal :: uint32,
-                foreign_enum_value   :: string
+                foreign_enum_name           :: string,
+                foreign_enum_ordinal        :: uint32,
+                foreign_enum_value          :: string
             ).
 
     % Descriptor for a functor in a notag type.
@@ -258,10 +255,10 @@
     %
 :- type notag_functor
     --->    notag_functor(
-                nt_name             :: string,
-                nt_arg_type         :: rtti_maybe_pseudo_type_info,
-                nt_arg_name         :: maybe(string),
-                nt_subtype_info     :: functor_subtype_info
+                nt_name                     :: string,
+                nt_arg_type                 :: rtti_maybe_pseudo_type_info,
+                nt_arg_name                 :: maybe(string),
+                nt_subtype_info             :: functor_subtype_info
             ).
 
     % Descriptor for a functor in a du type.
@@ -270,13 +267,13 @@
     %
 :- type du_functor
     --->    du_functor(
-                du_name             :: string,
-                du_orig_arity       :: uint16,
-                du_ordinal          :: uint32,
-                du_rep              :: du_rep,
-                du_arg_infos        :: list(du_arg_info),
-                du_exist_info       :: maybe(exist_info),
-                du_subtype_info     :: functor_subtype_info
+                du_name                     :: string,
+                du_orig_arity               :: uint16,
+                du_ordinal                  :: uint32,
+                du_rep                      :: du_rep,
+                du_arg_infos                :: list(du_arg_info),
+                du_exist_info               :: maybe(exist_info),
+                du_subtype_info             :: functor_subtype_info
             ).
 
     % Describes the representation of a functor in a general
@@ -286,11 +283,11 @@
     %
 :- type du_rep
     --->    du_ll_rep(
-                du_ll_ptag          :: ptag,
-                du_ll_sec_tag       :: sectag_and_locn
+                du_ll_ptag                  :: ptag,
+                du_ll_sec_tag               :: sectag_and_locn
             )
     ;       du_hl_rep(
-                remote_sec_tag      :: uint
+                remote_sec_tag              :: uint
             ).
 
     % Describes the types of the existentially typed arguments of a
@@ -1193,13 +1190,13 @@ pseudo_type_info_is_exported(PseudoTypeInfo) = IsExported :-
     ).
 
 id_to_c_identifier(ctor_rtti_id(RttiTypeCtor, RttiName), Str) :-
-    Str = name_to_string(RttiTypeCtor, RttiName).
+    Str = ctor_rtti_name_to_string(RttiTypeCtor, RttiName).
 id_to_c_identifier(tc_rtti_id(TCName, TCRttiName), Str) :-
-    tc_name_to_string(TCName, TCRttiName, Str).
+    tc_rtti_name_to_string(TCName, TCRttiName, Str).
 
-:- func name_to_string(rtti_type_ctor, ctor_rtti_name) = string.
+:- func ctor_rtti_name_to_string(rtti_type_ctor, ctor_rtti_name) = string.
 
-name_to_string(RttiTypeCtor, RttiName) = Str :-
+ctor_rtti_name_to_string(RttiTypeCtor, RttiName) = Str :-
     mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, A_str),
     (
         RttiName = type_ctor_exist_locns(Ordinal),
@@ -1324,9 +1321,10 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
             TypeName, "_", A_str], Str)
     ).
 
-:- pred tc_name_to_string(tc_name::in, tc_rtti_name::in, string::out) is det.
+:- pred tc_rtti_name_to_string(tc_name::in, tc_rtti_name::in,
+    string::out) is det.
 
-tc_name_to_string(TCName, TCRttiName, Str) :-
+tc_rtti_name_to_string(TCName, TCRttiName, Str) :-
     (
         TCRttiName = type_class_base_typeclass_info(_ModuleName, InstanceStr),
         Str = make_base_typeclass_info_name(TCName, InstanceStr)

@@ -134,7 +134,7 @@
             % of the module containing the instance declaration, the second
             % is the class name and arity, while the third is the string which
             % uniquely identifies the instance declaration (it is made from
-            % the type of the arguments to the instance decl).
+            % the type of the arguments to the instance declaration).
 
     ;       deep_profiling_proc_layout_tag(pred_id, proc_id)
             % This is for constants representing procedure descriptions for
