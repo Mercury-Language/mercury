@@ -317,6 +317,10 @@
     % iff the variable is actually used in a procedure body, restrict the
     % rtti_varmaps for that procedure to the variables needed.
     %
+    % The reason for the choice of an array to convey this information
+    % is explained in a comment in the only caller of this predicate,
+    % which is in restrict_var_maps.m.
+    %
 :- pred restrict_rtti_varmaps(array(bool)::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 

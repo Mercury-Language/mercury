@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -104,6 +104,11 @@
     ;       simptask_warn_no_solution_disjunct
             % Warn about disjuncts that can have no solution.
 
+    ;       simptask_delete_dead_vars
+            % Delete from varsets, var_tables and rtti_varmaps in proc_infos
+            % any (program) variables that do not occur either in the
+            % procedure's argument list or in its body goal.
+
     ;       simptask_split_switch_arms.
             % Invoke split_switch_arms.m to perform its transformation,
             % if the main part of simplification discovers that it has
@@ -170,6 +175,10 @@
     --->    do_not_warn_no_soln_disjunct
     ;       warn_no_soln_disjunct.
 
+:- type maybe_delete_dead_vars
+    --->    do_not_delete_dead_vars
+    ;       delete_dead_vars.
+
 :- type maybe_opt_split_switch_arms
     --->    do_not_opt_split_switch_arms
     ;       split_opt_switch_arms.
@@ -203,6 +212,7 @@
                 do_ignore_par_conjunctions      :: maybe_ignore_par_conjs,
                 do_warn_suspicious_recursion    :: maybe_warn_suspicious_rec,
                 do_warn_no_solution_disjunct    :: maybe_warn_no_soln_disjunct,
+                do_delete_dead_vars             :: maybe_delete_dead_vars,
                 do_switch_split_arms            :: maybe_split_switch_arms
             ).
 
@@ -243,7 +253,8 @@ simplify_tasks_to_list(SimplifyTasks) = !:List :-
         MergeCodeAfterSwitch, ElimRemovableScopes,
         OptDuplicateCalls, ConstantProp, OptCommonStructs, OptExtraStructs,
         TryOptConstStructs, _OptConstStructs, IgnoreParConjs,
-        WarnSuspiciousRecursion, WarnNoSolutionDisjunct, SplitSwitchArms),
+        WarnSuspiciousRecursion, WarnNoSolutionDisjunct, DeleteDeadVars,
+        SplitSwitchArms),
     !:List = [],
     ( if WarnDodgySimple = warn_dodgy_simple_code
         then list.cons(simptask_warn_dodgy_simple_code, !List) else true ),
@@ -281,6 +292,8 @@ simplify_tasks_to_list(SimplifyTasks) = !:List :-
         then list.cons(simptask_warn_suspicious_recursion, !List) else true ),
     ( if WarnNoSolutionDisjunct = warn_no_soln_disjunct
         then list.cons(simptask_warn_no_solution_disjunct, !List) else true ),
+    ( if DeleteDeadVars = delete_dead_vars
+        then list.cons(simptask_delete_dead_vars, !List) else true ),
     ( if SplitSwitchArms = split_switch_arms
         then list.cons(simptask_split_switch_arms, !List) else true ).
 
@@ -331,6 +344,8 @@ list_to_simplify_tasks(Globals, List) = Tasks :-
             then warn_suspicious_rec else do_not_warn_suspicious_rec ),
         ( if list.member(simptask_warn_no_solution_disjunct, List)
             then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct ),
+        ( if list.member(simptask_delete_dead_vars, List)
+            then delete_dead_vars else do_not_delete_dead_vars ),
         ( if list.member(simptask_split_switch_arms, List)
             then split_switch_arms else do_not_split_switch_arms )
     ).
@@ -376,6 +391,7 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
     globals.lookup_bool_option(Globals, warn_suspicious_recursion,
         WarnSuspiciousRecursion),
     SplitSwitchArms = OptTuple ^ ot_split_switch_arms,
+    DeleteDeadVars = do_not_delete_dead_vars,
 
     SimplifyTasks = simplify_tasks(
         ( if WarnDodgySimple = yes, WarnThisPass = generate_warnings
@@ -406,6 +422,7 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
         % about simple code that happens to have its own disabling mechanism.
         ( if WarnDodgySimple = yes, WarnThisPass = generate_warnings
             then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct ),
+        DeleteDeadVars,
         SplitSwitchArms
     ).
 

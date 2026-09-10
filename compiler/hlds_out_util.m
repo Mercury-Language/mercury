@@ -270,6 +270,7 @@
 
 :- import_module char.
 :- import_module map.
+:- import_module require.
 :- import_module term_context.
 :- import_module term_io.
 :- import_module term_subst.
@@ -605,10 +606,15 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         Str = functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
             PredConsId, ArgVars)
     ;
+        ( ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ),
+        Atom = maybe_quoted_cons_id_and_arity_to_string(ConsId),
+        Str = functor_to_string(VarNameSrc, VarNamePrint,
+            term.atom(Atom), ArgVars)
+    ;
         ( ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
-        ; ConsId = type_info_cell_constructor(_)
-        ; ConsId = typeclass_info_cell_constructor
         ; ConsId = type_info_const(_)
         ; ConsId = typeclass_info_const(_)
         ; ConsId = ground_term_const(_, _)
@@ -616,6 +622,7 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         ; ConsId = table_io_entry_desc(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ),
+        expect(unify(ArgVars, []), $pred, "ArgVars != [] comp_gen"),
         Str = maybe_quoted_cons_id_and_arity_to_string(ConsId)
     ).
 

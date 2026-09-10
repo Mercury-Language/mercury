@@ -1043,6 +1043,11 @@ as well as predicates operating on that type.
 <li>
 from_ground_term_util.m contains types and predicates
 for operating on from_ground_term scopes and their contents.
+<li>
+restrict_var_maps.m provides a mechanism
+for restricting procedures' tables containing information about variables
+to just the variables that occur in the procedure.
+This is useful only after some part of the procedure body has been deleted.
 </ul>
 
 <h3>2. Semantic analysis and error checking</h3>

@@ -113,6 +113,12 @@
     --->    do_not_rerun_det
     ;       rerun_det.
 
+% This type is not (yet) needed.
+%
+% :- type have_we_deleted_goals
+%     --->    we_have_not_deleted_goals
+%     ;       we_have_deleted_goals.
+
 :- type maybe_rerun_simplify_no_warn_simple
     --->    do_not_rerun_simplify_no_warn_simple
     ;       rerun_simplify_no_warn_simple.
@@ -209,6 +215,8 @@
     is det.
 :- pred simplify_info_get_has_user_event(simplify_info::in,
     has_user_event::out) is det.
+% :- pred simplify_info_get_have_we_deleted_goals(simplify_info::in,
+%     have_we_deleted_goals::out) is det.
 :- pred simplify_info_get_deleted_call_callees(simplify_info::in,
     set(pred_proc_id)::out) is det.
 :- pred simplify_info_get_switch_arms_to_split(simplify_info::in,
@@ -245,6 +253,8 @@
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_has_user_event(has_user_event::in,
     simplify_info::in, simplify_info::out) is det.
+% :- pred simplify_info_set_have_we_deleted_goals(have_we_deleted_goals::in,
+%     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_deleted_call_callees(set(pred_proc_id)::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_switch_arms_to_split(set(switch_arm)::in,
@@ -394,6 +404,10 @@
                 % Have we seen an event call?
                 ssimp_has_user_event        :: has_user_event,
 
+                % Have we deleted one or more goals?
+                % This field is not yet used.
+%               ssimp_deleted_goals         :: have_we_deleted_goals,
+
                 % The set of predicates that we deleted calls to while
                 % simplifying the procedure body.
                 ssimp_deleted_call_callees  :: set(pred_proc_id),
@@ -452,7 +466,8 @@ simplify_info_init(ProgressStream, ModuleInfo, PredId, ProcId, ProcInfo,
     HasParallelConj = has_no_parallel_conj,
     FoundContainsTrace = no,
     HasUserEvent = has_no_user_event,
-    set.init(TraceGoalProcs),
+    % HaveWeDeletedGoals = we_have_not_deleted_goals,
+    set.init(DeletedGoalCallees),
     set.init(SwitchArmsToSplit),
     pred_info_get_status(PredInfo, PredStatus),
     pred_status_defined_in_this_module(PredStatus) = InThisModule,
@@ -463,7 +478,8 @@ simplify_info_init(ProgressStream, ModuleInfo, PredId, ProcId, ProcInfo,
 
     SubInfo = simplify_sub_info(RttiVarMaps, ElimVars, Specs, CostDelta,
         AllowMsgs, HasParallelConj, FoundContainsTrace, HasUserEvent,
-        TraceGoalProcs, SwitchArmsToSplit, DefinedWhere, RerunSimplify),
+        /* HaveWeDeletedGoals, */ DeletedGoalCallees, SwitchArmsToSplit,
+        DefinedWhere, RerunSimplify),
 
     % SimplifyTasks
     % ModuleInfo
@@ -569,6 +585,8 @@ simplify_info_get_found_contains_trace(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_found_contains_trace.
 simplify_info_get_has_user_event(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_has_user_event.
+% simplify_info_get_have_we_deleted_goals(Info, X) :-
+%     X = Info ^ simp_sub_info ^ ssimp_deleted_goals.
 simplify_info_get_deleted_call_callees(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_deleted_call_callees.
 simplify_info_get_switch_arms_to_split(Info, X) :-
@@ -648,6 +666,15 @@ simplify_info_set_has_user_event(X, !Info) :-
     else
         !Info ^ simp_sub_info ^ ssimp_has_user_event := X
     ).
+% simplify_info_set_have_we_deleted_goals(X, !Info) :-
+%   ( if
+%       private_builtin.pointer_equal(X,
+%           !.Info ^ simp_sub_info ^ ssimp_deleted_goals)
+%   then
+%       true
+%   else
+%       !Info ^ simp_sub_info ^ ssimp_deleted_goals := X
+%   ).
 simplify_info_set_deleted_call_callees(X, !Info) :-
     ( if
         private_builtin.pointer_equal(X,

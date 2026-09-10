@@ -1364,7 +1364,17 @@ maybe_simplify(ProgressStream, MaybeErrorStream, Warn, SimplifyPass,
         (
             SimplifyPass = simplify_pass_frontend,
             list.cons(simptask_after_front_end, !SimpList),
-            list.cons(simptask_try_opt_const_structs, !SimpList)
+            list.cons(simptask_try_opt_const_structs, !SimpList),
+            globals.lookup_accumulating_option(Globals, dump_hlds,
+                DumpHLDSStages),
+            (
+                DumpHLDSStages = []
+            ;
+                DumpHLDSStages = [_ | _],
+                % This makes HLDS dumps both smaller and more readable
+                % (by reducing clutter).
+                list.cons(simptask_delete_dead_vars, !SimpList)
+            )
         ;
             SimplifyPass = simplify_pass_post_untuple,
             list.cons(simptask_mark_code_model_changes, !SimpList)

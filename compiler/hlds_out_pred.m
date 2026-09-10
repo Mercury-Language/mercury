@@ -226,8 +226,9 @@ format_pred(Info, Lang, ModuleInfo, PredId, PredInfo, !State) :-
             FormatStringValues = one_or_more_to_list(OoMFormatStringValues),
             output_format_string_values(FormatStringValues, !State)
         ),
-        format_pred_types(VarNamePrint, TVarSet, VarTable, RttiVarMaps,
-            ProofMap, ConstraintMap, ExternalTypeParams, !State),
+        format_pred_types(VarNamePrint, FilledInProcIdsInfos,
+            TVarSet, VarTable, RttiVarMaps, ProofMap, ConstraintMap,
+            ExternalTypeParams, !State),
         format_pred_proc_var_name_remap(VarNameSrc, VarNameRemap, !State),
 
         get_clause_list_maybe_repeated(ClausesRep, Clauses),
@@ -405,13 +406,23 @@ format_obsolete_in_favour_of(ObsoleteInFavourOf, !State) :-
 
 %---------------------%
 
-:- pred format_pred_types(var_name_print::in, tvarset::in, var_table::in,
-    rtti_varmaps::in, constraint_proof_map::in, constraint_map::in,
+:- pred format_pred_types(var_name_print::in, list(T)::in,
+    tvarset::in, var_table::in, rtti_varmaps::in,
+    constraint_proof_map::in, constraint_map::in,
     list(tvar)::in, string.builder.state::di, string.builder.state::uo) is det.
 
-format_pred_types(VarNamePrint, TVarSet, VarTable, RttiVarMaps,
-        ProofMap, ConstraintMap, ExternalTypeParams, !State) :-
-    format_rtti_varmaps(TVarSet, VarTable, RttiVarMaps, !State),
+format_pred_types(VarNamePrint, FilledInProcIdsInfos, TVarSet,
+        VarTable, RttiVarMaps, ProofMap, ConstraintMap, ExternalTypeParams,
+        !State) :-
+    (
+        FilledInProcIdsInfos = [],
+        format_var_types(VarNamePrint, TVarSet, VarTable, !State),
+        format_rtti_varmaps(TVarSet, VarTable, RttiVarMaps, !State)
+    ;
+        FilledInProcIdsInfos = [_ | _]
+        % Do not print the var_table and rtti_varmaps, since these are
+        % superseded by the corresponding fields in the filled-in proc_infos.
+    ),
     ( if map.is_empty(ProofMap) then
         true
     else
@@ -432,8 +443,7 @@ format_pred_types(VarNamePrint, TVarSet, VarTable, RttiVarMaps,
         mercury_format_vars_vs(TVarSet, VarNamePrint, ExternalTypeParams,
             string.builder.handle, !State),
         string.builder.append_string("\n", !State)
-    ),
-    format_var_types(VarNamePrint, TVarSet, VarTable, !State).
+    ).
 
 :- pred format_constraint_map(var_name_print::in, tvarset::in,
     constraint_map::in,

@@ -119,6 +119,7 @@
 :- include_module mode_util.
 :- include_module passes_aux.
 :- include_module pred_name.
+:- include_module restrict_var_maps.
 :- include_module type_classify.
 :- include_module type_rename.
 :- include_module type_util.

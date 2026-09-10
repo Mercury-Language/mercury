@@ -103,6 +103,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.quantification.
+:- import_module hlds.restrict_var_maps.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
@@ -336,14 +337,15 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
     proc_info_set_goal(Goal, !ProcInfo),
 
     simplify_info_get_var_table(Info, VarTable0),
-    simplify_info_get_rtti_varmaps(Info, RttiVarMaps),
+    simplify_info_get_rtti_varmaps(Info, RttiVarMaps0),
     simplify_info_get_elim_vars(Info, ElimVarsLists0),
     % We sort the lists basically on the number of the first variable.
     list.sort(ElimVarsLists0, ElimVarsLists),
     list.condense(ElimVarsLists, ElimVars),
     delete_var_entries(ElimVars, VarTable0, VarTable1),
     simplify_info_get_module_info(Info, !:ModuleInfo),
-    % We only eliminate vars that cannot occur in RttiVarMaps.
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
+    % We only eliminate vars that cannot occur in RttiVarMaps0.
     ( if simplify_do_after_front_end(Info) then
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
         RenameVar =
@@ -352,19 +354,29 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
                 E = E0 ^ vte_name := N,
                 update_var_entry(V, E, VT0, VT)
             ),
-        map.foldl(RenameVar, VarNameRemap, VarTable1, VarTable),
+        map.foldl(RenameVar, VarNameRemap, VarTable1, VarTable2),
         proc_info_set_var_name_remap(map.init, !ProcInfo),
 
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_argmodes(!.ProcInfo, ArgModes),
-        find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTable,
+        find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTable2,
             HeadVars, ArgModes, !ModuleInfo),
         % ZZZ We ignore the new !:Specs until we fix
         % tests/typeclasses;/extra_type_info.
         check_typeclass_records(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
-            RttiVarMaps, !.Specs, _)
+            RttiVarMaps0, !.Specs, _)
     else
-        VarTable = VarTable1
+        VarTable2 = VarTable1
+    ),
+    simplify_info_get_simplify_tasks(Info, Tasks),
+    MaybeDeleteDeadVars = Tasks ^ do_delete_dead_vars,
+    (
+        MaybeDeleteDeadVars = do_not_delete_dead_vars,
+        VarTable = VarTable2,
+        RttiVarMaps = RttiVarMaps0
+    ;
+        MaybeDeleteDeadVars = delete_dead_vars,
+        restrict_var_maps(HeadVars, Goal,
+            VarTable2, VarTable, RttiVarMaps0, RttiVarMaps)
     ),
     proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),

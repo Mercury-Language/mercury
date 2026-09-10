@@ -247,6 +247,8 @@ maybe_simplify_goal_to_true_or_fail(InstMap0, Goal0ContainsTrace,
 
         % If the goal had any non-locals, we should requantify.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
+        % simplify_info_set_have_we_deleted_goals(we_have_deleted_goals,
+        %   !Info),
         ( if set_of_var.is_empty(NonLocals0) then
             true
         else
