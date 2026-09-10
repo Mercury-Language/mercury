@@ -43,7 +43,7 @@
     % but since we don't iterate over those sets, there is (as yet) no need
     % for this.
     %
-:- pred restrict_var_maps(list(prog_var)::in, hlds_goal::in,
+:- pred restrict_var_maps(existq_tvars::in, list(prog_var)::in, hlds_goal::in,
     var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -58,6 +58,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -65,7 +66,7 @@
 
 %---------------------------------------------------------------------------%
 
-restrict_var_maps(HeadVars, Goal, !VarTable, !RttiVarMaps) :-
+restrict_var_maps(ExistQTVars, HeadVars, Goal, !VarTable, !RttiVarMaps) :-
     % This code was added to the compiler (in what was then lambda.m)
     % in 2009 in commit 62d7496a7e8cb11403b55433309edf8efb44c6b2
     % with the aim of eliminating some horrible worst-case behavior.
@@ -82,7 +83,25 @@ restrict_var_maps(HeadVars, Goal, !VarTable, !RttiVarMaps) :-
     % is preferable to having to do a subtraction on every array lookup.
     array.init(MaxVarNum + 1, no, VarUses0),
     mark_vars_as_used(HeadVars, VarUses0, VarUses1),
-    find_used_vars_in_goal(Goal, VarUses1, VarUses),
+    find_used_vars_in_goal(Goal, VarUses1, VarUses2),
+
+    % With typeinfo-liveness, the compiler may need to know the locations
+    % of the type_info variables that describe the types of the variables
+    % occurring in the procedure.
+    %
+    % The obvious way to do this would be
+    %
+    % - to lookup the types of all the variables mapped to "used" by VarUses2;
+    % - to gather all the type variables in those types;
+    % - and to look up the variables containing the type_infos for those types.
+    %
+    % However, that is a nontrivial runtime cost. It seems that the following
+    % is sufficient for a bootcheck to succeed in debug and even decldebug
+    % grades. (The following code definitely is *needed* in those grades,
+    % because without it, the liveness pass aborts when compiling the
+    % get_tuple_subterm predicate in library/rtti_implementation.m.)
+    rtti_varmaps_components(!.RttiVarMaps, TVarToLocnMap, _, _, _),
+    find_used_vars_in_ti_locns(TVarToLocnMap, ExistQTVars, VarUses2, VarUses),
 
     var_table_to_sorted_assoc_list(!.VarTable, VarTableEntries0),
     filter_var_table_entries(VarTableEntries0, VarUses,
@@ -100,11 +119,15 @@ find_used_vars_in_goal(Goal, !VarUses) :-
         GoalExpr = unify(LHSVar, RHS, _, Unif, _),
         mark_var_as_used(LHSVar, !VarUses),
         (
-            Unif = construct(_, _, _, _, CellToReuse, _, _),
-            ( if CellToReuse = reuse_cell(cell_to_reuse(ReuseVar, _, _)) then
+            Unif = construct(_, _, _, _, ConstructHow, _, _),
+            (
+                ( ConstructHow = construct_dynamically
+                ; ConstructHow = construct_statically(_)
+                ; ConstructHow = construct_in_region(_)
+                )
+            ;
+                ConstructHow = reuse_cell(cell_to_reuse(ReuseVar, _, _)),
                 mark_var_as_used(ReuseVar, !VarUses)
-            else
-                true
             )
         ;
             ( Unif = deconstruct(_, _, _, _, _, _)
@@ -274,6 +297,22 @@ mark_vars_as_used([], !VarUses).
 mark_vars_as_used([Var | Vars], !VarUses) :-
     mark_var_as_used(Var, !VarUses),
     mark_vars_as_used(Vars, !VarUses).
+
+%---------------------------------------------------------------------------%
+
+:- pred find_used_vars_in_ti_locns(tvar_to_ti_locn_map::in, list(tvar)::in,
+    array(bool)::array_di, array(bool)::array_uo) is det.
+
+find_used_vars_in_ti_locns(_, [], !VarUses).
+find_used_vars_in_ti_locns(TVarToLocnMap, [TVar | TVars], !VarUses) :-
+    map.lookup(TVarToLocnMap, TVar, Locn),
+    ( Locn = type_info(Var)
+    ; Locn = typeclass_info(Var, _Slot)
+    ),
+    mark_var_as_used(Var, !VarUses),
+    find_used_vars_in_ti_locns(TVarToLocnMap, TVars, !VarUses).
+
+%---------------------------------------------------------------------------%
 
 :- pred filter_var_table_entries(assoc_list(prog_var, var_table_entry)::in,
     array(bool)::in,

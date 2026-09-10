@@ -375,7 +375,8 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         RttiVarMaps = RttiVarMaps0
     ;
         MaybeDeleteDeadVars = delete_dead_vars,
-        restrict_var_maps(HeadVars, Goal,
+        pred_info_get_exist_quant_tvars(PredInfo0, ExistQTVars),
+        restrict_var_maps(ExistQTVars, HeadVars, Goal,
             VarTable2, VarTable, RttiVarMaps0, RttiVarMaps)
     ),
     proc_info_set_var_table(VarTable, !ProcInfo),

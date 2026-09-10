@@ -245,8 +245,10 @@ do_expand_lambdas_in_proc(!ProcInfo, !PredInfo, !ModuleInfo) :-
     ),
     (
         HaveExpandedLambdas = have_expanded_lambdas,
-        restrict_var_maps(HeadVars, Goal, VarTable2, VarTable,
-            RttiVarMaps2, RttiVarMaps)
+        % Lambdas cannot have existentially typed arguments.
+        ExistQTVars = [],
+        restrict_var_maps(ExistQTVars, HeadVars, Goal,
+            VarTable2, VarTable, RttiVarMaps2, RttiVarMaps)
     ;
         HaveExpandedLambdas = have_not_expanded_lambdas,
         VarTable = VarTable2,
@@ -539,11 +541,11 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
 
     % Existentially typed lambda expressions are not yet supported
     % (see the documentation at top of this file).
-    ExistQVars = [],
+    ExistQTVars = [],
     LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
     set_of_var.insert_list(LambdaVars, LambdaGoalNonLocals, LambdaNonLocals),
     extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTable,
-        ExistQVars, LambdaNonLocals, ExtraTiTcis),
+        ExistQTVars, LambdaNonLocals, ExtraTiTcis),
 
     set_of_var.delete_list(LambdaVars, LambdaGoalNonLocals, NonLocals1),
     % We need all the typeinfos, including the ones that are not used,
@@ -609,8 +611,8 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     % Now construct the proc_info and pred_info for the new single-mode
     % predicate, using the information computed above.
     map.init(VarNameRemap),
-    restrict_var_maps(AllArgVars, LambdaGoal, VarTable, LambdaVarTable,
-        RttiVarMaps, LambdaRttiVarMaps),
+    restrict_var_maps(ExistQTVars, AllArgVars, LambdaGoal,
+        VarTable, LambdaVarTable, RttiVarMaps, LambdaRttiVarMaps),
     some [!ProcInfo] (
         % If the original procedure contained parallel conjunctions,
         % then the one we are creating here may have them as well.
@@ -647,7 +649,7 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     GoalType = goal_not_for_promise(np_goal_type_none),
     pred_info_create(PredOrFunc, ModuleName, TransformedName,
         LambdaContext, Origin, pred_status(status_local), LambdaMarkers,
-        ArgTypes, TVarSet, ExistQVars, Constraints, Assertions, VarNameRemap,
+        ArgTypes, TVarSet, ExistQTVars, Constraints, Assertions, VarNameRemap,
         GoalType, ProcInfo, ProcId, PredInfo),
 
     % Save the new predicate in the predicate table.
