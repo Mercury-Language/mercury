@@ -457,9 +457,9 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
     % we assume all tvars have kind `star'.
     map.init(KindMap),
 
-    type_vars_in_types(InstanceTypes, InstanceTvars),
-    get_unconstrained_tvars(InstanceTvars, InstanceConstraints,
-        UnconstrainedTvars),
+    type_vars_in_types(InstanceTypes, InstanceTVars),
+    get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
+        UnconstrainedTVars),
 
     % We can ignore the new typevarset because all the type variables
     % in the instance constraints and superclass proofs must appear in
@@ -483,14 +483,14 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
         RenamedInstanceProofMap, ActualInstanceProofMap),
 
     apply_renaming_to_tvars(Renaming,
-        UnconstrainedTvars, RenamedUnconstrainedTvars),
+        UnconstrainedTVars, RenamedUnconstrainedTVars),
     apply_renaming_to_tvar_kind_map(Renaming, KindMap, RenamedKindMap),
     apply_rec_subst_to_tvars(RenamedKindMap, InstanceSubst,
-        RenamedUnconstrainedTvars, ActualUnconstrainedTypes),
+        RenamedUnconstrainedTVars, ActualUnconstrainedTypes),
 
     map.overlay(ProofMap0, ActualInstanceProofMap, ProofMap),
 
-    get_var_maps_snapshot("make_typeclass_info_from_instance",
+    get_var_maps_snapshot("make_typeclass_info_from_proof_instance",
         InitialVarMapsSnapshot, !Info),
 
     % Make the type_infos for the types that are constrained by this.
@@ -957,35 +957,40 @@ new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 materialize_base_typeclass_info_var(Constraint, ConsId, Var, Goals, !Info) :-
-    poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap0),
-    ConstArg = csa_constant(ConsId, typeclass_info_type),
-    ( if map.search(ConstStructVarMap0, ConstArg, OldVar) then
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
-        Var = OldVar,
-        Goals = []
-    else
-        new_typeclass_info_var(Constraint, base_typeclass_info_kind, Var,
-            _VarType, !Info),
+    % NOTE We used to search for ConsId in the const_struct_var_map, but
+    % this was useless, because we never PUT base_typeclass_infos into
+    % the const_struct_var_map.
+    %
+    % Even if we COULD get base_typeclass_infos from there, there would be
+    % no point, because base_typeclass_infos are constants, which means that
+    %
+    % - we do not avoid any memory traffic by reusing earlier constructed
+    %   base_typeclass_infos, and
+    %
+    % - reusing an old base_typeclass_info constructed can be SLOWER than
+    %   using a newly constructed one, if there is a call or other construct
+    %   that requires flushing the stack between the program points
+    %   of the construction and the reuse.
 
-        % Create the construction unification to initialize the variable.
-        RHS = rhs_functor(ConsId, is_not_exist_constr, []),
-        Unification = construct(Var, ConsId, [], [],
-            construct_dynamically, cell_is_shared, no_construct_sub_info),
-        Ground = ground(shared, none_or_default_func),
-        UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-        % XXX The UnifyContext is wrong.
-        UnifyContext = unify_context(umc_explicit, []),
-        Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
+    % Create the construction unification to initialize the variable.
+    new_typeclass_info_var(Constraint, base_typeclass_info_kind, Var,
+        _VarType, !Info),
+    RHS = rhs_functor(ConsId, is_not_exist_constr, []),
+    Unification = construct(Var, ConsId, [], [],
+        construct_dynamically, cell_is_shared, no_construct_sub_info),
+    Ground = ground(shared, none_or_default_func),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
+    % XXX The UnifyContext is wrong.
+    UnifyContext = unify_context(umc_explicit, []),
+    Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
 
-        % Create the unification goal.
-        NonLocals = set_of_var.make_singleton(Var),
-        InstmapDelta = instmap_delta_bind_var(Var),
-        goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
-            GoalInfo),
-        Goal = hlds_goal(Unify, GoalInfo),
-        Goals = [Goal]
-    ).
+    % Create the rest of the unification goal.
+    NonLocals = set_of_var.make_singleton(Var),
+    InstmapDelta = instmap_delta_bind_var(Var),
+    goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
+        GoalInfo),
+    Goal = hlds_goal(Unify, GoalInfo),
+    Goals = [Goal].
 
 :- pred materialize_typeclass_info_var(prog_constraint::in, int::in,
     prog_var::out, maybe(cons_id)::out, list(hlds_goal)::out,
@@ -1046,6 +1051,8 @@ get_base_typeclass_info_cons_id(Info, InstanceTable, Constraint, InstanceId,
     InstanceId = instance_id(InstanceNum),
     list.det_index1(InstanceList, InstanceNum, InstanceDefn),
     InstanceModuleName = InstanceDefn ^ instdefn_module,
+    % NOTE The InstanceString ignores all parts of the InstanceTypes
+    % except for the top type_ctor of each type.
     make_instance_string(InstanceTypes, InstanceString),
     ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
         InstanceNum, InstanceString),
