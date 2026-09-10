@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,7 +70,18 @@
                 % The constraint.
                 prog_constraint,
 
-                % The already seen constraints.
+                % The already seen constraints, in reverse order (meaming
+                % that the last seen constraint, the one in the second field,
+                % is first). There is no code that specifically prevents
+                % this list from containing duplicates.
+                %
+                % XXX Why are these part of the key in const_instance_maps?
+                % The only thing they are used for is a call to
+                % list.delete_elems in the predicate
+                % do_make_typeclass_info_from_proof_instance.
+                %
+                % Even if the seen constraints have to be in the key,
+                % why do we allow duplicates?
                 list(prog_constraint)
             ).
 

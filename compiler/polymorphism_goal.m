@@ -648,7 +648,7 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
         % Assume it is a deconstruction.
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistentialConstraints, ActualExistentialConstraints),
-        make_existq_typeclass_info_vars(ActualExistentialConstraints, Context,
+        make_existq_typeclass_info_vars(Context, ActualExistentialConstraints,
             ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
     ),
 
@@ -1047,7 +1047,7 @@ polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
         list.length(ParentExistConstraints, NumExistConstraints),
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistConstraints, ActualExistConstraints),
-        make_existq_typeclass_info_vars(ActualExistConstraints, CallContext,
+        make_existq_typeclass_info_vars(CallContext, ActualExistConstraints,
             ExtraExistClassVars, ExtraExistClassGoals, !Info),
 
         % Make variables to hold typeinfos for unconstrained universal type

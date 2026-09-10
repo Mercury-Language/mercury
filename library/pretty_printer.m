@@ -181,6 +181,16 @@
 :- pred write_doc(doc::in, io::di, io::uo) is det.
 :- pred write_doc(io.text_output_stream::in, doc::in, io::di, io::uo) is det.
 
+    % doc_to_string(Canonicalize, FMap, Params, Doc, Str):
+    %
+    % Format Doc as put_doc would format it, and return the result
+    % as a string.
+    %
+:- pred doc_to_string(noncanon_handling, formatter_map, pp_params, doc,
+    string).
+:- mode doc_to_string(in(canonicalize), in, in, in, out) is det.
+:- mode doc_to_string(in(include_details_cc), in, in, in, out) is cc_multi.
+
     % put_doc(Stream, Canonicalize, FMap, Params, Doc, !State):
     %
     % Format Doc to Stream. Format format_univ(_) docs using specialised
@@ -545,6 +555,14 @@ write_doc(Stream, Doc, !IO) :-
     promise_equivalent_solutions [!:IO] (
         put_doc(Stream, include_details_cc, Formatters, Params, Doc, !IO)
     ).
+
+%---------------------------------------------------------------------------%
+
+doc_to_string(Canonicalize, FMap, Params, Doc, Str) :-
+    State0 = string.builder.init,
+    put_doc(string.builder.handle, Canonicalize, FMap, Params, Doc,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 %---------------------------------------------------------------------------%
 

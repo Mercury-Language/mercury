@@ -45,9 +45,14 @@
     ;       cova_var(prog_var).
 
 :- type type_info_var_map ==
-    map(type_ctor,
-        map(list(mer_type), pair(prog_var, maybe(const_struct_arg)))).
+    map(type_ctor, type_info_var_map_entry).
+:- type type_info_var_map_entry ==
+    map(list(mer_type), pair(prog_var, maybe(const_struct_arg))).
 
+:- type typeclass_info_map ==
+    map(class_name, typeclass_info_sub_map).
+:- type typeclass_info_sub_map ==
+    map(list(mer_type), typeclass_info_map_entry).
 :- type typeclass_info_map_entry
     --->    typeclass_info_map_entry(
                 % The cons_id representing the base_typeclass_info.
@@ -59,9 +64,6 @@
                 map(list(const_or_var_arg),
                     pair(prog_var, maybe(const_struct_arg)))
             ).
-
-:- type typeclass_info_map ==
-    map(class_name, map(list(mer_type), typeclass_info_map_entry)).
 
 :- type int_const_map == map(int, prog_var).
 

@@ -970,6 +970,7 @@ Changes to the Mercury standard library
     - func `uint32_to_doc/1`
     - func `uint64_to_doc/1`
     - func `version_array_to_doc/1`
+    - pred `doc_to_string/5`
     - pred `write_doc_formatted/3`
     - pred `write_doc_formatted/4`
 
@@ -1168,6 +1169,7 @@ Changes to the Mercury standard library
 * The following predicates and functions have been added:
 
     - func `add_prefix/2`
+    - pred `add_prefix_to_every_line/3`
     - func `between_code_points/3`
     - pred `between_code_points/4`
     - pred `check_well_formedness/2`

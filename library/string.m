@@ -1180,6 +1180,14 @@
     %
 :- func add_suffix(string, string) = string.
 
+    % add_prefix_to_every_line(Prefix, Str0, Str):
+    %
+    % Split up Str0 into a sequence of lines, add Prefix
+    % before the start of each line, and join the resulting lines
+    % back together.
+    %
+:- pred add_prefix_to_every_line(string::in, string::in, string::out) is det.
+
 %---------------------------------------------------------------------------%
 %
 % Transformations of strings.
@@ -5163,6 +5171,13 @@ remove_suffix_if_present(Suffix, String) = Out :-
     ).
 
 add_suffix(Suffix, Str) = Str ++ Suffix.
+
+add_prefix_to_every_line(Prefix, Str0, Str) :-
+    Lines0 = string.split_into_lines(Str0),
+    % split_into_lines strips the final newline from each line; put it back.
+    AddPrefix = (func(L) = Prefix ++ L ++ "\n"),
+    Lines = list.map(AddPrefix, Lines0),
+    Str = string.append_list(Lines).
 
 %---------------------------------------------------------------------------%
 %
