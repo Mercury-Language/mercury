@@ -2426,24 +2426,24 @@ rename_vars_apart(RenameSet, RenameMap, !Goal, !Info) :-
 :- type quant_info
     --->    quant_info(
                 % Pure inputs.
-                qi_quant_vars           :: set_of_progvar,
+/* 01 */        qi_quant_vars           :: set_of_progvar,
 
                 % Inputs that are also updated for the next goal.
-                qi_outside              :: set_of_progvar,
-                qi_lambda_outside       :: set_of_progvar,
+/* 02 */        qi_outside              :: set_of_progvar,
+/* 03 */        qi_lambda_outside       :: set_of_progvar,
 
                 % Pure output.
-                qi_nonlocals            :: set_of_progvar,
+/* 04 */        qi_nonlocals            :: set_of_progvar,
 
                 % These fields are threaded all the way through
                 % the procedure body, or the top-level goal we process.
-                qi_seen                 :: set_of_progvar,
-                qi_var_db               :: var_db,
-                qi_rtti_varmaps         :: rtti_varmaps,
-                qi_warnings             :: cord(quant_warning),
+/* 05 */        qi_seen                 :: set_of_progvar,
+/* 06 */        qi_var_db               :: var_db,
+/* 07 */        qi_rtti_varmaps         :: rtti_varmaps,
+/* 08 */        qi_warnings             :: cord(quant_warning),
 
                 % This field is read-only after initialization.
-                qi_keep_quant_vars      :: maybe_keep_quant_vars
+/* 09 */        qi_keep_quant_vars      :: maybe_keep_quant_vars
             ).
 
 :- pred init_quant_info(set_of_progvar::in, var_db::in, rtti_varmaps::in,
