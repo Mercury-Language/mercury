@@ -57,8 +57,8 @@
 :- implementation.
 
 :- import_module backend_libs.type_ctor_info.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_proc_id.
+:- import_module hlds.rtti_proc_label.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.

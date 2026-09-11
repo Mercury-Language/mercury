@@ -21,8 +21,8 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_proc_id.
+:- import_module hlds.rtti_proc_label.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.

@@ -17,8 +17,8 @@
 :- module hlds.proc_table_struct.
 :- interface.
 
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.proc_info_types.
+:- import_module hlds.rtti_proc_label.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.

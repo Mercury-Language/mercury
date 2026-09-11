@@ -77,13 +77,13 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.mode_top_functor.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.proc_info_types.
+:- import_module hlds.rtti_proc_label.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.file_util.

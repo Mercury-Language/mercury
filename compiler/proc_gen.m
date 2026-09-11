@@ -75,11 +75,11 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_proc_util.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_name.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.proc_table_struct.
+:- import_module hlds.rtti_proc_label.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.

@@ -45,9 +45,9 @@
 
 :- import_module backend_libs.type_class_info.
 :- import_module hlds.hlds_class.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
+:- import_module hlds.rtti_proc_label.
 :- import_module hlds.status.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.

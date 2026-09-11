@@ -153,9 +153,9 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
+:- import_module hlds.rtti_proc_label.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module mdbcomp.sym_name.

@@ -20,8 +20,8 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_proc.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_proc_id.
+:- import_module hlds.rtti_proc_label.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module ll_backend.llds.

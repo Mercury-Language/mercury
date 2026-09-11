@@ -49,8 +49,8 @@
 :- import_module backend_libs.pseudo_type_info.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_proc_id.
+:- import_module hlds.rtti_proc_label.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

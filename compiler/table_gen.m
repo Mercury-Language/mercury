@@ -80,6 +80,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.proc_table_struct.
+:- import_module hlds.rtti_proc_label.
 :- import_module hlds.status.
 :- import_module hlds.type_classify.
 :- import_module libs.
