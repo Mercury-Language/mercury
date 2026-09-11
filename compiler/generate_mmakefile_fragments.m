@@ -74,9 +74,10 @@
     %   At most, it can lead to somewhat increased build times through
     %   reduced parallelism.
     %
-    % - The .d files generated in the gendep context is very short,
-    %   because those files will be overwritten by the first compilation
-    %   (as well as all later compilations) of the relevant module.
+    % - The lifetime of the .d files generated in the gendep context
+    %   is very short, because those files will be overwritten by
+    %   the first compilation of the relevant module (as well as
+    %   by all later compilations).
     %
     % - Therefore any time that we invest in making the gendep context
     %   generate as close (but still safe) an approximation to the true
