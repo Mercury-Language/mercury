@@ -1216,14 +1216,14 @@ write_typeclass_info_map(Stream, Info, IndentStr, !IO) :-
     class_name::in, typeclass_info_class_map::in, io::di, io::uo) is det.
 
 write_typeclass_info_top_map_entry(Stream, TVarSet, VarTable, IndentStr,
-        ClassSymName, TypeClassInfoSubMap, !IO) :-
+        ClassSymName, TypeClassInfoClassMap, !IO) :-
     ClassName = unqualify_name(ClassSymName),
     io.format(Stream, "%sclass name %s\n", [s(IndentStr), s(ClassName)], !IO),
     NextIndentStr = IndentStr ++ "    ",
     map.foldl(
         write_typeclass_info_class_map_entry(Stream, TVarSet, VarTable,
             NextIndentStr),
-        TypeClassInfoSubMap, !IO).
+        TypeClassInfoClassMap, !IO).
 
 :- pred write_typeclass_info_class_map_entry(io.text_output_stream::in,
     tvarset::in, var_table::in, string::in,
