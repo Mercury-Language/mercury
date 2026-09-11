@@ -1150,6 +1150,7 @@
     ;       debug_dep_par_conj
     ;       debug_liveness
     ;       debug_stack_opt
+    ;       debug_poly_caches_pred_id
     ;       debug_code_gen_pred_id
     ;       debug_opt
     ;       debug_opt_pred_id
@@ -5908,6 +5909,12 @@ optdb(oc_dev_verb,  debug_stack_opt,                   int(-1),
     priv_arg_help("debug-stack-opt", "pred-id", [
         w("Generate debug messages when performing stack slot optimization"),
         w("on the predicate with the given id.")])).
+optdb(oc_dev_verb,  debug_poly_caches_pred_id,         int(-1),
+    priv_arg_help("debug-poly-caches-pred-id", "pred_id", [
+        w("Output detailed debugging traces of the operation"),
+        w("of the polymorphism pass, including its caches,"),
+        w("for the predicate or function with the given pred id."),
+        w("Effectively only with the right trace flags.")])).
 optdb(oc_dev_verb,  debug_code_gen_pred_id,            int(-1),
     priv_arg_help("debug-code-gen-pred-id", "pred_id", [
         w("Output detailed debugging traces of code generation for the"),

@@ -170,6 +170,9 @@
 :- import_module hlds.hlds_proc.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_info_types.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
@@ -270,9 +273,10 @@ polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
 
 polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        % Replace 99999 with the id of the predicate you want to debug.
-        % XXX Actually, this mechanism should be replaced by an option.
-        ( if pred_id_to_int(PredId) = 99999 then
+        module_info_get_globals(!.ModuleInfo, Globals),
+        globals.lookup_int_option(Globals, debug_poly_caches_pred_id,
+            DebugPredId),
+        ( if pred_id_to_int(PredId) = DebugPredId then
             poly_info_set_selected_pred(is_selected_pred, !IO)
         else
             true

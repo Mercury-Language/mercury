@@ -3995,6 +3995,12 @@ Options for developers only
         predicate with the given id.
 
     PRIVATE OPTION
+    --debug-poly-caches-pred-id <pred_id>
+        Output detailed debugging traces of the operation of the polymorphism
+        pass, including its caches, for the predicate or function with the
+        given pred id. Effectively only with the right trace flags.
+
+    PRIVATE OPTION
     --debug-code-gen-pred-id <pred_id>
         Output detailed debugging traces of code generation for the predicate
         or function with the given pred id. Effectively only with the right
