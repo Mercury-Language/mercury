@@ -1213,7 +1213,7 @@ write_typeclass_info_map(Stream, Info, IndentStr, !IO) :-
 
 :- pred write_typeclass_info_top_map_entry(io.text_output_stream::in,
     tvarset::in, var_table::in, string::in,
-    class_name::in, typeclass_info_sub_map::in, io::di, io::uo) is det.
+    class_name::in, typeclass_info_class_map::in, io::di, io::uo) is det.
 
 write_typeclass_info_top_map_entry(Stream, TVarSet, VarTable, IndentStr,
         ClassSymName, TypeClassInfoSubMap, !IO) :-
@@ -1221,15 +1221,15 @@ write_typeclass_info_top_map_entry(Stream, TVarSet, VarTable, IndentStr,
     io.format(Stream, "%sclass name %s\n", [s(IndentStr), s(ClassName)], !IO),
     NextIndentStr = IndentStr ++ "    ",
     map.foldl(
-        write_typeclass_info_sub_map_entry(Stream, TVarSet, VarTable,
+        write_typeclass_info_class_map_entry(Stream, TVarSet, VarTable,
             NextIndentStr),
         TypeClassInfoSubMap, !IO).
 
-:- pred write_typeclass_info_sub_map_entry(io.text_output_stream::in,
+:- pred write_typeclass_info_class_map_entry(io.text_output_stream::in,
     tvarset::in, var_table::in, string::in,
     list(mer_type)::in, typeclass_info_map_entry::in, io::di, io::uo) is det.
 
-write_typeclass_info_sub_map_entry(Stream, TVarSet, VarTable, IndentStr,
+write_typeclass_info_class_map_entry(Stream, TVarSet, VarTable, IndentStr,
         Types, Entry, !IO) :-
     TypeStrs = list.map(trace_type_to_string(TVarSet), Types),
     TypesStr = string.join_list(", ", TypeStrs),

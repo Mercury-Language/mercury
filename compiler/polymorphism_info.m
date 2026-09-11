@@ -50,8 +50,8 @@
     map(list(mer_type), pair(prog_var, maybe(const_struct_arg))).
 
 :- type typeclass_info_map ==
-    map(class_name, typeclass_info_sub_map).
-:- type typeclass_info_sub_map ==
+    map(class_name, typeclass_info_class_map).
+:- type typeclass_info_class_map ==
     map(list(mer_type), typeclass_info_map_entry).
 :- type typeclass_info_map_entry
     --->    typeclass_info_map_entry(
@@ -61,9 +61,10 @@
                 % Maps the arguments of the typeclass_info_cell_constructor
                 % after the base_typeclass_info to the variable that holds the
                 % typeclass_info for that cell.
-                map(list(const_or_var_arg),
-                    pair(prog_var, maybe(const_struct_arg)))
+                tci_args_map
             ).
+:- type tci_args_map ==
+    map(list(const_or_var_arg), pair(prog_var, maybe(const_struct_arg))).
 
 :- type int_const_map == map(int, prog_var).
 
