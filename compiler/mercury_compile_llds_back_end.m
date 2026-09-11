@@ -108,7 +108,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.write_error_spec.
-:- import_module top_level.mercury_compile_front_end.
+:- import_module top_level.mercury_compile_simplify.
 
 :- import_module assoc_list.
 :- import_module cord.

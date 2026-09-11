@@ -77,7 +77,7 @@
 :- import_module termination.term_constr.term_constr_main.
 :- import_module termination.term_osi.
 :- import_module termination.term_osi.term_osi_main.
-:- import_module top_level.mercury_compile_front_end.
+:- import_module top_level.mercury_compile_simplify.
 :- import_module transform_hlds.
 :- import_module transform_hlds.accumulator.
 :- import_module transform_hlds.closure_analysis.

@@ -83,7 +83,9 @@ Step 1, the conversion of parse trees to the initial version of the HLDS,
 is managed by mercury_compile_make_hlds.m.
 <li>
 Step 2, semantic analysis of the HLDS,
-is managed by mercury_compile_front_end.m.
+is managed by mercury_compile_front_end.m,
+with mercury_compile_simplify.m having control of simplification
+(which is also needed by the middle end and by the backends).
 <li>
 Step 3, the suite of high level transformations on the HLDS,
 is managed by mercury_compile_middle_passes.m.

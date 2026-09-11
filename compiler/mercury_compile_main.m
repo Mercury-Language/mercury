@@ -797,6 +797,9 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO) :-
     % XXX ITEM_LIST There is an inconsistency between the various OpModeArgs
     % that construct a module_and_imports structure in how they do it.
+    % (XXX The module_and_imports structure has been replaced by other
+    % structures, including aug_compilation_units, since this comment
+    % was written.)
     %
     % The op modes that generate one or more dependency files call predicates
     % in d_file_deps.m, which all end up constructing that structure

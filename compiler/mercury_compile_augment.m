@@ -300,8 +300,7 @@ process_augmented_module_after_front_end(ProgressStream, ErrorStream, Globals,
         !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    maybe_write_dependency_graph(ProgressStream, Stats,
-        HLDS20, HLDS21, !IO),
+    maybe_write_dependency_graph(ProgressStream, Stats, HLDS20, HLDS21, !IO),
     (
         OpModeAugment = opmau_typecheck_only,
         ExtraObjFiles = []

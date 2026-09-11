@@ -74,8 +74,8 @@
 :- import_module ml_backend.rtti_to_mlds.           % HLDS/RTTI -> MLDS
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
-:- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
+:- import_module top_level.mercury_compile_simplify.
 
 :- import_module bool.
 :- import_module list.
