@@ -94,12 +94,12 @@
 
 %---------------------------------------------------------------------------%
 
-    % Write the initial part of the .opt file (described in the big comment
-    % above) to the specified stream. Leave the stream open for the second part
-    % to be optionally appended later by our caller (or rather, its agents).
+    % Construct the initial part of the .opt file (described in the
+    % big comment above). This will be optionally appended later
+    % by our caller (or rather, by its agents).
     %
     % Returning the parse tree of the first part of the .opt file
-    % as part of an experiment. The aim of that experiment is to see whether
+    % is part of an experiment. The aim of that experiment is to see whether
     % we can change this code to *just* return that parse tree without
     % writing anything, and let our caller just write out that parse tree
     % (after the second part is optionally added to it).
