@@ -1407,23 +1407,18 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
     OptState0 = string.builder.init,
     format_initial_opt_file(!.HLDS, IntermodInfo, ParseTreePlainOpt0,
         OptState0, OptState1),
-    % XXX Is this call needed even when the condition of the if-then-else
-    % just below fails?
-    maybe_opt_export_listed_entities(IntermodInfo, !HLDS),
-    % The following passes are only run with `--intermodule-optimisation'
-    % to append their results to the `.opt' file. For `--intermodule-analysis',
-    % analysis results should be recorded using the intermodule analysis
-    % framework instead.
-    % XXX So why is the test "IntermodAnalysis = no", instead of
-    % "IntermodOpt = yes"?
-    %
-    % If intermod_unused_args is being performed, run polymorphism,
-    % mode analysis and determinism analysis before unused_args.
+    % The options that call for NeedMiddlePassForOptFile = yes
+    % all run in the middle pass, and the middle pass requires
+    % the previous completion of the front end.
+    need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
     ( if
-        IntermodAnalysis = no,
-        need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
-        NeedMiddlePassForOptFile = yes
+        NeedMiddlePassForOptFile = yes,
+        % For `--intermodule-analysis', analysis results should be recorded
+        % using the intermodule analysis framework instead.
+        % That code does not seem to exist yet.
+        IntermodAnalysis = no
     then
+        maybe_opt_export_listed_entities(IntermodInfo, !HLDS),
         frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS,
             FoundFrontEndError, !DumpInfo, !MaybeWrittenSpecs, !IO),
         (
