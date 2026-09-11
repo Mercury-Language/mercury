@@ -70,7 +70,7 @@
                 % The constraint.
                 prog_constraint,
 
-                % The already seen constraints, in reverse order (meaming
+                % The already seen constraints, in reverse order (meaning
                 % that the last seen constraint, the one in the second field,
                 % is first). There is no code that specifically prevents
                 % this list from containing duplicates.

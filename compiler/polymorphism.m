@@ -271,7 +271,8 @@ polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
 polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
         % Replace 99999 with the id of the predicate you want to debug.
-        ( if pred_id_to_int(PredId) = 0 then
+        % XXX Actually, this mechanism should be replaced by an option.
+        ( if pred_id_to_int(PredId) = 99999 then
             poly_info_set_selected_pred(is_selected_pred, !IO)
         else
             true
