@@ -68,7 +68,7 @@
 
     % This predicate sets up and maybe runs the simplification pass.
     %
-:- pred maybe_simplify(io.text_output_stream::in,
+:- pred maybe_simplify_pass(io.text_output_stream::in,
     maybe(io.text_output_stream)::in, bool::in, simplify_pass::in,
     bool::in, bool::in, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
@@ -100,7 +100,7 @@
 
 %---------------------------------------------------------------------------%
 
-maybe_simplify(ProgressStream, MaybeErrorStream, Warn, SimplifyPass,
+maybe_simplify_pass(ProgressStream, MaybeErrorStream, Warn, SimplifyPass,
         Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     some [!SimpList] (

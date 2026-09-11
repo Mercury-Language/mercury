@@ -91,23 +91,24 @@ hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_simplify(ProgressStream, maybe.no, bool.no, simplify_pass_ml_backend,
-        Verbose, Stats, !HLDS, init_maybe_written_specs, _SimplifySpecs, !IO),
+    maybe_simplify_pass(ProgressStream, maybe.no, bool.no,
+        simplify_pass_ml_backend, Verbose, Stats,
+        !HLDS, init_maybe_written_specs, _SimplifySpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 405, "ml_backend_simplify",
         !DumpInfo, !IO),
 
     % NOTE: it is unsafe for passes after add_trail_ops to reorder
     % disjunctions if trail usage has been optimized. Such reordering
     % may result in the trail being corrupted.
-    maybe_add_trail_ops(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_add_trail_ops_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 410, "add_trail_ops",
         !DumpInfo, !IO),
 
-    maybe_add_heap_ops(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_add_heap_ops_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 415, "add_heap_ops",
         !DumpInfo, !IO),
 
-    maybe_mark_static_terms(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_mark_static_terms_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 420, "mark_static",
         !DumpInfo, !IO),
 
@@ -115,11 +116,11 @@ hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS,
     % for the LLDS back-end, because with the MLDS back-end the arg_infos
     % that map_args_to_regs generates are used by continuation_info.m,
     % which is used by ml_unify_gen.m when outputting closure layout structs.
-    map_args_to_regs(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    map_args_to_regs_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 425, "args_to_regs",
         !DumpInfo, !IO),
 
-    mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
+    mark_tail_rec_calls_hlds_pass(ProgressStream, Verbose, Stats,
         !HLDS, [], TailSpecs, !IO),
     add_to_be_written_specs(TailSpecs, !MaybeWrittenSpecs),
     maybe_dump_hlds(ProgressStream, !.HLDS, 430, "mark_tail_calls",
@@ -147,7 +148,7 @@ hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS,
 
     maybe_write_string(ProgressStream, Verbose,
         "% Generating RTTI data...\n", !IO),
-    mlds_gen_rtti_data(!.HLDS, MLDS_Target, !MLDS),
+    mlds_gen_rtti_data_pass(!.HLDS, MLDS_Target, !MLDS),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO),
     maybe_dump_mlds(ProgressStream, Globals, !.MLDS, 10, "rtti", !IO),
@@ -225,10 +226,10 @@ hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_add_trail_ops(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_add_trail_ops_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_add_trail_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_add_trail_ops_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
@@ -274,10 +275,10 @@ maybe_add_trail_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         EmitTrailOps = no
     ).
 
-:- pred maybe_add_heap_ops(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_add_heap_ops_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_add_heap_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_add_heap_ops_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
         SemidetReclaim),
@@ -297,11 +298,11 @@ maybe_add_heap_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         SemidetReclaim = no
     ).
 
-:- pred mark_tail_rec_calls_hlds(io.text_output_stream::in,
+:- pred mark_tail_rec_calls_hlds_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
-mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
+mark_tail_rec_calls_hlds_pass(ProgressStream, Verbose, Stats,
         !HLDS, !Specs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Marking tail recursive calls...", !IO),
@@ -312,10 +313,10 @@ mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
     maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred mlds_gen_rtti_data(module_info::in, mlds_target_lang::in,
+:- pred mlds_gen_rtti_data_pass(module_info::in, mlds_target_lang::in,
     mlds::in, mlds::out) is det.
 
-mlds_gen_rtti_data(HLDS, Target, !MLDS) :-
+mlds_gen_rtti_data_pass(HLDS, Target, !MLDS) :-
     type_ctor_info.generate_rtti(HLDS, TypeCtorRtti),
     generate_base_typeclass_info_rtti(HLDS, TypeClassInfoRtti),
 

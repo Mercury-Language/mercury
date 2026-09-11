@@ -117,7 +117,7 @@
 :- import_module io.
 :- import_module list.
 
-:- pred check_typeclasses(io.text_output_stream::in,
+:- pred check_typeclasses_pass(io.text_output_stream::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(diag_spec)::out) is det.
 
@@ -185,7 +185,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
+check_typeclasses_pass(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
 

@@ -40,7 +40,7 @@
     list(c_procedure)::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-:- pred map_args_to_regs(io.text_output_stream::in, bool::in, bool::in,
+:- pred map_args_to_regs_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred llds_to_c(io.text_output_stream::in, module_info::in,
@@ -157,7 +157,7 @@ hlds_to_llds(ProgressStream, ErrorStream, !HLDS, !:GlobalData, LLDS,
 
     % map_args_to_regs affects the interface to a predicate,
     % so it must be done in one phase immediately before code generation.
-    map_args_to_regs(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    map_args_to_regs_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 305, "args_to_regs",
         !DumpInfo, !IO),
 
@@ -187,37 +187,38 @@ llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_saved_vars(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_saved_vars_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 310, "saved_vars_const",
         !DumpInfo, !IO),
 
-    maybe_stack_opt(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_stack_opt_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 315, "saved_vars_cell",
         !DumpInfo, !IO),
 
-    maybe_followcode(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_followcode_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 320, "followcode", !DumpInfo, !IO),
 
-    maybe_simplify(ProgressStream, maybe.no, bool.no, simplify_pass_ll_backend,
-        Verbose, Stats, !HLDS, init_maybe_written_specs, SimplifyMWS, !IO),
+    maybe_simplify_pass(ProgressStream, maybe.no, bool.no,
+        simplify_pass_ll_backend, Verbose, Stats,
+        !HLDS, init_maybe_written_specs, SimplifyMWS, !IO),
     SimplifySpecs = maybe_written_specs_to_specs(SimplifyMWS),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), $pred,
         "simplify has errors"),
     maybe_dump_hlds(ProgressStream, !.HLDS, 325, "ll_backend_simplify",
         !DumpInfo, !IO),
 
-    compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    compute_liveness_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 330, "liveness", !DumpInfo, !IO),
 
-    mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS,
+    mark_tail_rec_calls_pass(ProgressStream, Verbose, Stats, !HLDS,
         !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 332, "mark_debug_tailrec_calls",
         !DumpInfo, !IO),
 
-    compute_stack_vars(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    compute_stack_vars_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 335, "stackvars", !DumpInfo, !IO),
 
-    allocate_store_map(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    allocate_store_map_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 340, "final", !DumpInfo, !IO),
 
     generate_llds_code_for_module(ProgressStream, !.HLDS, Verbose, Stats,
@@ -493,7 +494,7 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
 % The various passes of the LLDS backend.
 %
 
-map_args_to_regs(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+map_args_to_regs_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Mapping args to regs...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -501,10 +502,10 @@ map_args_to_regs(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred maybe_saved_vars(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_saved_vars_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_saved_vars(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_saved_vars_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     SavedVars = OptTuple ^ ot_opt_saved_vars_const,
@@ -521,10 +522,10 @@ maybe_saved_vars(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         SavedVars = do_not_opt_saved_vars_const
     ).
 
-:- pred maybe_stack_opt(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_stack_opt_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_stack_opt(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_stack_opt_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     SavedVars = OptTuple ^ ot_opt_svcell,
@@ -541,10 +542,10 @@ maybe_stack_opt(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         SavedVars = do_not_opt_svcell
     ).
 
-:- pred maybe_followcode(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_followcode_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_followcode(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_followcode_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     FollowCode = OptTuple ^ ot_opt_follow_code,
@@ -561,10 +562,10 @@ maybe_followcode(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         FollowCode = do_not_opt_follow_code
     ).
 
-:- pred compute_liveness(io.text_output_stream::in, bool::in, bool::in,
+:- pred compute_liveness_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+compute_liveness_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, parallel_liveness, ParallelLiveness),
     globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
@@ -583,11 +584,11 @@ compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred mark_tail_rec_calls(io.text_output_stream::in, bool::in, bool::in,
+:- pred mark_tail_rec_calls_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-mark_tail_rec_calls(ProgressStream, Verbose, Stats,
+mark_tail_rec_calls_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Marking directly tail recursive calls...", !IO),
@@ -602,10 +603,10 @@ mark_tail_rec_calls(ProgressStream, Verbose, Stats,
     maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred compute_stack_vars(io.text_output_stream::in, bool::in, bool::in,
+:- pred compute_stack_vars_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-compute_stack_vars(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+compute_stack_vars_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Computing stack vars...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -614,10 +615,10 @@ compute_stack_vars(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred allocate_store_map(io.text_output_stream::in, bool::in, bool::in,
+:- pred allocate_store_map_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-allocate_store_map(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+allocate_store_map_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Allocating store map...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),

@@ -141,11 +141,10 @@ frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
 
     maybe_write_string(ProgressStream, Verbose,
         "% Checking typeclasses...\n", !IO),
-    check_typeclasses(ProgressStream, !HLDS, QualInfo0, QualInfo,
+    check_typeclasses_pass(ProgressStream, !HLDS, QualInfo0, QualInfo,
         TypeClassSpecs),
     add_to_be_written_specs(TypeClassSpecs, !MaybeWrittenSpecs),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 5, "typeclass",
-        !DumpInfo, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 5, "typeclass", !DumpInfo, !IO),
     set_module_recompilation_info(QualInfo, !HLDS),
     TypeClassErrors = contains_errors(Globals, TypeClassSpecs),
     (
@@ -175,11 +174,11 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_eliminate_dead_preds(ProgressStream, ErrorStream, OpModeAugment,
+    maybe_eliminate_dead_preds_pass(ProgressStream, ErrorStream, OpModeAugment,
         Verbose, Stats, Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
-    check_insts_for_matching_types(ProgressStream, ErrorStream, Verbose, Stats,
-        Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
-    do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
+    check_insts_for_matching_types_pass(ProgressStream, ErrorStream,
+        Verbose, Stats, Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
+    check_types_pass(ProgressStream, ErrorStream, Verbose, Stats, Globals,
         FoundSyntaxError, TypeCheckSpecs, NumIterations,
         !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
 
@@ -208,7 +207,7 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
         add_to_be_written_specs(MissingTypeDefnSpecs, !MaybeWrittenSpecs),
 
         pretest_user_inst_table(!HLDS),
-        post_typecheck_finish_preds(!HLDS, UnprovenConstraintSpecs,
+        post_typecheck_finish_preds_pass(!HLDS, UnprovenConstraintSpecs,
             PostTypeCheckAlwaysSpecs, PostTypeCheckNoTypeErrorSpecs),
         maybe_dump_hlds(ProgressStream, !.HLDS, 19, "post_typecheck",
             !DumpInfo, !IO),
@@ -229,7 +228,7 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
             TypeCheckErrors = yes
         ),
 
-        maybe_warn_about_unused_types(!.HLDS, !MaybeWrittenSpecs),
+        maybe_warn_about_unused_types_pass(!.HLDS, !MaybeWrittenSpecs),
 
         ( if
             ( FoundSyntaxError = some_clause_syntax_errors
@@ -270,11 +269,11 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
     % errors that post_typecheck.m is designed to discover.
     % (See Mantis bug 113.)
 
-    puritycheck(ProgressStream, ErrorStream, Verbose, Stats,
+    check_purity_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 20, "puritycheck", !DumpInfo, !IO),
 
-    check_promises(ProgressStream, ErrorStream, Verbose, Stats,
+    check_promises_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 22, "check_promises",
         !DumpInfo, !IO),
@@ -296,12 +295,12 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
 
         % Substitute implementation-defined literals before
         % clauses are written out to `.opt' files.
-        subst_implementation_defined_literals(ProgressStream, ErrorStream,
+        subst_impl_defined_literals_pass(ProgressStream, ErrorStream,
             Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 25,
             "impl_defined_literals", !DumpInfo, !IO),
 
-        maybe_apply_input_specialization(ProgressStream, ErrorStream,
+        maybe_apply_input_specialization_pass(ProgressStream, ErrorStream,
             Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 27,
             "input_spec", !DumpInfo, !IO),
@@ -381,7 +380,7 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
     ;
         PolySafeToContinue = safe_to_continue,
 
-        clause_to_proc(ProgressStream, ErrorStream, Verbose, Stats,
+        clause_to_proc_pass(ProgressStream, ErrorStream, Verbose, Stats,
             !HLDS, !MaybeWrittenSpecs, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 31, "clause_to_proc",
             !DumpInfo, !IO),
@@ -391,23 +390,25 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
         maybe_dump_hlds(ProgressStream, !.HLDS, 32, "post_copy_polymorphism",
             !DumpInfo, !IO),
 
-        maybe_warn_about_unused_imports(ProgressStream, ErrorStream,
+        maybe_warn_about_unused_imports_pass(ProgressStream, ErrorStream,
             Verbose, Stats, !.HLDS, !MaybeWrittenSpecs, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 33, "unused_imports",
             !DumpInfo, !IO),
 
         % XXX Convert the mode constraints pass to use diag_specs.
-        maybe_mode_constraints(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_mode_constraints_pass(ProgressStream, Verbose, Stats,
+            !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 34, "mode_constraints",
             !DumpInfo, !IO),
 
-        modecheck(ProgressStream, ErrorStream, Verbose, Stats, !HLDS,
-            FoundModeError, ModesSafeToContinue, !MaybeWrittenSpecs, !IO),
+        check_nonunique_modes_pass(ProgressStream, ErrorStream, Verbose, Stats,
+            FoundModeError, ModesSafeToContinue,
+            !HLDS, !MaybeWrittenSpecs, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 35, "modecheck",
             !DumpInfo, !IO),
 
-        maybe_compute_goal_modes(ProgressStream, ErrorStream, Verbose, Stats,
-            !HLDS, !MaybeWrittenSpecs, !IO),
+        maybe_compute_goal_modes_pass(ProgressStream, ErrorStream,
+            Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 36, "goal_modes",
             !DumpInfo, !IO),
 
@@ -417,46 +418,49 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
         ;
             ModesSafeToContinue = safe_to_continue,
 
-            detect_switches(ProgressStream, Verbose, Stats, !HLDS, !IO),
+            detect_switches_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 40, "switch_detect",
                 !DumpInfo, !IO),
 
-            detect_cse(ProgressStream, Verbose, Stats, !HLDS, !IO),
+            detect_cse_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 45, "cse", !DumpInfo, !IO),
 
-            check_determinism(ProgressStream, ErrorStream, Verbose, Stats,
+            check_determinism_pass(ProgressStream, ErrorStream, Verbose, Stats,
                 !HLDS, !MaybeWrittenSpecs, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 50, "determinism",
                 !DumpInfo, !IO),
 
-            check_unique_modes(ProgressStream, ErrorStream, Verbose, Stats,
-                !HLDS, FoundUniqError, !MaybeWrittenSpecs, !IO),
+            check_unique_modes_pass(ProgressStream, ErrorStream,
+                Verbose, Stats, FoundUniqError,
+                !HLDS, !MaybeWrittenSpecs, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 55, "unique_modes",
                 !DumpInfo, !IO),
 
-            maybe_write_call_tree(ProgressStream, Verbose, Stats,
+            maybe_write_call_tree_pass(ProgressStream, Verbose, Stats,
                 !.HLDS, !MaybeWrittenSpecs, !IO),
 
-            check_stratification(ProgressStream, ErrorStream, Verbose, Stats,
-                !HLDS, FoundStratError, !MaybeWrittenSpecs, !IO),
+            check_stratification_pass(ProgressStream, ErrorStream,
+                Verbose, Stats, FoundStratError,
+                !HLDS, !MaybeWrittenSpecs, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 60, "stratification",
                 !DumpInfo, !IO),
 
-            check_oisu_pragmas(ProgressStream, ErrorStream, Verbose, Stats,
-                !HLDS, FoundOISUError, !MaybeWrittenSpecs, !IO),
+            check_oisu_pragmas_pass(ProgressStream, ErrorStream,
+                Verbose, Stats, FoundOISUError,
+                !HLDS, !MaybeWrittenSpecs, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 61, "oisu",
                 !DumpInfo, !IO),
 
-            process_try_goals(ProgressStream, ErrorStream, Verbose, Stats,
+            expand_try_goals_pass(ProgressStream, ErrorStream, Verbose, Stats,
                 !HLDS, FoundTryError, !MaybeWrittenSpecs, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 62, "try", !DumpInfo, !IO),
 
-            check_pragma_format_call(ProgressStream, ErrorStream,
+            check_pragma_format_call_pass(ProgressStream, ErrorStream,
                 Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 63, "format_call",
                 !DumpInfo, !IO),
 
-            maybe_simplify(ProgressStream, yes(ErrorStream), yes,
+            maybe_simplify_pass(ProgressStream, yes(ErrorStream), yes,
                 simplify_pass_frontend, Verbose, Stats,
                 !HLDS, !MaybeWrittenSpecs, !IO),
             maybe_dump_hlds(ProgressStream, !.HLDS, 65, "frontend_simplify",
@@ -467,13 +471,14 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
             % marked invalid, we can avoid distracting the user from them
             % by adding messages about style, which, in that case, would be
             % just clutter.
-            maybe_generate_style_warnings(ProgressStream, ErrorStream,
+            maybe_generate_style_warnings_pass(ProgressStream, ErrorStream,
                 Verbose, Stats, !.HLDS, !MaybeWrittenSpecs, !IO),
 
-            maybe_proc_statistics(ProgressStream, ErrorStream, Verbose, Stats,
-                "AfterFrontEnd", !.HLDS, !MaybeWrittenSpecs, !IO),
-            maybe_inst_statistics(ProgressStream, ErrorStream, Verbose, Stats,
+            maybe_proc_statistics_pass(ProgressStream, ErrorStream,
+                Verbose, Stats, "AfterFrontEnd",
                 !.HLDS, !MaybeWrittenSpecs, !IO),
+            maybe_inst_statistics_pass(ProgressStream, ErrorStream,
+                Verbose, Stats, !.HLDS, !MaybeWrittenSpecs, !IO),
 
             % Work out whether we encountered any errors.
             SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
@@ -535,13 +540,13 @@ decide_type_repns_pass(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_eliminate_dead_preds(io.text_output_stream::in,
+:- pred maybe_eliminate_dead_preds_pass(io.text_output_stream::in,
     io.text_output_stream::in, op_mode_augment::in,
     bool::in, bool::in, globals::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_eliminate_dead_preds(ProgressStream, ErrorStream, OpModeAugment,
+maybe_eliminate_dead_preds_pass(ProgressStream, ErrorStream, OpModeAugment,
         Verbose, Stats, Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
@@ -575,13 +580,13 @@ maybe_eliminate_dead_preds(ProgressStream, ErrorStream, OpModeAugment,
 
 %---------------------------------------------------------------------------%
 
-:- pred check_insts_for_matching_types(io.text_output_stream::in,
+:- pred check_insts_for_matching_types_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in, globals::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-check_insts_for_matching_types(ProgressStream, ErrorStream, Verbose, Stats,
-        Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+check_insts_for_matching_types_pass(ProgressStream, ErrorStream,
+        Verbose, Stats, Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
         !MaybeWrittenSpecs, !IO),
     maybe_write_string(ProgressStream, Verbose,
@@ -600,13 +605,13 @@ check_insts_for_matching_types(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred do_typecheck(io.text_output_stream::in, io.text_output_stream::in,
+:- pred check_types_pass(io.text_output_stream::in, io.text_output_stream::in,
     bool::in, bool::in, globals::in, maybe_clause_syntax_errors::out,
     list(diag_spec)::out, number_of_iterations::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
+check_types_pass(ProgressStream, ErrorStream, Verbose, Stats, Globals,
         FoundSyntaxError, TypeCheckSpecs, NumIterations,
         !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     % Next typecheck the clauses.
@@ -658,11 +663,11 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
 
 %---------------------------------------------------------------------------%
 
-:- pred puritycheck(io.text_output_stream::in, io.text_output_stream::in,
+:- pred check_purity_pass(io.text_output_stream::in, io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-puritycheck(ProgressStream, ErrorStream, Verbose, Stats, !HLDS,
+check_purity_pass(ProgressStream, ErrorStream, Verbose, Stats, !HLDS,
         !MaybeWrittenSpecs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Purity-checking clauses...\n", !IO),
@@ -685,11 +690,12 @@ puritycheck(ProgressStream, ErrorStream, Verbose, Stats, !HLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred check_promises(io.text_output_stream::in, io.text_output_stream::in,
-    bool::in, bool::in, module_info::in, module_info::out,
+:- pred check_promises_pass(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-check_promises(ProgressStream, ErrorStream, Verbose, Stats,
+check_promises_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Checking any promises...\n", !IO),
@@ -712,12 +718,12 @@ check_promises(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred subst_implementation_defined_literals(io.text_output_stream::in,
+:- pred subst_impl_defined_literals_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-subst_implementation_defined_literals(ProgressStream, ErrorStream,
+subst_impl_defined_literals_pass(ProgressStream, ErrorStream,
         Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
@@ -731,13 +737,13 @@ subst_implementation_defined_literals(ProgressStream, ErrorStream,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_apply_input_specialization(io.text_output_stream::in,
+:- pred maybe_apply_input_specialization_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_apply_input_specialization(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !MaybeWrittenSpecs, !IO) :-
+maybe_apply_input_specialization_pass(ProgressStream, ErrorStream,
+        Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_input_spec_table(!.HLDS, InputSpecTable),
     ( if map.is_empty(InputSpecTable) then
         true
@@ -797,11 +803,12 @@ main_polymorphism_pass(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred clause_to_proc(io.text_output_stream::in, io.text_output_stream::in,
-    bool::in, bool::in, module_info::in, module_info::out,
+:- pred clause_to_proc_pass(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-clause_to_proc(ProgressStream, ErrorStream, Verbose, Stats,
+clause_to_proc_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
@@ -832,12 +839,12 @@ post_copy_polymorphism_pass(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_warn_about_unused_imports(io.text_output_stream::in,
+:- pred maybe_warn_about_unused_imports_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in, module_info::in,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_warn_about_unused_imports(ProgressStream, ErrorStream, Verbose, Stats,
-        HLDS, !MaybeWrittenSpecs, !IO) :-
+maybe_warn_about_unused_imports_pass(ProgressStream, ErrorStream,
+        Verbose, Stats, HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_unused_imports,
         WarnUnusedImports),
@@ -859,10 +866,11 @@ maybe_warn_about_unused_imports(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_mode_constraints(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_mode_constraints_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_mode_constraints(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_mode_constraints_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, mode_constraints, ModeConstraints),
     (
@@ -906,13 +914,13 @@ do_io_benchmark(Pred, Repeats, A0, A - Time, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred modecheck(io.text_output_stream::in, io.text_output_stream::in,
-    bool::in, bool::in, module_info::in, module_info::out,
-    bool::out, maybe_safe_to_continue::out,
+:- pred check_nonunique_modes_pass(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in,
+    bool::out, maybe_safe_to_continue::out, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-modecheck(ProgressStream, ErrorStream, Verbose, Stats, !HLDS,
-        FoundModeError, SafeToContinue, !MaybeWrittenSpecs, !IO) :-
+check_nonunique_modes_pass(ProgressStream, ErrorStream, Verbose, Stats,
+        FoundModeError, SafeToContinue, !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
         !MaybeWrittenSpecs, !IO),
@@ -957,12 +965,12 @@ modecheck(ProgressStream, ErrorStream, Verbose, Stats, !HLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_compute_goal_modes(io.text_output_stream::in,
+:- pred maybe_compute_goal_modes_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_compute_goal_modes(ProgressStream, ErrorStream, Verbose, Stats,
+maybe_compute_goal_modes_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, compute_goal_modes, ComputeGoalModes),
@@ -981,10 +989,10 @@ maybe_compute_goal_modes(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred detect_switches(io.text_output_stream::in, bool::in, bool::in,
+:- pred detect_switches_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-detect_switches(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+detect_switches_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Detecting switches...\n", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -994,10 +1002,10 @@ detect_switches(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred detect_cse(io.text_output_stream::in, bool::in, bool::in,
+:- pred detect_cse_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-detect_cse(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+detect_cse_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Detecting common deconstructions...\n", !IO),
     detect_cse_in_module(ProgressStream, !HLDS),
@@ -1006,11 +1014,12 @@ detect_cse(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred check_determinism(io.text_output_stream::in, io.text_output_stream::in,
-    bool::in, bool::in, module_info::in, module_info::out,
+:- pred check_determinism_pass(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-check_determinism(ProgressStream, ErrorStream, Verbose, Stats,
+check_determinism_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     determinism_pass(ProgressStream, DetismSpecs, !HLDS),
     add_to_be_written_specs(DetismSpecs, !MaybeWrittenSpecs),
@@ -1031,13 +1040,13 @@ check_determinism(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred check_unique_modes(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, bool::out,
+:- pred check_unique_modes_pass(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in, bool::out,
+    module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-check_unique_modes(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, FoundError, !MaybeWrittenSpecs, !IO) :-
+check_unique_modes_pass(ProgressStream, ErrorStream, Verbose, Stats,
+        FoundError, !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
         !MaybeWrittenSpecs, !IO),
@@ -1061,11 +1070,11 @@ check_unique_modes(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_write_call_tree(io.text_output_stream::in,
+:- pred maybe_write_call_tree_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_write_call_tree(ProgressStream, Verbose, Stats, HLDS,
+maybe_write_call_tree_pass(ProgressStream, Verbose, Stats, HLDS,
         !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_local_call_tree, ShowCallTree),
@@ -1148,13 +1157,13 @@ maybe_write_call_tree(ProgressStream, Verbose, Stats, HLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred check_stratification(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, bool::out,
+:- pred check_stratification_pass(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in, bool::out,
+    module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-check_stratification(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, FoundError, !MaybeWrittenSpecs, !IO) :-
+check_stratification_pass(ProgressStream, ErrorStream, Verbose, Stats,
+        FoundError, !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_must_be_stratified_preds(!.HLDS, MustBeStratifiedPreds),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
@@ -1187,13 +1196,13 @@ check_stratification(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred check_oisu_pragmas(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, bool::out,
+:- pred check_oisu_pragmas_pass(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in, bool::out,
+    module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-check_oisu_pragmas(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, FoundError, !MaybeWrittenSpecs, !IO) :-
+check_oisu_pragmas_pass(ProgressStream, ErrorStream, Verbose, Stats,
+        FoundError, !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_oisu_map(!.HLDS, OISUMap),
     map.to_assoc_list(OISUMap, OISUPairs),
     module_info_get_name(!.HLDS, ModuleName),
@@ -1235,11 +1244,12 @@ type_ctor_is_defined_in_this_module(ModuleName, TypeCtor - _) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_try_goals(io.text_output_stream::in, io.text_output_stream::in,
-    bool::in, bool::in, module_info::in, module_info::out, bool::out,
+:- pred expand_try_goals_pass(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, module_info::out, bool::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-process_try_goals(ProgressStream, ErrorStream, Verbose, Stats,
+expand_try_goals_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, FoundError, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
@@ -1263,12 +1273,12 @@ process_try_goals(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred check_pragma_format_call(io.text_output_stream::in,
+:- pred check_pragma_format_call_pass(io.text_output_stream::in,
     io.text_output_stream::in,bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-check_pragma_format_call(ProgressStream, ErrorStream, Verbose, Stats,
+check_pragma_format_call_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_format_call_pragma_preds(!.HLDS, FormatCallPredIds),
     ( if set.is_empty(FormatCallPredIds) then
@@ -1290,11 +1300,11 @@ check_pragma_format_call(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_generate_style_warnings(io.text_output_stream::in,
+:- pred maybe_generate_style_warnings_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in, module_info::in,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_generate_style_warnings(ProgressStream, ErrorStream, Verbose, Stats,
+maybe_generate_style_warnings_pass(ProgressStream, ErrorStream, Verbose, Stats,
         HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
@@ -1316,11 +1326,11 @@ maybe_generate_style_warnings(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_proc_statistics(io.text_output_stream::in,
+:- pred maybe_proc_statistics_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in, string::in, module_info::in,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_proc_statistics(ProgressStream, ErrorStream, Verbose, Stats, Msg,
+maybe_proc_statistics_pass(ProgressStream, ErrorStream, Verbose, Stats, Msg,
         HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
@@ -1351,11 +1361,11 @@ maybe_proc_statistics(ProgressStream, ErrorStream, Verbose, Stats, Msg,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_inst_statistics(io.text_output_stream::in,
+:- pred maybe_inst_statistics_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in, module_info::in,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_inst_statistics(ProgressStream, ErrorStream, Verbose, Stats,
+maybe_inst_statistics_pass(ProgressStream, ErrorStream, Verbose, Stats,
         HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
@@ -1410,7 +1420,7 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
     % The options that call for NeedMiddlePassForOptFile = yes
     % all run in the middle pass, and the middle pass requires
     % the previous completion of the front end.
-    need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
+    do_we_need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
     ( if
         NeedMiddlePassForOptFile = yes,
         % For `--intermodule-analysis', analysis results should be recorded
@@ -1567,9 +1577,9 @@ mark_entities_in_opt_file_as_opt_exported(ProgressStream, IntermodAnalysis,
 
 %---------------------%
 
-:- pred need_middle_pass_for_opt_file(globals::in, bool::out) is det.
+:- pred do_we_need_middle_pass_for_opt_file(globals::in, bool::out) is det.
 
-need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile) :-
+do_we_need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile) :-
     globals.get_opt_tuple(Globals, OptTuple),
     IntermodArgs = OptTuple ^ ot_opt_unused_args_intermod,
     globals.lookup_bool_option(Globals, termination_enable, Termination),

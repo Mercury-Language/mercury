@@ -65,7 +65,7 @@
     % of warning about unbound type variables. There may be cases for which
     % this doesn't make sense.
     %
-:- pred post_typecheck_finish_preds(module_info::in, module_info::out,
+:- pred post_typecheck_finish_preds_pass(module_info::in, module_info::out,
     list(diag_spec)::out, list(diag_spec)::out, list(diag_spec)::out)
     is det.
 
@@ -128,7 +128,7 @@
 
 %---------------------------------------------------------------------------%
 
-post_typecheck_finish_preds(!ModuleInfo, UnprovenConstraintSpecs,
+post_typecheck_finish_preds_pass(!ModuleInfo, UnprovenConstraintSpecs,
         AlwaysSpecs, NoTypeErrorSpecs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),

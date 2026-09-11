@@ -143,28 +143,28 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO),
+    maybe_output_prof_call_graph_pass(ProgressStream, Stats, !HLDS, !IO),
 
-    maybe_read_experimental_complexity_file(ErrorStream, !HLDS, !IO),
+    maybe_read_experimental_complexity_file_pass(ErrorStream, !HLDS, !IO),
 
-    tabling(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    tabling_pass(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 105, "tabling", !DumpInfo, !IO),
 
-    expand_lambdas(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    expand_lambdas_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 110, "lambda", !DumpInfo, !IO),
 
-    maybe_do_direct_arg_in_out_transform(ProgressStream, Verbose, Stats,
+    maybe_do_direct_arg_in_out_transform_pass(ProgressStream, Verbose, Stats,
         !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 111, "daio", !DumpInfo, !IO),
 
-    expand_stm_goals(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    expand_stm_goals_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 113, "stm", !DumpInfo, !IO),
 
-    expand_equiv_types_hlds(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    expand_equiv_types_hlds_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 115, "equiv_types",
         !DumpInfo, !IO),
 
-    maybe_closure_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_closure_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 117, "closure_analysis",
         !DumpInfo, !IO),
 
@@ -187,19 +187,20 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     % optimization passes that could benefit from the information that
     % they provide.
 
-    maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_exception_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 118, "exception_analysis",
         !DumpInfo, !IO),
 
-    maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_termination_pass(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 120, "termination",
         !DumpInfo, !IO),
 
-    maybe_termination2(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_termination2_pass(ProgressStream, Verbose, Stats, !HLDS,
+        !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 121, "termination2",
         !DumpInfo, !IO),
 
-    maybe_type_ctor_infos(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_type_ctor_infos_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 125, "type_ctor_infos",
         !DumpInfo, !IO),
 
@@ -208,103 +209,108 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     % before optimizations such as higher-order specialization and inlining,
     % which can make the original code for a procedure dead by
     % inlining/specializing all uses of it.
-    maybe_warn_dead_procs(ProgressStream, Verbose, Stats, !.HLDS, !Specs, !IO),
+    maybe_warn_dead_procs_pass(ProgressStream, Verbose, Stats,
+        !.HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 130, "warn_dead_procs",
         !DumpInfo, !IO),
 
-    maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_untuple_arguments_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 133, "untupling", !DumpInfo, !IO),
 
-    maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_tuple_arguments_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 134, "tupling", !DumpInfo, !IO),
 
-    maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats,
+    maybe_higher_order_or_type_spec_pass(ProgressStream, Verbose, Stats,
         !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 135, "higher_order",
         !DumpInfo, !IO),
 
-    maybe_source_to_source_debug(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_source_to_source_debug_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 137, "ssdb", !DumpInfo, !IO),
 
-    maybe_introduce_accumulators(ProgressStream, Verbose, Stats,
+    maybe_introduce_accumulators_pass(ProgressStream, Verbose, Stats,
         !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 140, "accum", !DumpInfo, !IO),
 
-    maybe_do_inlining(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_do_inlining_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 145, "inlining", !DumpInfo, !IO),
 
     % Hoisting loop invariants first invokes pass 148, "mark_static".
     % "mark_static" is also run at stage 420.
-    maybe_loop_inv(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO),
+    maybe_loop_inv_pass(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 150, "loop_inv", !DumpInfo, !IO),
 
-    maybe_deforestation(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_deforestation_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 155, "deforestation",
         !DumpInfo, !IO),
 
-    maybe_delay_construct(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_delay_construct_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 160, "delay_construct",
         !DumpInfo, !IO),
 
-    maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats,
+    maybe_structure_sharing_analysis_pass(ProgressStream, Verbose, Stats,
         !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 162, "structure_sharing",
         !DumpInfo, !IO),
 
-    maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_structure_reuse_analysis_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 163, "structure_reuse",
         !DumpInfo, !IO),
 
-    maybe_unused_args(ProgressStream, Verbose, Stats,
+    maybe_unused_args_pass(ProgressStream, Verbose, Stats,
         do_not_gather_pragma_unused_args, do_not_record_analysis_unused_args,
         _PragmaUnusedArgsInfos, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 165, "unused_args",
         !DumpInfo, !IO),
 
-    maybe_analyse_trail_usage(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_analyse_trail_usage_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 167, "trail_usage",
         !DumpInfo, !IO),
 
-    maybe_unneeded_code(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_unneeded_code_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 170, "unneeded_code",
         !DumpInfo, !IO),
 
-    maybe_simplify(ProgressStream, maybe.no, bool.no,
+    maybe_simplify_pass(ProgressStream, maybe.no, bool.no,
         simplify_pass_pre_implicit_parallelism, Verbose, Stats,
         !HLDS, init_maybe_written_specs, _SimplifySpecsPreImpPar, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 172,
         "pre_implicit_parallelism_simplify", !DumpInfo, !IO),
 
-    maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !Specs, !IO),
+    maybe_implicit_parallelism_pass(ProgressStream, ErrorStream,
+        Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 173, "implicit_parallelism",
         !DumpInfo, !IO),
 
-    maybe_analyse_mm_tabling(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_analyse_mm_tabling_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 185, "mm_tabling_analysis",
         !DumpInfo, !IO),
 
-    maybe_control_granularity(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_control_granularity_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 200, "granularity",
         !DumpInfo, !IO),
 
-    maybe_control_distance_granularity(ProgressStream, Verbose, Stats,
+    maybe_control_distance_granularity_pass(ProgressStream, Verbose, Stats,
         !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 201, "distance_granularity",
         !DumpInfo, !IO),
 
-    maybe_impl_dependent_par_conjs(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_impl_dependent_par_conjs_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 205, "dependent_par_conj",
         !DumpInfo, !IO),
 
-    maybe_par_loop_control(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_par_loop_control_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 206, "par_loop_control",
         !DumpInfo, !IO),
 
-    maybe_lco(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_lco_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 210, "lco", !DumpInfo, !IO),
 
-    maybe_float_reg_wrapper(ProgressStream, Verbose, Stats,
+    maybe_float_reg_wrapper_pass(ProgressStream, Verbose, Stats,
         !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 213, "float_reg_wrapper",
         !DumpInfo, !IO),
@@ -341,7 +347,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
         % have provided for constant propagation, and we cannot do that
         % once the term-size profiling or deep profiling transformations
         % have been applied.
-        maybe_simplify(ProgressStream, maybe.no, bool.no,
+        maybe_simplify_pass(ProgressStream, maybe.no, bool.no,
             simplify_pass_pre_prof_transforms, Verbose, Stats, !HLDS,
             init_maybe_written_specs, _SimplifySpecsPreProf, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 215,
@@ -350,31 +356,32 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
         % The term size profiling transformation should be after all
         % transformations that construct terms of non-zero size.
         % (Deep profiling does not construct non-zero size terms.)
-        maybe_term_size_prof(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_term_size_prof_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 220, "term_size_prof",
             !DumpInfo, !IO),
 
         % The deep profiling transformation should be done late in the piece
         % since it munges the code a fair amount and introduces strange
         % disjunctions that might confuse other hlds->hlds transformations.
-        maybe_deep_profiling(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_deep_profiling_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 225, "deep_profiling",
             !DumpInfo, !IO),
 
         % Experimental complexity transformation should be done late in the
         % piece for the same reason as deep profiling. At the moment, they are
         % exclusive.
-        maybe_experimental_complexity(ProgressStream, Verbose, Stats,
+        maybe_experimental_complexity_pass(ProgressStream, Verbose, Stats,
             !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 230, "complexity",
             !DumpInfo, !IO),
 
         % XXX This may be moved to later.
-        maybe_region_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_region_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 240, "region_analysis",
             !DumpInfo, !IO),
 
-        maybe_eliminate_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_eliminate_dead_procs_pass(ProgressStream, Verbose, Stats,
+            !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 250, "dead_procs",
             !DumpInfo, !IO),
 
@@ -405,25 +412,26 @@ middle_pass_for_opt_file(ProgressStream, !HLDS, PragmaUnusedArgsInfos,
         ; SharingAnalysis = yes
         )
     then
-        expand_lambdas(ProgressStream, Verbose, Stats, !HLDS, !IO),
-        expand_stm_goals(ProgressStream, Verbose, Stats, !HLDS, !IO)
+        expand_lambdas_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        expand_stm_goals_pass(ProgressStream, Verbose, Stats, !HLDS, !IO)
     else
         true
     ),
-    maybe_closure_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_unused_args(ProgressStream, Verbose, Stats,
+    maybe_closure_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_exception_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_unused_args_pass(ProgressStream, Verbose, Stats,
         do_gather_pragma_unused_args, do_not_record_analysis_unused_args,
         PragmaUnusedArgsInfos, !HLDS, !MaybeWrittenSpecs, !IO),
-    maybe_termination(ProgressStream, Verbose, Stats,
+    maybe_termination_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO),
-    maybe_termination2(ProgressStream, Verbose, Stats,
+    maybe_termination2_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO),
-    maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats,
+    maybe_structure_sharing_analysis_pass(ProgressStream, Verbose, Stats,
         !HLDS, !IO),
-    maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_analyse_trail_usage(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_analyse_mm_tabling(ProgressStream, Verbose, Stats, !HLDS, !IO).
+    maybe_structure_reuse_analysis_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO),
+    maybe_analyse_trail_usage_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_analyse_mm_tabling_pass(ProgressStream, Verbose, Stats, !HLDS, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -443,56 +451,70 @@ output_trans_opt_file(ProgressStream, !.HLDS, !DumpInfo,
         ; SharingAnalysis = yes
         )
     then
-        expand_lambdas(ProgressStream, Verbose, Stats, !HLDS, !IO)
+        expand_lambdas_pass(ProgressStream, Verbose, Stats, !HLDS, !IO)
     else
         true
     ),
     maybe_dump_hlds(ProgressStream, !.HLDS, 110, "lambda", !DumpInfo, !IO),
-    maybe_closure_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_closure_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 117, "closure_analysis",
         !DumpInfo, !IO),
-    maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_exception_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 118, "exception_analysis",
         !DumpInfo, !IO),
-    maybe_termination(ProgressStream, Verbose, Stats,
+
+    maybe_termination_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 120, "termination",
         !DumpInfo, !IO),
-    maybe_termination2(ProgressStream, Verbose, Stats,
+
+    maybe_termination2_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 121, "termination_2",
         !DumpInfo, !IO),
+
     (
         SharingAnalysis = yes,
         % These affect the results we write out for structure sharing/reuse
         % analysis.
-        maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats,
+        maybe_higher_order_or_type_spec_pass(ProgressStream, Verbose, Stats,
             !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 135, "higher_order",
             !DumpInfo, !IO),
-        maybe_do_inlining(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+        maybe_do_inlining_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 145, "inlining",
             !DumpInfo, !IO),
-        maybe_loop_inv(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO),
+
+        maybe_loop_inv_pass(ProgressStream, Verbose, Stats,
+            !HLDS, !DumpInfo, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 150, "loop_inv",
             !DumpInfo, !IO),
-        maybe_deforestation(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+        maybe_deforestation_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 155, "deforestation",
             !DumpInfo, !IO)
     ;
         SharingAnalysis = no
     ),
-    maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats,
+
+    maybe_structure_sharing_analysis_pass(ProgressStream, Verbose, Stats,
         !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 162, "structure_sharing",
         !DumpInfo, !IO),
-    maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_structure_reuse_analysis_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 163, "structure_reuse",
         !DumpInfo, !IO),
-    maybe_analyse_trail_usage(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_analyse_trail_usage_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 167, "trail_usage",
         !DumpInfo, !IO),
-    maybe_analyse_mm_tabling(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_analyse_mm_tabling_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 185, "mm_tabling_analysis",
         !DumpInfo, !IO),
 
@@ -594,61 +616,76 @@ output_analysis_file(ProgressStream, !.HLDS, !DumpInfo,
         ; SharingAnalysis = yes
         )
     then
-        expand_lambdas(ProgressStream, Verbose, Stats, !HLDS, !IO)
+        expand_lambdas_pass(ProgressStream, Verbose, Stats, !HLDS, !IO)
     else
         true
     ),
     maybe_dump_hlds(ProgressStream, !.HLDS, 110, "lambda", !DumpInfo, !IO),
-    maybe_closure_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_closure_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 117, "closure_analysis",
         !DumpInfo, !IO),
-    maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_exception_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 118, "exception_analysis",
         !DumpInfo, !IO),
-    maybe_termination(ProgressStream, Verbose, Stats,
+
+    maybe_termination_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 120, "termination",
         !DumpInfo, !IO),
-    maybe_termination2(ProgressStream, Verbose, Stats,
+
+    maybe_termination2_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 121, "termination_2",
         !DumpInfo, !IO),
+
     (
         SharingAnalysis = yes,
         % These affect the results we write out for structure sharing/reuse
         % analysis.
-        maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats,
+        maybe_higher_order_or_type_spec_pass(ProgressStream, Verbose, Stats,
             !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 135, "higher_order",
             !DumpInfo, !IO),
-        maybe_do_inlining(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+        maybe_do_inlining_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 145, "inlining",
             !DumpInfo, !IO),
-        maybe_loop_inv(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO),
+
+        maybe_loop_inv_pass(ProgressStream, Verbose, Stats,
+            !HLDS, !DumpInfo, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 150, "loop_inv",
             !DumpInfo, !IO),
-        maybe_deforestation(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+        maybe_deforestation_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 155, "deforestation",
             !DumpInfo, !IO)
     ;
         SharingAnalysis = no
     ),
-    maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats,
+
+    maybe_structure_sharing_analysis_pass(ProgressStream, Verbose, Stats,
         !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 162, "structure_sharing",
         !DumpInfo, !IO),
-    maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_structure_reuse_analysis_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 163, "structure_reuse",
         !DumpInfo, !IO),
-    maybe_unused_args(ProgressStream, Verbose, Stats,
+
+    maybe_unused_args_pass(ProgressStream, Verbose, Stats,
         do_not_gather_pragma_unused_args, do_record_analysis_unused_args,
         _PragmaUnusedArgsInfos, !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 165, "unused_args",
         !DumpInfo, !IO),
-    maybe_analyse_trail_usage(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_analyse_trail_usage_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 167, "trail_usage",
         !DumpInfo, !IO),
-    maybe_analyse_mm_tabling(ProgressStream, Verbose, Stats, !HLDS, !IO),
+
+    maybe_analyse_mm_tabling_pass(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 185, "mm_tabling_analysis",
         !DumpInfo, !IO),
 
@@ -671,10 +708,10 @@ output_analysis_file(ProgressStream, !.HLDS, !DumpInfo,
     % Outputs the file <module_name>.prof, which contains the static
     % call graph in terms of label names, if the profiling flag is enabled.
     %
-:- pred maybe_output_prof_call_graph(io.text_output_stream::in, bool::in,
+:- pred maybe_output_prof_call_graph_pass(io.text_output_stream::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO) :-
+maybe_output_prof_call_graph_pass(ProgressStream, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
     globals.lookup_bool_option(Globals, profile_time, ProfileTime),
@@ -699,10 +736,10 @@ maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_read_experimental_complexity_file(io.text_output_stream::in,
+:- pred maybe_read_experimental_complexity_file_pass(io.text_output_stream::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_read_experimental_complexity_file(ErrorStream, !HLDS, !IO) :-
+maybe_read_experimental_complexity_file_pass(ErrorStream, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_string_option(Globals, experimental_complexity, FileName),
     ( if FileName = "" then
@@ -736,11 +773,11 @@ maybe_read_experimental_complexity_file(ErrorStream, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred tabling(io.text_output_stream::in, bool::in, bool::in,
+:- pred tabling_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-tabling(ProgressStream, Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO) :-
+tabling_pass(ProgressStream, Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Transforming tabled predicates...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -751,10 +788,10 @@ tabling(ProgressStream, Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred expand_lambdas(io.text_output_stream::in, bool::in, bool::in,
+:- pred expand_lambdas_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-expand_lambdas(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+expand_lambdas_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Transforming lambda expressions...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -764,11 +801,11 @@ expand_lambdas(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_do_direct_arg_in_out_transform(io.text_output_stream::in,
+:- pred maybe_do_direct_arg_in_out_transform_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_do_direct_arg_in_out_transform(ProgressStream, Verbose, Stats,
+maybe_do_direct_arg_in_out_transform_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_direct_arg_proc_map(!.HLDS, DirectArgProcMap),
     ( if map.is_empty(DirectArgProcMap) then
@@ -785,10 +822,10 @@ maybe_do_direct_arg_in_out_transform(ProgressStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred expand_stm_goals(io.text_output_stream::in, bool::in, bool::in,
+:- pred expand_stm_goals_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-expand_stm_goals(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+expand_stm_goals_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Transforming stm expressions...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -798,10 +835,11 @@ expand_stm_goals(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred expand_equiv_types_hlds(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred expand_equiv_types_hlds_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-expand_equiv_types_hlds(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+expand_equiv_types_hlds_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Fully expanding equivalence types...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -811,10 +849,11 @@ expand_equiv_types_hlds(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_closure_analysis(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_closure_analysis_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_closure_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_closure_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
     (
@@ -830,10 +869,11 @@ maybe_closure_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_exception_analysis(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_exception_analysis_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_exception_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, analyse_exceptions, ExceptionAnalysis),
     (
@@ -849,11 +889,11 @@ maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_termination(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_termination_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_termination(ProgressStream, Verbose, Stats, !HLDS,
+maybe_termination_pass(ProgressStream, Verbose, Stats, !HLDS,
         !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, termination_enable, Termination),
@@ -872,11 +912,11 @@ maybe_termination(ProgressStream, Verbose, Stats, !HLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_termination2(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_termination2_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_termination2(ProgressStream, Verbose, Stats, !HLDS,
+maybe_termination2_pass(ProgressStream, Verbose, Stats, !HLDS,
         !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, termination2_enable, Termination2),
@@ -895,10 +935,11 @@ maybe_termination2(ProgressStream, Verbose, Stats, !HLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_type_ctor_infos(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_type_ctor_infos_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_type_ctor_infos(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_type_ctor_infos_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, type_ctor_info, TypeCtorInfo),
     (
@@ -915,11 +956,11 @@ maybe_type_ctor_infos(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_warn_dead_procs(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, maybe_written_specs::in, maybe_written_specs::out,
-    io::di, io::uo) is det.
+:- pred maybe_warn_dead_procs_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_warn_dead_procs(ProgressStream, Verbose, Stats, HLDS,
+maybe_warn_dead_procs_pass(ProgressStream, Verbose, Stats, HLDS,
         !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_dead_procs, WarnDeadProcs),
@@ -949,10 +990,11 @@ maybe_warn_dead_procs(ProgressStream, Verbose, Stats, HLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_untuple_arguments(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_untuple_arguments_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_untuple_arguments_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     Untuple = OptTuple ^ ot_untuple,
@@ -962,7 +1004,7 @@ maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         maybe_flush_output(ProgressStream, Verbose, !IO),
         untuple_arguments(!HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
-        maybe_simplify(ProgressStream, maybe.no, bool.no,
+        maybe_simplify_pass(ProgressStream, maybe.no, bool.no,
             simplify_pass_post_untuple, Verbose, Stats, !HLDS,
             init_maybe_written_specs, _SimplifyMaybeWrittenSpecs, !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
@@ -972,11 +1014,11 @@ maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_tuple_arguments(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out,
+:- pred maybe_tuple_arguments_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS,
+maybe_tuple_arguments_pass(ProgressStream, Verbose, Stats, !HLDS,
         !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -995,11 +1037,12 @@ maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_higher_order_or_type_spec(io.text_output_stream::in,
+:- pred maybe_higher_order_or_type_spec_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_higher_order_or_type_spec_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     HigherOrder = OptTuple ^ ot_opt_higher_order,
@@ -1031,11 +1074,12 @@ maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_source_to_source_debug(io.text_output_stream::in,
+:- pred maybe_source_to_source_debug_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_source_to_source_debug(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_source_to_source_debug_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, force_disable_ssdebug,
         ForceDisableSSDB),
@@ -1061,12 +1105,12 @@ maybe_source_to_source_debug(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_implicit_parallelism(io.text_output_stream::in,
+:- pred maybe_implicit_parallelism_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
+maybe_implicit_parallelism_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, implicit_parallelism,
@@ -1090,11 +1134,11 @@ maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_introduce_accumulators(io.text_output_stream::in,
+:- pred maybe_introduce_accumulators_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_introduce_accumulators(ProgressStream, Verbose, Stats,
+maybe_introduce_accumulators_pass(ProgressStream, Verbose, Stats,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -1124,10 +1168,10 @@ maybe_introduce_accumulators(ProgressStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_do_inlining(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_do_inlining_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_do_inlining(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_do_inlining_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     Allow = OptTuple ^ ot_allow_inlining,
@@ -1152,11 +1196,11 @@ maybe_do_inlining(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_loop_inv(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_loop_inv_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
 
-maybe_loop_inv(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
+maybe_loop_inv_pass(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     LoopInv = OptTuple ^ ot_opt_loop_invariants,
@@ -1164,7 +1208,8 @@ maybe_loop_inv(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
         LoopInv = opt_loop_invariants,
         % We run the mark_static pass because we need the construct_how flag
         % to be valid.
-        maybe_mark_static_terms(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_mark_static_terms_pass(ProgressStream, Verbose, Stats,
+            !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 148, "mark_static",
             !DumpInfo, !IO),
 
@@ -1181,10 +1226,10 @@ maybe_loop_inv(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_deforestation(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_deforestation_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_deforestation(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_deforestation_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     Deforest = OptTuple ^ ot_deforest,
@@ -1217,10 +1262,11 @@ maybe_deforestation(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_delay_construct(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_delay_construct_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_delay_construct(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_delay_construct_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     DelayConstruct = OptTuple ^ ot_delay_constructs,
@@ -1239,11 +1285,12 @@ maybe_delay_construct(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_structure_sharing_analysis(io.text_output_stream::in,
+:- pred maybe_structure_sharing_analysis_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_structure_sharing_analysis_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, structure_sharing_analysis, Sharing),
     (
@@ -1261,11 +1308,12 @@ maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_structure_reuse_analysis(io.text_output_stream::in,
+:- pred maybe_structure_reuse_analysis_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_structure_reuse_analysis_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, structure_reuse_analysis,
         ReuseAnalysis),
@@ -1284,12 +1332,12 @@ maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_unused_args(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_unused_args_pass(io.text_output_stream::in, bool::in, bool::in,
     maybe_gather_pragma_unused_args::in, maybe_record_analysis_unused_args::in,
     set(gen_pragma_unused_args_info)::out, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_unused_args(ProgressStream, Verbose, Stats,
+maybe_unused_args_pass(ProgressStream, Verbose, Stats,
         GatherPragmas, RecordAnalysis, PragmaUnusedArgsInfos,
         !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
@@ -1317,11 +1365,11 @@ maybe_unused_args(ProgressStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_analyse_trail_usage(io.text_output_stream::in,
+:- pred maybe_analyse_trail_usage_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_analyse_trail_usage(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_analyse_trail_usage_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, analyse_trail_usage, AnalyseTrail),
     (
@@ -1338,10 +1386,10 @@ maybe_analyse_trail_usage(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_unneeded_code(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_unneeded_code_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_unneeded_code(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_unneeded_code_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     UnneededCode = OptTuple ^ ot_opt_unneeded_code,
@@ -1360,10 +1408,10 @@ maybe_unneeded_code(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_lco(io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_lco_pass(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_lco(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_lco_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     LCMC = OptTuple ^ ot_opt_lcmc,
@@ -1381,10 +1429,11 @@ maybe_lco(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_analyse_mm_tabling(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_analyse_mm_tabling_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_analyse_mm_tabling(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_analyse_mm_tabling_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, analyse_mm_tabling, TablingAnalysis),
     (
@@ -1400,11 +1449,11 @@ maybe_analyse_mm_tabling(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_control_granularity(io.text_output_stream::in,
+:- pred maybe_control_granularity_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_control_granularity(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_control_granularity_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, parallel, Parallel),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
@@ -1444,11 +1493,11 @@ maybe_control_granularity(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_control_distance_granularity(io.text_output_stream::in,
+:- pred maybe_control_distance_granularity_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_control_distance_granularity(ProgressStream, Verbose, Stats,
+maybe_control_distance_granularity_pass(ProgressStream, Verbose, Stats,
         !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, parallel, Parallel),
@@ -1490,11 +1539,12 @@ maybe_control_distance_granularity(ProgressStream, Verbose, Stats,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_impl_dependent_par_conjs(io.text_output_stream::in,
+:- pred maybe_impl_dependent_par_conjs_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_impl_dependent_par_conjs(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_impl_dependent_par_conjs_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO) :-
     module_info_get_has_parallel_conj(!.HLDS, HasParallelConj),
     (
         HasParallelConj = has_parallel_conj,
@@ -1520,10 +1570,11 @@ maybe_impl_dependent_par_conjs(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_par_loop_control(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_par_loop_control_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_par_loop_control(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_par_loop_control_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, par_loop_control, LoopControl),
     (
@@ -1540,11 +1591,11 @@ maybe_par_loop_control(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_float_reg_wrapper(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out,
+:- pred maybe_float_reg_wrapper_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_float_reg_wrapper(ProgressStream, Verbose, Stats, !HLDS,
+maybe_float_reg_wrapper_pass(ProgressStream, Verbose, Stats, !HLDS,
         !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
@@ -1563,10 +1614,11 @@ maybe_float_reg_wrapper(ProgressStream, Verbose, Stats, !HLDS,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_term_size_prof(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_term_size_prof_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_term_size_prof(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_term_size_prof_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, AsWords),
     globals.lookup_bool_option(Globals, record_term_sizes_as_cells, AsCells),
@@ -1604,10 +1656,11 @@ maybe_term_size_prof(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_deep_profiling(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_deep_profiling_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_deep_profiling(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_deep_profiling_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
     (
@@ -1624,11 +1677,12 @@ maybe_deep_profiling(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_experimental_complexity(io.text_output_stream::in,
+:- pred maybe_experimental_complexity_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_experimental_complexity(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_experimental_complexity_pass(ProgressStream, Verbose, Stats,
+        !HLDS, !IO) :-
     module_info_get_maybe_complexity_proc_map(!.HLDS, MaybeNumProcMap),
     (
         MaybeNumProcMap = no
@@ -1647,10 +1701,11 @@ maybe_experimental_complexity(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_region_analysis(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_region_analysis_pass(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_region_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_region_analysis_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     Analysis = OptTuple ^ ot_analyse_regions,
@@ -1668,11 +1723,11 @@ maybe_region_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_eliminate_dead_procs(io.text_output_stream::in,
+:- pred maybe_eliminate_dead_procs_pass(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-maybe_eliminate_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_eliminate_dead_procs_pass(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     OptDeadProcs = OptTuple ^ ot_opt_dead_procs,

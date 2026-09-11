@@ -29,7 +29,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_warn_about_unused_types(module_info::in,
+:- pred maybe_warn_about_unused_types_pass(module_info::in,
     maybe_written_specs::in, maybe_written_specs::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -64,7 +64,7 @@
 
 %---------------------------------------------------------------------------%
 
-maybe_warn_about_unused_types(ModuleInfo, !MaybeWrittenSpecs) :-
+maybe_warn_about_unused_types_pass(ModuleInfo, !MaybeWrittenSpecs) :-
     SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
     module_info_get_globals(ModuleInfo, Globals),
     ErrorsSoFar = contains_errors(Globals, SpecsSoFar),
