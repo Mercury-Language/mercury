@@ -423,9 +423,21 @@
 
 %---------------------%
 
-    % For a set of variables V, find all the type variables in the types
-    % of the variables in V, and return set of typeinfo variables for
-    % those type variables. (find all typeinfos for variables in V).
+    % maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps,
+    %   TypeInfoLiveness, Vars0, Vars):
+    %
+    % If TypeInfoLiveness is yes, then add the type_info variables
+    % describing the type variables inside the types of Vars0 (see below)
+    % to Vars0, and return the result as Vars.
+    %
+:- pred maybe_complete_with_typeinfo_vars(var_table::in, rtti_varmaps::in,
+    bool::in, set_of_progvar::in, set_of_progvar::out) is det.
+
+    % get_typeinfo_vars(VarTable, RttiVarMaps, Vars, TypeInfoVars):
+    %
+    % For a set of variables Vars, find all the type variables in the types
+    % of the variables in Vars, and return the set of typeinfo variables for
+    % those type variables.
     %
     % This set of typeinfos is often needed in liveness computation
     % for accurate garbage collection - live variables need to have
@@ -433,9 +445,6 @@
     %
 :- pred get_typeinfo_vars(var_table::in, rtti_varmaps::in,
     set_of_progvar::in, set_of_progvar::out) is det.
-
-:- pred maybe_complete_with_typeinfo_vars(var_table::in, rtti_varmaps::in,
-    bool::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 %---------------------%
 
@@ -971,6 +980,19 @@ rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints) :-
 
 %---------------------%
 
+maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps, TypeInfoLiveness,
+        Vars0, Vars) :-
+    (
+        TypeInfoLiveness = yes,
+        get_typeinfo_vars(VarTable, RttiVarMaps, Vars0, TypeInfoVars),
+        set_of_var.union(Vars0, TypeInfoVars, Vars)
+    ;
+        TypeInfoLiveness = no,
+        Vars = Vars0
+    ).
+
+%---------------------%
+
 get_typeinfo_vars(VarTable, RttiVarMaps, Vars, TypeInfoVars) :-
     TVarToLocnMap = RttiVarMaps ^ rv_tv_to_ti_locn_map,
     VarList = set_of_var.to_sorted_list(Vars),
@@ -1006,19 +1028,6 @@ get_typeinfo_vars_acc(VarTable, TVarToLocnMap, [Var | Vars], !TypeInfoVars) :-
         set_of_var.insert_list(TypeInfoVarsHead, !TypeInfoVars)
     ),
     get_typeinfo_vars_acc(VarTable, TVarToLocnMap, Vars, !TypeInfoVars).
-
-%---------------------%
-
-maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps, TypeInfoLiveness,
-        Vars0, Vars) :-
-    (
-        TypeInfoLiveness = yes,
-        get_typeinfo_vars(VarTable, RttiVarMaps, Vars0, TypeInfoVars),
-        set_of_var.union(Vars0, TypeInfoVars, Vars)
-    ;
-        TypeInfoLiveness = no,
-        Vars = Vars0
-    ).
 
 %---------------------------------------------------------------------------%
 
