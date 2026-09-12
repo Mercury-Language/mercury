@@ -455,7 +455,7 @@ maybe_mark_proc_to_be_inlined(ProgressStream, Params, ModuleInfo, PredProcId,
 mark_proc_to_be_inlined(ProgressStream, ModuleInfo, PredProcId,
         !ShouldInlineProcs) :-
     set.insert(PredProcId, !ShouldInlineProcs),
-    trace [io(!IO)] (
+    trace [compile_time(flag("debug-inlining")), io(!IO)] (
         maybe_write_proc_progress_message(ProgressStream, ModuleInfo,
             "Inlining", PredProcId, !IO)
     ).
@@ -609,7 +609,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         pred_info_proc_info(!.PredInfo, ProcId, !:ProcInfo),
 
-        trace [io(!IO)] (
+        trace [compile_time(flag("debug-inlining")), io(!IO)] (
             maybe_dump_proc_goal(MaybeDebugStream, "start", yes(PredId),
                 !.ModuleInfo, !.PredInfo, !.ProcInfo, !IO)
         ),
@@ -639,7 +639,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         proc_info_set_goal(Goal, !ProcInfo),
 
-        trace [io(!IO)] (
+        trace [compile_time(flag("debug-inlining")), io(!IO)] (
             maybe_dump_proc_goal(MaybeDebugStream, "inlined", no,
                 !.ModuleInfo, !.PredInfo, !.ProcInfo, !IO)
         ),
@@ -663,7 +663,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             recompute_instmap_delta_proc(recomp_atomics,
                 !ProcInfo, !ModuleInfo),
 
-            trace [io(!IO)] (
+            trace [compile_time(flag("debug-inlining")), io(!IO)] (
                 maybe_dump_proc_goal(MaybeDebugStream, "instmap_deltas", no,
                     !.ModuleInfo, !.PredInfo, !.ProcInfo, !IO)
             )
@@ -677,7 +677,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             PurityChanged = have_changed_purity,
             repuritycheck_proc(!.ModuleInfo, PredProcId, !PredInfo),
 
-            trace [io(!IO)] (
+            trace [compile_time(flag("debug-inlining")), io(!IO)] (
                 pred_info_proc_info(!.PredInfo, ProcId, PurityProcInfo),
                 maybe_dump_proc_goal(MaybeDebugStream, "repuritycheck", no,
                     !.ModuleInfo, !.PredInfo, PurityProcInfo, !IO)
@@ -697,7 +697,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             det_infer_proc_ignore_msgs(ProgressStream, PredId, ProcId,
                 !ModuleInfo),
 
-            trace [io(!IO)] (
+            trace [compile_time(flag("debug-inlining")), io(!IO)] (
                 module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
                     DetPredInfo, DetProcInfo),
                 maybe_dump_proc_goal(MaybeDebugStream, "det_infer_proc", no,
