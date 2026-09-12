@@ -6042,21 +6042,150 @@ do_base_string_to_int(Base, String, Int) :-
         Sign = positive,
         Start = 0
     ),
+
+    % Do not include the sign bit, if any, in our initial digit count.
+    NumStringDigits = End - Start,
+
     % The divisions below are all safe since our callers set Base
     % to be in 2..36.
     (
         Sign = positive,
-        CutOff = max_int `unchecked_quotient` Base,
-        CutLimit = max_int `unchecked_rem` Base,
-        do_base_string_to_positive_int_loop(Base, CutOff, CutLimit, String,
-            Start, End, 0, Int)
+        ( if can_use_to_int_fast_path(Base, NumStringDigits) then
+            do_unsafe_base_string_to_positive_int_loop(Base, String,
+                Start, End, 0, Int)
+        else
+            CutOff = max_int `unchecked_quotient` Base,
+            CutLimit = max_int `unchecked_rem` Base,
+            do_base_string_to_positive_int_loop(Base, CutOff, CutLimit, String,
+                Start, End, 0, Int)
+        )
     ;
         Sign = negative,
-        CutOff = min_int `unchecked_quotient` Base,
-        CutLimit = -(min_int `unchecked_rem` Base),
-        do_base_string_to_negative_int_loop(Base, CutOff, CutLimit, String,
-            Start, End, 0, Int)
+        ( if can_use_to_int_fast_path(Base, NumStringDigits) then
+            do_unsafe_base_string_to_negative_int_loop(Base, String,
+                Start, End, 0, Int)
+        else
+            CutOff = min_int `unchecked_quotient` Base,
+            CutLimit = -(min_int `unchecked_rem` Base),
+            do_base_string_to_negative_int_loop(Base, CutOff, CutLimit, String,
+                Start, End, 0, Int)
+        )
     ).
+
+%---------------------%
+
+    % can_use_to_int_fast_path(Base, NumDigits):
+    %
+    % Can we safely use the fast path string-to-int conversion for a string of
+    % base Base digits of length NumDigits?
+    %
+:- pred can_use_to_int_fast_path(int::in, int::in) is semidet.
+
+can_use_to_int_fast_path(Base, NumDigits) :-
+    WordSize = bits_per_int,
+    (
+        WordSize = 32,
+        safe_int_digits_for_word32_and_base(Base, SafeDigits)
+    ;
+        WordSize = 64,
+        safe_int_digits_for_word64_and_base(Base, SafeDigits)
+    ),
+    NumDigits =< SafeDigits.
+
+    % safe_int_digits_for_word32_and_base(Base, SafeDigits):
+    %
+    % For a given base Base, SafeDigits is the largest number of digits such
+    % that every string of SafeDigits base Base digits denotes a value that
+    % fits in a 32-bit signed int. That is, SafeDigits is the largest number
+    % such that:
+    %
+    %   Base ^ SafeDigits - 1 =< max_int, where max_int = 2 ^ (32 - 1) - 1.
+    %
+    % We use the same value of SafeDigits for negative ints. That is safe,
+    % since abs(min_int) = max_int + 1 (i.e., a bound that holds for max_int
+    % also holds for min_int).
+    %
+:- pred safe_int_digits_for_word32_and_base(int::in, int::out) is semidet.
+
+safe_int_digits_for_word32_and_base(2, 31).
+safe_int_digits_for_word32_and_base(3, 19).
+safe_int_digits_for_word32_and_base(4, 15).
+safe_int_digits_for_word32_and_base(5, 13).
+safe_int_digits_for_word32_and_base(6, 11).
+safe_int_digits_for_word32_and_base(7, 11).
+safe_int_digits_for_word32_and_base(8, 10).
+safe_int_digits_for_word32_and_base(9, 9).
+safe_int_digits_for_word32_and_base(10, 9).
+safe_int_digits_for_word32_and_base(11, 8).
+safe_int_digits_for_word32_and_base(12, 8).
+safe_int_digits_for_word32_and_base(13, 8).
+safe_int_digits_for_word32_and_base(14, 8).
+safe_int_digits_for_word32_and_base(15, 7).
+safe_int_digits_for_word32_and_base(16, 7).
+safe_int_digits_for_word32_and_base(17, 7).
+safe_int_digits_for_word32_and_base(18, 7).
+safe_int_digits_for_word32_and_base(19, 7).
+safe_int_digits_for_word32_and_base(20, 7).
+safe_int_digits_for_word32_and_base(21, 7).
+safe_int_digits_for_word32_and_base(22, 6).
+safe_int_digits_for_word32_and_base(23, 6).
+safe_int_digits_for_word32_and_base(24, 6).
+safe_int_digits_for_word32_and_base(25, 6).
+safe_int_digits_for_word32_and_base(26, 6).
+safe_int_digits_for_word32_and_base(27, 6).
+safe_int_digits_for_word32_and_base(28, 6).
+safe_int_digits_for_word32_and_base(29, 6).
+safe_int_digits_for_word32_and_base(30, 6).
+safe_int_digits_for_word32_and_base(31, 6).
+safe_int_digits_for_word32_and_base(32, 6).
+safe_int_digits_for_word32_and_base(33, 6).
+safe_int_digits_for_word32_and_base(34, 6).
+safe_int_digits_for_word32_and_base(35, 6).
+safe_int_digits_for_word32_and_base(36, 5).
+
+    % safe_int_digits_for_word64_and_base(Base, SafeDigits):
+    %
+    % As above, but for 64-bit ints.
+    %
+:- pred safe_int_digits_for_word64_and_base(int::in, int::out) is semidet.
+
+safe_int_digits_for_word64_and_base(2, 63).
+safe_int_digits_for_word64_and_base(3, 39).
+safe_int_digits_for_word64_and_base(4, 31).
+safe_int_digits_for_word64_and_base(5, 27).
+safe_int_digits_for_word64_and_base(6, 24).
+safe_int_digits_for_word64_and_base(7, 22).
+safe_int_digits_for_word64_and_base(8, 21).
+safe_int_digits_for_word64_and_base(9, 19).
+safe_int_digits_for_word64_and_base(10, 18).
+safe_int_digits_for_word64_and_base(11, 18).
+safe_int_digits_for_word64_and_base(12, 17).
+safe_int_digits_for_word64_and_base(13, 17).
+safe_int_digits_for_word64_and_base(14, 16).
+safe_int_digits_for_word64_and_base(15, 16).
+safe_int_digits_for_word64_and_base(16, 15).
+safe_int_digits_for_word64_and_base(17, 15).
+safe_int_digits_for_word64_and_base(18, 15).
+safe_int_digits_for_word64_and_base(19, 14).
+safe_int_digits_for_word64_and_base(20, 14).
+safe_int_digits_for_word64_and_base(21, 14).
+safe_int_digits_for_word64_and_base(22, 14).
+safe_int_digits_for_word64_and_base(23, 13).
+safe_int_digits_for_word64_and_base(24, 13).
+safe_int_digits_for_word64_and_base(25, 13).
+safe_int_digits_for_word64_and_base(26, 13).
+safe_int_digits_for_word64_and_base(27, 13).
+safe_int_digits_for_word64_and_base(28, 13).
+safe_int_digits_for_word64_and_base(29, 12).
+safe_int_digits_for_word64_and_base(30, 12).
+safe_int_digits_for_word64_and_base(31, 12).
+safe_int_digits_for_word64_and_base(32, 12).
+safe_int_digits_for_word64_and_base(33, 12).
+safe_int_digits_for_word64_and_base(34, 12).
+safe_int_digits_for_word64_and_base(35, 12).
+safe_int_digits_for_word64_and_base(36, 12).
+
+%---------------------%
 
     % do_base_string_to_positive_int_loop(Base, CutOff, CutLimit, String,
     %     CurOffset, EndOffset, !Int):
@@ -6177,6 +6306,44 @@ do_base_string_to_negative_int_loop(Base, CutOff, CutLimit, String,
 
 %---------------------%
 
+    % A version of do_base_string_to_positive_int_loop that omits the the
+    % overflow check. This is faster, but can only be used safely when the
+    % number of digits in the string is below that which potentially overflow.
+    %
+:- pred do_unsafe_base_string_to_positive_int_loop(int::in, string::in,
+    int::in, int::in, int::in, int::out) is semidet.
+
+do_unsafe_base_string_to_positive_int_loop(Base, String, CurOffset,
+        EndOffset, !Int) :-
+    ( if CurOffset < EndOffset then
+        unsafe_index_next(String, CurOffset, NextOffset, Char),
+        char.unsafe_base_digit_to_int(Base, Char, M),
+        !:Int = (Base * !.Int) + M,
+        do_unsafe_base_string_to_positive_int_loop(Base, String, NextOffset,
+            EndOffset, !Int)
+    else
+        true
+    ).
+
+    % As above, but for the negative case.
+    %
+:- pred do_unsafe_base_string_to_negative_int_loop(int::in, string::in,
+    int::in, int::in, int::in, int::out) is semidet.
+
+do_unsafe_base_string_to_negative_int_loop(Base, String, CurOffset,
+        EndOffset, !Int) :-
+    ( if CurOffset < EndOffset then
+        unsafe_index_next(String, CurOffset, NextOffset, Char),
+        char.unsafe_base_digit_to_int(Base, Char, M),
+        !:Int = (Base * !.Int) - M,
+        do_unsafe_base_string_to_negative_int_loop(Base, String,
+            NextOffset, EndOffset, !Int)
+    else
+        true
+    ).
+
+%---------------------%
+
 to_uint(String, UInt) :-
     do_base_string_to_uint(10, String, UInt).
 
@@ -6206,12 +6373,128 @@ do_base_string_to_uint(Base, String, UInt) :-
     End = string.count_code_units(String),
     End > 0, % Fail if we have the empty string.
     UBase = uint.cast_from_int(Base),
-    % Both of these divisions are safe since our callers set Base
+    % The divisions below are safe since our callers set Base
     % to be in 2..36.
-    CutOff = max_uint `unchecked_quotient` UBase,
-    CutLimit = max_uint `unchecked_rem` UBase,
-    do_base_string_to_uint_loop(UBase, Base, CutOff, CutLimit, String,
-        0, End, 0u, UInt).
+    ( if can_use_to_uint_fast_path(Base, End) then
+        do_unsafe_base_string_to_uint_loop(UBase, Base, String, 0, End,
+            0u, UInt)
+    else
+        CutOff = max_uint `unchecked_quotient` UBase,
+        CutLimit = max_uint `unchecked_rem` UBase,
+        do_base_string_to_uint_loop(UBase, Base, CutOff, CutLimit, String,
+            0, End, 0u, UInt)
+    ).
+
+%---------------------%
+
+    % can_use_to_uint_fast_path(Base, NumDigits):
+    %
+    % Can we safely use the fast path string-to-uint conversion for a string of
+    % base Base digits of length NumDigits?
+    %
+:- pred can_use_to_uint_fast_path(int::in, int::in) is semidet.
+
+can_use_to_uint_fast_path(Base, NumDigits) :-
+    WordSize = bits_per_uint,
+    (
+        WordSize = 32,
+        safe_uint_digits_for_word32_and_base(Base, SafeDigits)
+    ;
+        WordSize = 64,
+        safe_uint_digits_for_word64_and_base(Base, SafeDigits)
+    ),
+    NumDigits =< SafeDigits.
+
+    % safe_uint_digits_for_word32_and_base(Base, SafeDigits):
+    %
+    % For a given base Base, SafeDigits is the largest number of digits such
+    % that every string of SafeDigits base Base digits denotes a value that
+    % fits in a 32-bit unsigned int. That is, SafeDigits is the largest number
+    % such that:
+    %
+    %   Base ^ SafeDigits - 1 =< max_uint, where max_uint = 2 ^ 32 - 1.
+    %
+:- pred safe_uint_digits_for_word32_and_base(int::in, int::out) is semidet.
+
+safe_uint_digits_for_word32_and_base(2, 32).
+safe_uint_digits_for_word32_and_base(3, 20).
+safe_uint_digits_for_word32_and_base(4, 16).
+safe_uint_digits_for_word32_and_base(5, 13).
+safe_uint_digits_for_word32_and_base(6, 12).
+safe_uint_digits_for_word32_and_base(7, 11).
+safe_uint_digits_for_word32_and_base(8, 10).
+safe_uint_digits_for_word32_and_base(9, 10).
+safe_uint_digits_for_word32_and_base(10, 9).
+safe_uint_digits_for_word32_and_base(11, 9).
+safe_uint_digits_for_word32_and_base(12, 8).
+safe_uint_digits_for_word32_and_base(13, 8).
+safe_uint_digits_for_word32_and_base(14, 8).
+safe_uint_digits_for_word32_and_base(15, 8).
+safe_uint_digits_for_word32_and_base(16, 8).
+safe_uint_digits_for_word32_and_base(17, 7).
+safe_uint_digits_for_word32_and_base(18, 7).
+safe_uint_digits_for_word32_and_base(19, 7).
+safe_uint_digits_for_word32_and_base(20, 7).
+safe_uint_digits_for_word32_and_base(21, 7).
+safe_uint_digits_for_word32_and_base(22, 7).
+safe_uint_digits_for_word32_and_base(23, 7).
+safe_uint_digits_for_word32_and_base(24, 6).
+safe_uint_digits_for_word32_and_base(25, 6).
+safe_uint_digits_for_word32_and_base(26, 6).
+safe_uint_digits_for_word32_and_base(27, 6).
+safe_uint_digits_for_word32_and_base(28, 6).
+safe_uint_digits_for_word32_and_base(29, 6).
+safe_uint_digits_for_word32_and_base(30, 6).
+safe_uint_digits_for_word32_and_base(31, 6).
+safe_uint_digits_for_word32_and_base(32, 6).
+safe_uint_digits_for_word32_and_base(33, 6).
+safe_uint_digits_for_word32_and_base(34, 6).
+safe_uint_digits_for_word32_and_base(35, 6).
+safe_uint_digits_for_word32_and_base(36, 6).
+
+    % safe_uint_digits_for_word64_and_base(Base, SafeDigits):
+    %
+    % As above, but for 64-bit uints.
+    %
+:- pred safe_uint_digits_for_word64_and_base(int::in, int::out) is semidet.
+
+safe_uint_digits_for_word64_and_base(2, 64).
+safe_uint_digits_for_word64_and_base(3, 40).
+safe_uint_digits_for_word64_and_base(4, 32).
+safe_uint_digits_for_word64_and_base(5, 27).
+safe_uint_digits_for_word64_and_base(6, 24).
+safe_uint_digits_for_word64_and_base(7, 22).
+safe_uint_digits_for_word64_and_base(8, 21).
+safe_uint_digits_for_word64_and_base(9, 20).
+safe_uint_digits_for_word64_and_base(10, 19).
+safe_uint_digits_for_word64_and_base(11, 18).
+safe_uint_digits_for_word64_and_base(12, 17).
+safe_uint_digits_for_word64_and_base(13, 17).
+safe_uint_digits_for_word64_and_base(14, 16).
+safe_uint_digits_for_word64_and_base(15, 16).
+safe_uint_digits_for_word64_and_base(16, 16).
+safe_uint_digits_for_word64_and_base(17, 15).
+safe_uint_digits_for_word64_and_base(18, 15).
+safe_uint_digits_for_word64_and_base(19, 15).
+safe_uint_digits_for_word64_and_base(20, 14).
+safe_uint_digits_for_word64_and_base(21, 14).
+safe_uint_digits_for_word64_and_base(22, 14).
+safe_uint_digits_for_word64_and_base(23, 14).
+safe_uint_digits_for_word64_and_base(24, 13).
+safe_uint_digits_for_word64_and_base(25, 13).
+safe_uint_digits_for_word64_and_base(26, 13).
+safe_uint_digits_for_word64_and_base(27, 13).
+safe_uint_digits_for_word64_and_base(28, 13).
+safe_uint_digits_for_word64_and_base(29, 13).
+safe_uint_digits_for_word64_and_base(30, 13).
+safe_uint_digits_for_word64_and_base(31, 12).
+safe_uint_digits_for_word64_and_base(32, 12).
+safe_uint_digits_for_word64_and_base(33, 12).
+safe_uint_digits_for_word64_and_base(34, 12).
+safe_uint_digits_for_word64_and_base(35, 12).
+safe_uint_digits_for_word64_and_base(36, 12).
+
+%---------------------%
 
     % do_base_string_to_uint_loop(UBase, Base, CutOff, CutLimit, String,
     %    CurOffset, EndOffset, !UInt):
@@ -6233,6 +6516,29 @@ do_base_string_to_uint_loop(UBase, Base, CutOff, CutLimit, String,
         ),
         !:UInt = (UBase * !.UInt) + MU,
         do_base_string_to_uint_loop(UBase, Base, CutOff, CutLimit, String,
+            NextOffset, EndOffset, !UInt)
+    else
+        true
+    ).
+
+    % do_unsafe_base_string_to_uint_loop(UBase, Base, String, CurOffset,
+    %   EndOffset, !UInt):
+    %
+    % A version of do_base_string_to_uint_loop that omits the the overflow
+    % check. This is faster, but can only be used safely when the number of
+    % digits in the string is below that which potentially overflow.
+    %
+:- pred do_unsafe_base_string_to_uint_loop(uint::in, int::in, string::in,
+    int::in, int::in, uint::in, uint::out) is semidet.
+
+do_unsafe_base_string_to_uint_loop(UBase, Base, String, CurOffset, EndOffset,
+        !UInt) :-
+    ( if CurOffset < EndOffset then
+        unsafe_index_next(String, CurOffset, NextOffset, Char),
+        char.unsafe_base_digit_to_int(Base, Char, M),
+        MU = uint.cast_from_int(M),
+        !:UInt = (UBase * !.UInt) + MU,
+        do_unsafe_base_string_to_uint_loop(UBase, Base, String,
             NextOffset, EndOffset, !UInt)
     else
         true

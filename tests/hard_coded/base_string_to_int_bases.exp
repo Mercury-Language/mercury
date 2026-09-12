@@ -1,0 +1,280 @@
+base 2: largest fast path value: ok
+base 2: negated largest fast path value: ok
+base 2: one digit more than the fast path allows: ok
+base 2: negated one digit more than the fast path allows: ok
+base 2: max_int: ok
+base 2: min_int: ok
+base 2: max_int + 1: ok
+base 2: min_int - 1: ok
+base 3: largest fast path value: ok
+base 3: negated largest fast path value: ok
+base 3: one digit more than the fast path allows: ok
+base 3: negated one digit more than the fast path allows: ok
+base 3: max_int: ok
+base 3: min_int: ok
+base 3: max_int + 1: ok
+base 3: min_int - 1: ok
+base 4: largest fast path value: ok
+base 4: negated largest fast path value: ok
+base 4: one digit more than the fast path allows: ok
+base 4: negated one digit more than the fast path allows: ok
+base 4: max_int: ok
+base 4: min_int: ok
+base 4: max_int + 1: ok
+base 4: min_int - 1: ok
+base 5: largest fast path value: ok
+base 5: negated largest fast path value: ok
+base 5: one digit more than the fast path allows: ok
+base 5: negated one digit more than the fast path allows: ok
+base 5: max_int: ok
+base 5: min_int: ok
+base 5: max_int + 1: ok
+base 5: min_int - 1: ok
+base 6: largest fast path value: ok
+base 6: negated largest fast path value: ok
+base 6: one digit more than the fast path allows: ok
+base 6: negated one digit more than the fast path allows: ok
+base 6: max_int: ok
+base 6: min_int: ok
+base 6: max_int + 1: ok
+base 6: min_int - 1: ok
+base 7: largest fast path value: ok
+base 7: negated largest fast path value: ok
+base 7: one digit more than the fast path allows: ok
+base 7: negated one digit more than the fast path allows: ok
+base 7: max_int: ok
+base 7: min_int: ok
+base 7: max_int + 1: ok
+base 7: min_int - 1: ok
+base 8: largest fast path value: ok
+base 8: negated largest fast path value: ok
+base 8: one digit more than the fast path allows: ok
+base 8: negated one digit more than the fast path allows: ok
+base 8: max_int: ok
+base 8: min_int: ok
+base 8: max_int + 1: ok
+base 8: min_int - 1: ok
+base 9: largest fast path value: ok
+base 9: negated largest fast path value: ok
+base 9: one digit more than the fast path allows: ok
+base 9: negated one digit more than the fast path allows: ok
+base 9: max_int: ok
+base 9: min_int: ok
+base 9: max_int + 1: ok
+base 9: min_int - 1: ok
+base 10: largest fast path value: ok
+base 10: negated largest fast path value: ok
+base 10: one digit more than the fast path allows: ok
+base 10: negated one digit more than the fast path allows: ok
+base 10: max_int: ok
+base 10: min_int: ok
+base 10: max_int + 1: ok
+base 10: min_int - 1: ok
+base 11: largest fast path value: ok
+base 11: negated largest fast path value: ok
+base 11: one digit more than the fast path allows: ok
+base 11: negated one digit more than the fast path allows: ok
+base 11: max_int: ok
+base 11: min_int: ok
+base 11: max_int + 1: ok
+base 11: min_int - 1: ok
+base 12: largest fast path value: ok
+base 12: negated largest fast path value: ok
+base 12: one digit more than the fast path allows: ok
+base 12: negated one digit more than the fast path allows: ok
+base 12: max_int: ok
+base 12: min_int: ok
+base 12: max_int + 1: ok
+base 12: min_int - 1: ok
+base 13: largest fast path value: ok
+base 13: negated largest fast path value: ok
+base 13: one digit more than the fast path allows: ok
+base 13: negated one digit more than the fast path allows: ok
+base 13: max_int: ok
+base 13: min_int: ok
+base 13: max_int + 1: ok
+base 13: min_int - 1: ok
+base 14: largest fast path value: ok
+base 14: negated largest fast path value: ok
+base 14: one digit more than the fast path allows: ok
+base 14: negated one digit more than the fast path allows: ok
+base 14: max_int: ok
+base 14: min_int: ok
+base 14: max_int + 1: ok
+base 14: min_int - 1: ok
+base 15: largest fast path value: ok
+base 15: negated largest fast path value: ok
+base 15: one digit more than the fast path allows: ok
+base 15: negated one digit more than the fast path allows: ok
+base 15: max_int: ok
+base 15: min_int: ok
+base 15: max_int + 1: ok
+base 15: min_int - 1: ok
+base 16: largest fast path value: ok
+base 16: negated largest fast path value: ok
+base 16: one digit more than the fast path allows: ok
+base 16: negated one digit more than the fast path allows: ok
+base 16: max_int: ok
+base 16: min_int: ok
+base 16: max_int + 1: ok
+base 16: min_int - 1: ok
+base 17: largest fast path value: ok
+base 17: negated largest fast path value: ok
+base 17: one digit more than the fast path allows: ok
+base 17: negated one digit more than the fast path allows: ok
+base 17: max_int: ok
+base 17: min_int: ok
+base 17: max_int + 1: ok
+base 17: min_int - 1: ok
+base 18: largest fast path value: ok
+base 18: negated largest fast path value: ok
+base 18: one digit more than the fast path allows: ok
+base 18: negated one digit more than the fast path allows: ok
+base 18: max_int: ok
+base 18: min_int: ok
+base 18: max_int + 1: ok
+base 18: min_int - 1: ok
+base 19: largest fast path value: ok
+base 19: negated largest fast path value: ok
+base 19: one digit more than the fast path allows: ok
+base 19: negated one digit more than the fast path allows: ok
+base 19: max_int: ok
+base 19: min_int: ok
+base 19: max_int + 1: ok
+base 19: min_int - 1: ok
+base 20: largest fast path value: ok
+base 20: negated largest fast path value: ok
+base 20: one digit more than the fast path allows: ok
+base 20: negated one digit more than the fast path allows: ok
+base 20: max_int: ok
+base 20: min_int: ok
+base 20: max_int + 1: ok
+base 20: min_int - 1: ok
+base 21: largest fast path value: ok
+base 21: negated largest fast path value: ok
+base 21: one digit more than the fast path allows: ok
+base 21: negated one digit more than the fast path allows: ok
+base 21: max_int: ok
+base 21: min_int: ok
+base 21: max_int + 1: ok
+base 21: min_int - 1: ok
+base 22: largest fast path value: ok
+base 22: negated largest fast path value: ok
+base 22: one digit more than the fast path allows: ok
+base 22: negated one digit more than the fast path allows: ok
+base 22: max_int: ok
+base 22: min_int: ok
+base 22: max_int + 1: ok
+base 22: min_int - 1: ok
+base 23: largest fast path value: ok
+base 23: negated largest fast path value: ok
+base 23: one digit more than the fast path allows: ok
+base 23: negated one digit more than the fast path allows: ok
+base 23: max_int: ok
+base 23: min_int: ok
+base 23: max_int + 1: ok
+base 23: min_int - 1: ok
+base 24: largest fast path value: ok
+base 24: negated largest fast path value: ok
+base 24: one digit more than the fast path allows: ok
+base 24: negated one digit more than the fast path allows: ok
+base 24: max_int: ok
+base 24: min_int: ok
+base 24: max_int + 1: ok
+base 24: min_int - 1: ok
+base 25: largest fast path value: ok
+base 25: negated largest fast path value: ok
+base 25: one digit more than the fast path allows: ok
+base 25: negated one digit more than the fast path allows: ok
+base 25: max_int: ok
+base 25: min_int: ok
+base 25: max_int + 1: ok
+base 25: min_int - 1: ok
+base 26: largest fast path value: ok
+base 26: negated largest fast path value: ok
+base 26: one digit more than the fast path allows: ok
+base 26: negated one digit more than the fast path allows: ok
+base 26: max_int: ok
+base 26: min_int: ok
+base 26: max_int + 1: ok
+base 26: min_int - 1: ok
+base 27: largest fast path value: ok
+base 27: negated largest fast path value: ok
+base 27: one digit more than the fast path allows: ok
+base 27: negated one digit more than the fast path allows: ok
+base 27: max_int: ok
+base 27: min_int: ok
+base 27: max_int + 1: ok
+base 27: min_int - 1: ok
+base 28: largest fast path value: ok
+base 28: negated largest fast path value: ok
+base 28: one digit more than the fast path allows: ok
+base 28: negated one digit more than the fast path allows: ok
+base 28: max_int: ok
+base 28: min_int: ok
+base 28: max_int + 1: ok
+base 28: min_int - 1: ok
+base 29: largest fast path value: ok
+base 29: negated largest fast path value: ok
+base 29: one digit more than the fast path allows: ok
+base 29: negated one digit more than the fast path allows: ok
+base 29: max_int: ok
+base 29: min_int: ok
+base 29: max_int + 1: ok
+base 29: min_int - 1: ok
+base 30: largest fast path value: ok
+base 30: negated largest fast path value: ok
+base 30: one digit more than the fast path allows: ok
+base 30: negated one digit more than the fast path allows: ok
+base 30: max_int: ok
+base 30: min_int: ok
+base 30: max_int + 1: ok
+base 30: min_int - 1: ok
+base 31: largest fast path value: ok
+base 31: negated largest fast path value: ok
+base 31: one digit more than the fast path allows: ok
+base 31: negated one digit more than the fast path allows: ok
+base 31: max_int: ok
+base 31: min_int: ok
+base 31: max_int + 1: ok
+base 31: min_int - 1: ok
+base 32: largest fast path value: ok
+base 32: negated largest fast path value: ok
+base 32: one digit more than the fast path allows: ok
+base 32: negated one digit more than the fast path allows: ok
+base 32: max_int: ok
+base 32: min_int: ok
+base 32: max_int + 1: ok
+base 32: min_int - 1: ok
+base 33: largest fast path value: ok
+base 33: negated largest fast path value: ok
+base 33: one digit more than the fast path allows: ok
+base 33: negated one digit more than the fast path allows: ok
+base 33: max_int: ok
+base 33: min_int: ok
+base 33: max_int + 1: ok
+base 33: min_int - 1: ok
+base 34: largest fast path value: ok
+base 34: negated largest fast path value: ok
+base 34: one digit more than the fast path allows: ok
+base 34: negated one digit more than the fast path allows: ok
+base 34: max_int: ok
+base 34: min_int: ok
+base 34: max_int + 1: ok
+base 34: min_int - 1: ok
+base 35: largest fast path value: ok
+base 35: negated largest fast path value: ok
+base 35: one digit more than the fast path allows: ok
+base 35: negated one digit more than the fast path allows: ok
+base 35: max_int: ok
+base 35: min_int: ok
+base 35: max_int + 1: ok
+base 35: min_int - 1: ok
+base 36: largest fast path value: ok
+base 36: negated largest fast path value: ok
+base 36: one digit more than the fast path allows: ok
+base 36: negated one digit more than the fast path allows: ok
+base 36: max_int: ok
+base 36: min_int: ok
+base 36: max_int + 1: ok
+base 36: min_int - 1: ok

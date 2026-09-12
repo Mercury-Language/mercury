@@ -26,6 +26,8 @@ ORDINARY_PROGS = \
 	array_unify_compare \
 	bad_set_line_number \
 	bag_various \
+	base_string_to_int_bases \
+	base_string_to_uint_bases \
 	bidirectional \
 	bigtest \
 	bimap_set_bug \

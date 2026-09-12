@@ -43,6 +43,28 @@ no
 no
 no
 no
+### Fast path boundary values for 32-bit uints ###
+4294967295u
+no
+1073741823u
+no
+999999999u
+no
+4294967295u
+no
+2176782335u
+no
+### Fast path boundary values for 64-bit uints ###
+no
+no
+no
+no
+no
+no
+no
+no
+no
+no
 ### Overflow regression tests for 32-bit uints ###
 no
 no

@@ -120,6 +120,88 @@ main(!IO) :-
     test(base_string_to_int(10, "+9223372036854775807"), !IO),
     test(base_string_to_int(10, "+9223372036854775808"), !IO),
 
+    % The base_string_to_int/3 fast path skips the overflow check entirely for
+    % strings that are short enough no string of that many digits can overflow.
+    % The number of digits for which this holds depends on the base and the
+    % word size; see safe_int_digits_for_word{32,64}_and_base in string.m.
+    %
+    % The following paired tests check that the overflow behaviour is correct
+    % at the boundary between the fast and checked paths. The first test in
+    % each pair is the largest value with the largest number of digits that the
+    % fast path accepts: as many copies of the digit Base - 1 as the table
+    % allows. If the table said one more digit is safe, then this value would
+    % overflow on the unchecked loop and be converted to the wrong answer.
+    % The second test in each pair adds that one more digit, which must take
+    % the checked path and be rejected.
+
+    line("Fast path boundary values for 32-bit ints", !IO),
+
+    test(base_string_to_int(2, "1111111111111111111111111111111"), !IO),
+    test(base_string_to_int(2, "11111111111111111111111111111111"), !IO),
+
+    test(base_string_to_int(2, "-1111111111111111111111111111111"), !IO),
+    test(base_string_to_int(2, "-11111111111111111111111111111111"), !IO),
+
+    test(base_string_to_int(8, "7777777777"), !IO),
+    test(base_string_to_int(8, "77777777777"), !IO),
+
+    test(base_string_to_int(8, "-7777777777"), !IO),
+    test(base_string_to_int(8, "-77777777777"), !IO),
+
+    test(base_string_to_int(10, "999999999"), !IO),
+    test(base_string_to_int(10, "9999999999"), !IO),
+
+    test(base_string_to_int(10, "-999999999"), !IO),
+    test(base_string_to_int(10, "-9999999999"), !IO),
+
+    test(base_string_to_int(16, "FFFFFFF"), !IO),
+    test(base_string_to_int(16, "FFFFFFFF"), !IO),
+
+    test(base_string_to_int(16, "-FFFFFFF"), !IO),
+    test(base_string_to_int(16, "-FFFFFFFF"), !IO),
+
+    test(base_string_to_int(36, "ZZZZZ"), !IO),
+    test(base_string_to_int(36, "ZZZZZZ"), !IO),
+
+    test(base_string_to_int(36, "-ZZZZZ"), !IO),
+    test(base_string_to_int(36, "-ZZZZZZ"), !IO),
+
+    line("Fast path boundary values for 64-bit ints", !IO),
+
+    test(base_string_to_int(2, "1111111111111111111111111111111" ++
+        "11111111111111111111111111111111"), !IO),
+    test(base_string_to_int(2, "11111111111111111111111111111111" ++
+        "11111111111111111111111111111111"), !IO),
+
+    test(base_string_to_int(2, "-1111111111111111111111111111111" ++
+        "11111111111111111111111111111111"), !IO),
+    test(base_string_to_int(2, "-1111111111111111111111111111111" ++
+        "111111111111111111111111111111111"), !IO),
+
+    test(base_string_to_int(8, "777777777777777777777"), !IO),
+    test(base_string_to_int(8, "7777777777777777777777"), !IO),
+
+    test(base_string_to_int(8, "-777777777777777777777"), !IO),
+    test(base_string_to_int(8, "-7777777777777777777777"), !IO),
+
+    test(base_string_to_int(10, "999999999999999999"), !IO),
+    test(base_string_to_int(10, "9999999999999999999"), !IO),
+
+    test(base_string_to_int(10, "-999999999999999999"), !IO),
+    test(base_string_to_int(10, "-9999999999999999999"), !IO),
+
+    test(base_string_to_int(16, "FFFFFFFFFFFFFFF"), !IO),
+    test(base_string_to_int(16, "FFFFFFFFFFFFFFFF"), !IO),
+
+    test(base_string_to_int(16, "-FFFFFFFFFFFFFFF"), !IO),
+    test(base_string_to_int(16, "-FFFFFFFFFFFFFFFF"), !IO),
+
+    test(base_string_to_int(36, "ZZZZZZZZZZZZ"), !IO),
+    test(base_string_to_int(36, "ZZZZZZZZZZZZZ"), !IO),
+
+    test(base_string_to_int(36, "-ZZZZZZZZZZZZ"), !IO),
+    test(base_string_to_int(36, "-ZZZZZZZZZZZZZ"), !IO),
+
     % Regression tests for incorrect overflow check. For each of these
     % values, processing the final digit overflows by 2^63 or more
     % (2^31 on 32-bit platforms), so the wrapped-around result has the

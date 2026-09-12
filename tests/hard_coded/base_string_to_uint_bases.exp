@@ -1,0 +1,140 @@
+base 2: largest fast path value: ok
+base 2: one digit more than the fast path allows: ok
+base 2: max_uint: ok
+base 2: max_uint + 1: ok
+base 3: largest fast path value: ok
+base 3: one digit more than the fast path allows: ok
+base 3: max_uint: ok
+base 3: max_uint + 1: ok
+base 4: largest fast path value: ok
+base 4: one digit more than the fast path allows: ok
+base 4: max_uint: ok
+base 4: max_uint + 1: ok
+base 5: largest fast path value: ok
+base 5: one digit more than the fast path allows: ok
+base 5: max_uint: ok
+base 5: max_uint + 1: ok
+base 6: largest fast path value: ok
+base 6: one digit more than the fast path allows: ok
+base 6: max_uint: ok
+base 6: max_uint + 1: ok
+base 7: largest fast path value: ok
+base 7: one digit more than the fast path allows: ok
+base 7: max_uint: ok
+base 7: max_uint + 1: ok
+base 8: largest fast path value: ok
+base 8: one digit more than the fast path allows: ok
+base 8: max_uint: ok
+base 8: max_uint + 1: ok
+base 9: largest fast path value: ok
+base 9: one digit more than the fast path allows: ok
+base 9: max_uint: ok
+base 9: max_uint + 1: ok
+base 10: largest fast path value: ok
+base 10: one digit more than the fast path allows: ok
+base 10: max_uint: ok
+base 10: max_uint + 1: ok
+base 11: largest fast path value: ok
+base 11: one digit more than the fast path allows: ok
+base 11: max_uint: ok
+base 11: max_uint + 1: ok
+base 12: largest fast path value: ok
+base 12: one digit more than the fast path allows: ok
+base 12: max_uint: ok
+base 12: max_uint + 1: ok
+base 13: largest fast path value: ok
+base 13: one digit more than the fast path allows: ok
+base 13: max_uint: ok
+base 13: max_uint + 1: ok
+base 14: largest fast path value: ok
+base 14: one digit more than the fast path allows: ok
+base 14: max_uint: ok
+base 14: max_uint + 1: ok
+base 15: largest fast path value: ok
+base 15: one digit more than the fast path allows: ok
+base 15: max_uint: ok
+base 15: max_uint + 1: ok
+base 16: largest fast path value: ok
+base 16: one digit more than the fast path allows: ok
+base 16: max_uint: ok
+base 16: max_uint + 1: ok
+base 17: largest fast path value: ok
+base 17: one digit more than the fast path allows: ok
+base 17: max_uint: ok
+base 17: max_uint + 1: ok
+base 18: largest fast path value: ok
+base 18: one digit more than the fast path allows: ok
+base 18: max_uint: ok
+base 18: max_uint + 1: ok
+base 19: largest fast path value: ok
+base 19: one digit more than the fast path allows: ok
+base 19: max_uint: ok
+base 19: max_uint + 1: ok
+base 20: largest fast path value: ok
+base 20: one digit more than the fast path allows: ok
+base 20: max_uint: ok
+base 20: max_uint + 1: ok
+base 21: largest fast path value: ok
+base 21: one digit more than the fast path allows: ok
+base 21: max_uint: ok
+base 21: max_uint + 1: ok
+base 22: largest fast path value: ok
+base 22: one digit more than the fast path allows: ok
+base 22: max_uint: ok
+base 22: max_uint + 1: ok
+base 23: largest fast path value: ok
+base 23: one digit more than the fast path allows: ok
+base 23: max_uint: ok
+base 23: max_uint + 1: ok
+base 24: largest fast path value: ok
+base 24: one digit more than the fast path allows: ok
+base 24: max_uint: ok
+base 24: max_uint + 1: ok
+base 25: largest fast path value: ok
+base 25: one digit more than the fast path allows: ok
+base 25: max_uint: ok
+base 25: max_uint + 1: ok
+base 26: largest fast path value: ok
+base 26: one digit more than the fast path allows: ok
+base 26: max_uint: ok
+base 26: max_uint + 1: ok
+base 27: largest fast path value: ok
+base 27: one digit more than the fast path allows: ok
+base 27: max_uint: ok
+base 27: max_uint + 1: ok
+base 28: largest fast path value: ok
+base 28: one digit more than the fast path allows: ok
+base 28: max_uint: ok
+base 28: max_uint + 1: ok
+base 29: largest fast path value: ok
+base 29: one digit more than the fast path allows: ok
+base 29: max_uint: ok
+base 29: max_uint + 1: ok
+base 30: largest fast path value: ok
+base 30: one digit more than the fast path allows: ok
+base 30: max_uint: ok
+base 30: max_uint + 1: ok
+base 31: largest fast path value: ok
+base 31: one digit more than the fast path allows: ok
+base 31: max_uint: ok
+base 31: max_uint + 1: ok
+base 32: largest fast path value: ok
+base 32: one digit more than the fast path allows: ok
+base 32: max_uint: ok
+base 32: max_uint + 1: ok
+base 33: largest fast path value: ok
+base 33: one digit more than the fast path allows: ok
+base 33: max_uint: ok
+base 33: max_uint + 1: ok
+base 34: largest fast path value: ok
+base 34: one digit more than the fast path allows: ok
+base 34: max_uint: ok
+base 34: max_uint + 1: ok
+base 35: largest fast path value: ok
+base 35: one digit more than the fast path allows: ok
+base 35: max_uint: ok
+base 35: max_uint + 1: ok
+base 36: largest fast path value: ok
+base 36: one digit more than the fast path allows: ok
+base 36: max_uint: ok
+base 36: max_uint + 1: ok
