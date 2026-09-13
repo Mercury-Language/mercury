@@ -60,6 +60,8 @@
 :- import_module set.
 :- import_module set_tree234.
 
+%----------------------------------------------------------------------------%
+
 simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = switch(Var, SwitchCanFail0, Cases0),
