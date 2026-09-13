@@ -1757,7 +1757,7 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
                     Code = FreeEvalCode
                 ;
                     VarIsDummy = is_not_dummy_type,
-                    VarName = var_entry_name(Var, VarEntry),
+                    VarName = var_entry_name_and_number(Var, VarEntry),
                     (
                         ForbiddenLvals = [],
                         string.format("Placing %s", [s(VarName)], Msg)
