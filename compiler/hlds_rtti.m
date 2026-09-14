@@ -165,6 +165,33 @@
     % The value associated with a given key is the prog_constraint that
     % the typeclass_info is for.
     %
+    % XXX That documentation is incomplete/inaccurate, because some of the keys
+    % in this map can also be BASE_typeclass_infos. The only way to distinguish
+    % the from typeclass_infos is by looking up their names in the var_table.
+    %
+    % I, zs, have seen both tables that contain a pair of keys,
+    % - one of which is a typeclass_info variable and
+    % - the other of which is a base_typeclass_info variable
+    % both map to the same constraint, and tables that contain
+    % no base_typeclass_info variables as keys.
+    % I don't know what logic governs the circumstances under which
+    % the polymorphism pass adds base_typeclass_info variables to this map,
+    % and I don't think any documentation exists about this issue.
+    %
+    % Also, the presence of a <typeclass_info variable, constraint> pair
+    % in this map does NOT guarantee that the corresponding
+    % <constraint, typeclass_info variable> pair will appear in the
+    % tci_constraint_to_var_map. I don't know what logic governs
+    % the presence of that pair there.
+    %
+    % And a third issue is that it is possible for two typeclass_info vars
+    % to map to the same constraint in this map even when the calls
+    % that those typeclass_info vars are part of the same piece of straight
+    % line code (i.e. there are not in different branches of e.g. a switch).
+    % The reason for this is that typeclass_info vars constructed using
+    % static data are cheaper to create again than to save on the stack
+    % across calls.
+    %
 :- type tci_var_to_constraint_map == map(prog_var, prog_constraint).
 
     % This predicate is intended to be used *only* for HLDS dumps.
@@ -377,12 +404,16 @@
 
 %---------------------%
 
-:- type are_typeclass_records_complete
-    --->    typeclass_records_are_not_complete
-    ;       typeclass_records_are_complete.
-
-:- pred check_whether_typeclass_records_are_complete(rtti_varmaps::in,
-    are_typeclass_records_complete::out) is det.
+    % compute_duplicate_typeclass_info_vars(VarTable, RttiVarMaps,
+    %   DupTCIVarsToConstraintMap):
+    %
+    % Find the set of constraints in the procedure for which the RttiVarMaps
+    % records more than one variable as holding its typeclass_info,
+    % and return the set of those variables, mapping each one
+    % to the constraint it is for.
+    %
+:- pred compute_duplicate_typeclass_info_vars(var_table::in, rtti_varmaps::in,
+    map(prog_var, prog_constraint)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -396,6 +427,9 @@
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module assoc_list.
+:- import_module int.
+:- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module set_tree234.
@@ -911,26 +945,56 @@ get_typeinfo_vars_acc(VarTable, TVarToLocnMap, [Var | Vars], !TypeInfoVars) :-
 
 %---------------------------------------------------------------------------%
 
-check_whether_typeclass_records_are_complete(RttiVarMaps, MaybeComplete) :-
-    RttiVarMaps = rtti_varmaps(_, _,
-        ConstraintToVarMap0, VarToConstraintMap0),
-    map.foldl(delete_forward_edge, ConstraintToVarMap0,
-        VarToConstraintMap0, VarToConstraintMap),
-    ( if map.is_empty(VarToConstraintMap) then
-        MaybeComplete = typeclass_records_are_complete
+compute_duplicate_typeclass_info_vars(VarTable, RttiVarMaps,
+        DupTCIVarsToConstraintMap) :-
+    RttiVarMaps = rtti_varmaps(_, _, _, VarToConstraintMap),
+    map.foldl(acc_constraint_typeclass_info_var(VarTable),
+        VarToConstraintMap, one_or_more_map.init, ConstraintToTCIVarsMap),
+    one_or_more_map.to_sorted_assoc_list(ConstraintToTCIVarsMap,
+        ConstraintToTCIVarsAL),
+    record_duplicate_typeclass_info_vars(ConstraintToTCIVarsAL,
+        map.init, DupTCIVarsToConstraintMap).
+
+:- pred acc_constraint_typeclass_info_var(var_table::in,
+    prog_var::in, prog_constraint::in,
+    one_or_more_map(prog_constraint, prog_var)::in,
+    one_or_more_map(prog_constraint, prog_var)::out) is det.
+
+acc_constraint_typeclass_info_var(VarTable, Var, Constraint,
+        !ConstraintToTCIVarsMap) :-
+    VarName = var_table_entry_name(VarTable, Var),
+    % The table we are iterating over contains typeclass_infos, but
+    % it may, or may not, also contain base_typeclass_infos.
+    % We do not want to report "parallel typeclass_infos" if one of them
+    % is just a base_typeclass_info.
+    ( if string.prefix(VarName, "TypeClassInfo") then
+        one_or_more_map.add(Constraint, Var, !ConstraintToTCIVarsMap)
     else
-        MaybeComplete = typeclass_records_are_not_complete
+        true
     ).
 
-:- pred delete_forward_edge(prog_constraint::in, prog_var::in,
-    tci_var_to_constraint_map::in, tci_var_to_constraint_map::out) is det.
+:- pred record_duplicate_typeclass_info_vars(
+    assoc_list(prog_constraint, one_or_more(prog_var))::in,
+    map(prog_var, prog_constraint)::in,
+    map(prog_var, prog_constraint)::out) is det.
 
-delete_forward_edge(Constraint, Var, !VarToConstraintMap) :-
-    % Var not occurring in !.VarToConstraintMap, and ...
-    map.det_remove(Var, VarConstraint, !VarToConstraintMap),
-    % ... the matching constraint not being Constraint, would both be bugs.
-    expect(unify(Constraint, VarConstraint), $pred,
-        "Constraint != VarConstraint").
+record_duplicate_typeclass_info_vars([], !DupTCIVarsToConstraintMap).
+record_duplicate_typeclass_info_vars([Head | Tail],
+        !DupTCIVarsToConstraintMap) :-
+    Head = Constraint - OoMTCIVars,
+    one_or_more.length(OoMTCIVars, NumTCIVars),
+    ( if NumTCIVars > 1 then
+        % XXX This could be a library predicate, named possibly
+        % map.det_rev_insert.
+        InsertPred =
+            ( pred(V::in, M0::in, M::out) is det :-
+                map.det_insert(V, Constraint, M0, M)
+            ),
+        one_or_more.foldl(InsertPred, OoMTCIVars, !DupTCIVarsToConstraintMap)
+    else
+        true
+    ),
+    record_duplicate_typeclass_info_vars(Tail, !DupTCIVarsToConstraintMap).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_rtti.

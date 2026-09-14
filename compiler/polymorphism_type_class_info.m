@@ -399,6 +399,26 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
         )
     ),
 
+    % We have two obvious choices for how we reuse existing typeclass_infos.
+    % We can either cache the typeclass_info variables themselves, or the
+    % static data they refer to.
+    %
+    % Caching the variables has the disadvantage that it simply does not work
+    % in the presence of branched code. Any typeclass_info variable we cache
+    % in one branch of e.g. a switch will not be visible from any other branch.
+    %
+    % This is why we cache the static data in the const_struct_db instead.
+    % Any later reference to the same typeclass_info, whether it is in the
+    % branch, in a different branch, or after the end of the branched control
+    % structure all together, can pick up that same constant data and just
+    % assign it to a new typeclass_info variable. Even in the case of
+    % a reuse in the same branch, this can be more efficient than reusing
+    % the originally-constructed typeclass_info variable, because reusing
+    % the variable would require storing it in a stack slot for the duration
+    % of any intervening calls, while reusing the static data does not impose
+    % that cost. (This is why, when common.m processes the code we generate,
+    % it pass does NOT replace the assignment of the same constant to the
+    % second typeclass_info variable with an assigment from the first.)
     poly_info_get_const_struct_db(!.Info, ConstStructDb0),
     ConstInstanceId = ciid(InstanceNum, Constraint, Seen),
     ( if

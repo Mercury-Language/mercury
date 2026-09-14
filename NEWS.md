@@ -852,6 +852,8 @@ Changes to the Mercury standard library
     - func `get_values_for_key/2`
     - func `reverse_add/3`
     - pred `reverse_add/4`
+    - func `to_sorted_assoc_list/1`
+    - pred `to_sorted_assoc_list/2`
     - func `ucount/1`
     - pred `ucount/2`
 

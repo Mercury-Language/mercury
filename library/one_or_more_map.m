@@ -251,6 +251,14 @@
 :- pred to_assoc_list(one_or_more_map(K, V)::in,
     assoc_list(K, one_or_more(V))::out) is det.
 
+    % Convert a one_or_more_map to an association list, with all the values
+    % for each key in one element of the association list, sorted on the keys.
+    %
+:- func to_sorted_assoc_list(one_or_more_map(K, V))
+    = assoc_list(K, one_or_more(V)).
+:- pred to_sorted_assoc_list(one_or_more_map(K, V)::in,
+    assoc_list(K, one_or_more(V))::out) is det.
+
     % Convert an association list with all the values for each key
     % in one element of the list to a one_or_more_map.
     %
@@ -597,6 +605,12 @@ to_assoc_list(OneOrMoreMap) = AssocList :-
 
 to_assoc_list(OneOrMoreMap, AssocList) :-
     map.to_assoc_list(OneOrMoreMap, AssocList).
+
+to_sorted_assoc_list(OneOrMoreMap) = AssocList :-
+    one_or_more_map.to_sorted_assoc_list(OneOrMoreMap, AssocList).
+
+to_sorted_assoc_list(OneOrMoreMap, AssocList) :-
+    map.to_sorted_assoc_list(OneOrMoreMap, AssocList).
 
 from_assoc_list(AssocList) = OneOrMoreMap :-
     one_or_more_map.from_assoc_list(AssocList, OneOrMoreMap).
