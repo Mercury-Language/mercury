@@ -617,15 +617,15 @@ ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel, Context, CallerArgs,
     % with arguments of types `U1, float, U2, float, ...',
     % we generate the following fragments:
     %
-    %   /* declarations of variables needed for boxing/unboxing */
+    %   // declarations of variables needed for boxing/unboxing
     %   Float conv_Arg3;
     %   MR_Box conv_Arg4;
     %   ...
     %
-    %   /* code to call the function */
+    %   // code to call the function
     %   func(unbox(Arg1), box(Arg2), &conv0_Arg3, &conv1_Arg4);
     %
-    %   /* code to box/unbox the output arguments */
+    %   // code to box/unbox the output arguments
     %   *Arg3 = box(conv0_Arg3);
     %   *Arg4 = unbox(conv1_Arg4);
     %   ...
