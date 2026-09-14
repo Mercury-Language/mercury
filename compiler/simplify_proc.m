@@ -588,11 +588,13 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
     ;
         GoalExpr = disj(Disjuncts),
         look_for_typeclass_info_conflict_in_disj(DupTCIVars,
-            TCIVarToConstraintMap, InstMap0, Disjuncts, !Conflict)
+            TCIVarToConstraintMap, InstMap0, Disjuncts,
+            !TCIConstraints, !Conflict)
     ;
         GoalExpr = switch(_, _, Cases),
         look_for_typeclass_info_conflict_in_switch(DupTCIVars,
-            TCIVarToConstraintMap, InstMap0, Cases, !Conflict)
+            TCIVarToConstraintMap, InstMap0, Cases,
+            !TCIConstraints, !Conflict)
     ;
         GoalExpr = if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
         look_for_typeclass_info_conflict_in_goal(DupTCIVars,
@@ -606,7 +608,8 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
             TCIVarToConstraintMap, InstMap0, ElseGoal,
             multi_map.init, ElseTCIConstraints, !Conflict),
         detect_conflicts_in_arms(set.init,
-            [ThenTCIConstraints, ElseTCIConstraints], !Conflict)
+            [ThenTCIConstraints, ElseTCIConstraints],
+            !TCIConstraints, !Conflict)
     ;
         GoalExpr = negation(SubGoal),
         look_for_typeclass_info_conflict_in_goal(DupTCIVars,
@@ -633,7 +636,8 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
                 _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
             Disjuncts = [MainGoal | OrElseGoals],
             look_for_typeclass_info_conflict_in_disj(DupTCIVars,
-                TCIVarToConstraintMap, InstMap0, Disjuncts, !Conflict)
+                TCIVarToConstraintMap, InstMap0, Disjuncts,
+                !TCIConstraints, !Conflict)
         ;
             ShortHand = try_goal(_, _, _),
             % These should have been expanded out by now.
@@ -679,14 +683,17 @@ look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
 
 :- pred look_for_typeclass_info_conflict_in_disj(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
+    multi_map(prog_constraint, prog_var)::in,
+    multi_map(prog_constraint, prog_var)::out,
     typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
 
 look_for_typeclass_info_conflict_in_disj(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Disjuncts, !Conflict) :-
+        InstMap0, Disjuncts, !TCIConstraints, !Conflict) :-
     look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
         TCIVarToConstraintMap, InstMap0, Disjuncts, ArmTCIConstraints,
         !Conflict),
-    detect_conflicts_in_arms(set.init, ArmTCIConstraints, !Conflict).
+    detect_conflicts_in_arms(set.init, ArmTCIConstraints,
+        !TCIConstraints, !Conflict).
 
 :- pred look_for_typeclass_info_conflict_in_disjuncts(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
@@ -707,14 +714,17 @@ look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
 
 :- pred look_for_typeclass_info_conflict_in_switch(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(case)::in,
+    multi_map(prog_constraint, prog_var)::in,
+    multi_map(prog_constraint, prog_var)::out,
     typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
 
 look_for_typeclass_info_conflict_in_switch(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Disjuncts, !Conflict) :-
+        InstMap0, Disjuncts, !TCIConstraints, !Conflict) :-
     look_for_typeclass_info_conflict_in_cases(DupTCIVars,
         TCIVarToConstraintMap, InstMap0, Disjuncts, ArmTCIConstraints,
         !Conflict),
-    detect_conflicts_in_arms(set.init, ArmTCIConstraints, !Conflict).
+    detect_conflicts_in_arms(set.init, ArmTCIConstraints,
+        !TCIConstraints, !Conflict).
 
 :- pred look_for_typeclass_info_conflict_in_cases(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(case)::in,
@@ -739,11 +749,14 @@ look_for_typeclass_info_conflict_in_cases(DupTCIVars, TCIVarToConstraintMap,
 
 :- pred detect_conflicts_in_arms(set(prog_constraint)::in,
     list(multi_map(prog_constraint, prog_var))::in,
+    multi_map(prog_constraint, prog_var)::in,
+    multi_map(prog_constraint, prog_var)::out,
     typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
 
-detect_conflicts_in_arms(_, [], !Conflict).
+detect_conflicts_in_arms(_, [], !AllArmTCIConstraints, !Conflict).
 detect_conflicts_in_arms(!.SeenConstraints,
-        [HeadArmTCIConstraints | TailArmTCIConstraints], !Conflict) :-
+        [HeadArmTCIConstraints | TailArmTCIConstraints],
+        !AllArmTCIConstraints, !Conflict) :-
     multi_map.keys_as_set(HeadArmTCIConstraints, HeadConstraints),
     set.intersect(!.SeenConstraints, HeadConstraints, SeenHeadConstraints),
     ( if set.is_non_empty(SeenHeadConstraints) then
@@ -754,8 +767,9 @@ detect_conflicts_in_arms(!.SeenConstraints,
         true
     ),
     set.union(HeadConstraints, !SeenConstraints),
+    multi_map.merge(HeadArmTCIConstraints, !AllArmTCIConstraints),
     detect_conflicts_in_arms(!.SeenConstraints, TailArmTCIConstraints,
-        !Conflict).
+        !AllArmTCIConstraints, !Conflict).
 
 %---------------------%
 
