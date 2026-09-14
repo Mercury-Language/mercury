@@ -218,7 +218,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_proc_util.
 :- import_module hlds.mode_top_functor.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.type_util.
@@ -487,65 +486,65 @@ get_params_for_llds_code_gen(Globals, Params) :-
 
 do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
         PredInfo, !ProcInfo, WasProcChanged, !Specs) :-
-    proc_info_interface_determinism(!.ProcInfo, Detism),
-    determinism_components(Detism, _CanFail, SolnCount),
-    (
-        % For at_most_zero procedures, there is no point in handling tail calls
-        % specially.
-        SolnCount = at_most_zero,
+    % For a long time, we simply returned proc_was_not_changed for
+    % SolnCount = at_most_zero procedures, on the grounds that
+    %
+    % - such procedures should be executed very rarely,
+    % - their codes should not be recursive, and even if they are,
+    %   they should not be *deeply* recursive,
+    % - meaning that their main cost was their code size, and
+    %   not their execution time, and
+    % - in the MLDS backend, the main user of this module, tail recursion
+    %   optimization requires extra wrapper code around procedure bodies.
+    %
+    % We stopped doing that due to a report on m-users on 2026 sep 14
+    % of a recursive procedure with determinism "erroneous". The extra cost
+    % in memory is negligible.
+    Params = tail_rec_params(MaybeSelfFeature, MaybeMutualFeature,
+        MaybeRecordTailCalls, WarnNonTailRecParams),
+    ( if
+        % It is reasonably common that we don't need to check
+        % for tail calls at all.
+        MaybeSelfFeature = no,
+        MaybeMutualFeature = no,
+        MaybeRecordTailCalls = do_not_record_tail_recursion,
+        WarnNonTailRecParams = warn_non_tail_rec_params(_, _, _,
+            do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec)
+    then
         WasProcChanged = proc_was_not_changed
-    ;
-        ( SolnCount = at_most_one
-        ; SolnCount = at_most_many
-        ; SolnCount = at_most_many_cc
+    else
+        pred_info_get_arg_types(PredInfo, Types),
+        proc_info_get_goal(!.ProcInfo, Goal0),
+        proc_info_get_argmodes(!.ProcInfo, Modes),
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        proc_info_get_var_table(!.ProcInfo, VarTable),
+        find_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
+
+        Info0 = mark_tail_rec_calls_info(ModuleInfo, PredInfo,
+            proc(PredId, ProcId), SCC, VarTable, Params,
+            has_no_self_tail_rec_call, has_no_mutual_tail_rec_call,
+            not_found_any_rec_calls, []),
+        AtTail0 = at_tail_info(set_tree234.init, Outputs),
+        mark_tail_rec_calls_in_goal(Goal0, Goal,
+            AtTail0, _AtTail, Info0, Info),
+        Info = mark_tail_rec_calls_info(_, _, _, _, _, _,
+            HasSelfTailRecCall, HasMutualTailRecCall,
+            FoundAnyRecCalls, GoalSpecs),
+
+        proc_info_set_goal(Goal, !ProcInfo),
+
+        maybe_report_no_tail_or_nontail_recursive_calls(PredInfo,
+            !.ProcInfo, FoundAnyRecCalls, !Specs),
+        (
+            MaybeRecordTailCalls = do_not_record_tail_recursion
+        ;
+            MaybeRecordTailCalls = record_tail_recursion,
+            HasTailRecCall = has_tail_rec_call(HasSelfTailRecCall,
+                HasMutualTailRecCall),
+            proc_info_set_has_tail_rec_call(HasTailRecCall, !ProcInfo)
         ),
-
-        Params = tail_rec_params(MaybeSelfFeature, MaybeMutualFeature,
-            MaybeRecordTailCalls, WarnNonTailRecParams),
-        ( if
-            % It is reasonably common that we don't need to check
-            % for tail calls at all.
-            MaybeSelfFeature = no,
-            MaybeMutualFeature = no,
-            MaybeRecordTailCalls = do_not_record_tail_recursion,
-            WarnNonTailRecParams = warn_non_tail_rec_params(_, _, _,
-                do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec)
-        then
-            WasProcChanged = proc_was_not_changed
-        else
-            pred_info_get_arg_types(PredInfo, Types),
-            proc_info_get_goal(!.ProcInfo, Goal0),
-            proc_info_get_argmodes(!.ProcInfo, Modes),
-            proc_info_get_headvars(!.ProcInfo, HeadVars),
-            proc_info_get_var_table(!.ProcInfo, VarTable),
-            find_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
-
-            Info0 = mark_tail_rec_calls_info(ModuleInfo, PredInfo,
-                proc(PredId, ProcId), SCC, VarTable, Params,
-                has_no_self_tail_rec_call, has_no_mutual_tail_rec_call,
-                not_found_any_rec_calls, []),
-            AtTail0 = at_tail_info(set_tree234.init, Outputs),
-            mark_tail_rec_calls_in_goal(Goal0, Goal,
-                AtTail0, _AtTail, Info0, Info),
-            Info = mark_tail_rec_calls_info(_, _, _, _, _, _,
-                HasSelfTailRecCall, HasMutualTailRecCall,
-                FoundAnyRecCalls, GoalSpecs),
-
-            proc_info_set_goal(Goal, !ProcInfo),
-
-            maybe_report_no_tail_or_nontail_recursive_calls(PredInfo,
-                !.ProcInfo, FoundAnyRecCalls, !Specs),
-            (
-                MaybeRecordTailCalls = do_not_record_tail_recursion
-            ;
-                MaybeRecordTailCalls = record_tail_recursion,
-                HasTailRecCall = has_tail_rec_call(HasSelfTailRecCall,
-                    HasMutualTailRecCall),
-                proc_info_set_has_tail_rec_call(HasTailRecCall, !ProcInfo)
-            ),
-            !:Specs = GoalSpecs ++ !.Specs,
-            WasProcChanged = proc_may_have_been_changed
-        )
+        !:Specs = GoalSpecs ++ !.Specs,
+        WasProcChanged = proc_may_have_been_changed
     ).
 
 :- pred find_output_args(module_info::in,
@@ -936,7 +935,7 @@ mark_tail_rec_calls_in_plain_call(GoalExpr0, GoalInfo0, Goal,
             false
         )
     then
-        !Info ^ mtc_any_rec_calls := found_any_rec_calls,
+        !Info ^ mtc_any_rec_calls := found_some_rec_calls,
         AtTail0 = at_tail_info(Laters0, OutputVars),
         ( if
             set_tree234.is_empty(Laters0),
@@ -1410,7 +1409,7 @@ warning_pieces_about_later_op(Later, Pieces) :-
     %
 :- type found_any_rec_calls
     --->    not_found_any_rec_calls
-    ;       found_any_rec_calls.
+    ;       found_some_rec_calls.
 
     % maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
     %   FoundAnyRecCalls, Context, !Specs):
@@ -1428,7 +1427,7 @@ warning_pieces_about_later_op(Later, Pieces) :-
 maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
         FoundAnyRecCalls, !Specs) :-
     (
-        FoundAnyRecCalls = found_any_rec_calls
+        FoundAnyRecCalls = found_some_rec_calls
     ;
         FoundAnyRecCalls = not_found_any_rec_calls,
         proc_info_get_maybe_require_tailrec_info(ProcInfo,
