@@ -343,94 +343,6 @@ goal_is_call_to_builtin_false(hlds_goal(GoalExpr, _)) :-
 
 %----------------------------------------------------------------------------%
 
-simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
-        InstMap0, !Common, !Info) :-
-    (
-        !.GoalExpr = conj(ConjType, Goals),
-        (
-            ConjType = plain_conj,
-            simplify_goal_plain_conj(Goals, !:GoalExpr, !GoalInfo,
-                NestedContext0, InstMap0, !Common, !Info)
-        ;
-            ConjType = parallel_conj,
-            simplify_goal_parallel_conj(Goals, !:GoalExpr, !GoalInfo,
-                NestedContext0, InstMap0, !Common, !Info)
-        )
-    ;
-        !.GoalExpr = disj(_),
-        simplify_goal_disj(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = switch(_, _, _),
-        simplify_goal_switch(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = if_then_else(_, _, _, _),
-        simplify_goal_ite(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = negation(_),
-        simplify_goal_neg(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = scope(_, _),
-        simplify_goal_scope(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = unify(_, _, _, _, _),
-        simplify_goal_unify(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = plain_call(_, _, _, _, _, _),
-        simplify_goal_plain_call(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = generic_call(_, _, _, _, _),
-        simplify_goal_generic_call(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        simplify_goal_foreign_proc(!GoalExpr, !GoalInfo,
-            NestedContext0, InstMap0, !Common, !Info)
-    ;
-        !.GoalExpr = shorthand(ShortHand0),
-        (
-            ShortHand0 = atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
-            simplify_info_get_module_info(!.Info, ModuleInfo),
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_target(Globals, Target),
-            (
-                Target = target_c
-            ;
-                ( Target = target_csharp, TargetStr = "C#"
-                ; Target = target_java,   TargetStr = "Java"
-                ),
-                Phase = phase_simplify(report_in_any_mode),
-                StmPieces = [words("Error: atomic goals are"),
-                    words("not implemented yet when targeting"),
-                    words(TargetStr), suffix("."), nl],
-                StmSpec = spec($pred, severity_error, Phase,
-                    goal_info_get_context(!.GoalInfo), StmPieces),
-                simplify_info_add_message(StmSpec, !Info)
-            ),
-            simplify_goal_atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners,
-                !:GoalExpr, !GoalInfo,
-                NestedContext0, InstMap0, !Common, !Info)
-        ;
-            ShortHand0 = try_goal(_, _, _),
-            % These should have been expanded out by now.
-            unexpected($pred, "try_goal")
-        ;
-            ShortHand0 = bi_implication(_, _),
-            % These should have been expanded out by now.
-            unexpected($pred, "bi_implication")
-        )
-    ).
-
-%----------------------------------------------------------------------------%
-
 :- type before_after
     --->    before
     ;       after.
@@ -585,6 +497,94 @@ enforce_unreachability_invariant(GoalInfo0, GoalInfo, !Info) :-
         simplify_info_set_rerun_det(!Info)
     else
         GoalInfo = GoalInfo0
+    ).
+
+%----------------------------------------------------------------------------%
+
+simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
+        InstMap0, !Common, !Info) :-
+    (
+        !.GoalExpr = unify(_, _, _, _, _),
+        simplify_goal_unify(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = plain_call(_, _, _, _, _, _),
+        simplify_goal_plain_call(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        simplify_goal_foreign_proc(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = generic_call(_, _, _, _, _),
+        simplify_goal_generic_call(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = conj(ConjType, Goals),
+        (
+            ConjType = plain_conj,
+            simplify_goal_plain_conj(Goals, !:GoalExpr, !GoalInfo,
+                NestedContext0, InstMap0, !Common, !Info)
+        ;
+            ConjType = parallel_conj,
+            simplify_goal_parallel_conj(Goals, !:GoalExpr, !GoalInfo,
+                NestedContext0, InstMap0, !Common, !Info)
+        )
+    ;
+        !.GoalExpr = disj(_),
+        simplify_goal_disj(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = switch(_, _, _),
+        simplify_goal_switch(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = if_then_else(_, _, _, _),
+        simplify_goal_ite(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = negation(_),
+        simplify_goal_neg(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = scope(_, _),
+        simplify_goal_scope(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
+    ;
+        !.GoalExpr = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
+            simplify_info_get_module_info(!.Info, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, Target),
+            (
+                Target = target_c
+            ;
+                ( Target = target_csharp, TargetStr = "C#"
+                ; Target = target_java,   TargetStr = "Java"
+                ),
+                Phase = phase_simplify(report_in_any_mode),
+                StmPieces = [words("Error: atomic goals are"),
+                    words("not implemented yet when targeting"),
+                    words(TargetStr), suffix("."), nl],
+                StmSpec = spec($pred, severity_error, Phase,
+                    goal_info_get_context(!.GoalInfo), StmPieces),
+                simplify_info_add_message(StmSpec, !Info)
+            ),
+            simplify_goal_atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners,
+                !:GoalExpr, !GoalInfo,
+                NestedContext0, InstMap0, !Common, !Info)
+        ;
+            ShortHand0 = try_goal(_, _, _),
+            % These should have been expanded out by now.
+            unexpected($pred, "try_goal")
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected($pred, "bi_implication")
+        )
     ).
 
 %---------------------------------------------------------------------------%
