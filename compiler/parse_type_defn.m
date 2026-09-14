@@ -379,118 +379,132 @@ parse_maybe_exist_quant_constructor(ModuleName, VarSet, Ordinal, Term,
 
 parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
         MaybeConstructor) :-
-    get_existential_constraints_from_term(ModuleName, VarSet, Term,
-        BeforeConstraintsTerm, MaybeConstraints),
-    (
-        MaybeConstraints = error1(Specs),
-        MaybeConstructor = error1(Specs)
-    ;
-        MaybeConstraints = ok1(Constraints),
-        ( if
-            % Note that as a special case, one level of curly braces around
-            % the constructor are ignored. This is to allow you to define
-            % ';'/2 and 'some'/2 constructors.
-            % XXX I (zs) don't think that this is a good idea; I think such
-            % constructors are much more likely to be confusing than useful.
-            BeforeConstraintsTerm = term.functor(term.atom("{}"),
-                [InsideBracesTerm], _Context)
-        then
-            MainTerm = InsideBracesTerm
-        else
-            MainTerm = BeforeConstraintsTerm
-        ),
-        ContextPieces = cord.singleton(words("In constructor definition:")),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
-            ContextPieces, MainTerm, MaybeFunctorAndArgTerms),
+    ( if Term = term.functor(term.atom(":"), [_, _], ColonContext) then
+        ColonNameArity = name_arity(":", 2),
+        Pieces = [words("Error: attempt to define a data constructor"),
+            words("named"), name_arity(ColonNameArity), suffix(","),
+            words("which is a sign that a typo has replaced the")] ++
+            color_as_correct([words("semicolon")]) ++
+            [words("between two data constructors with a")] ++
+            color_as_incorrect([words("colon.")]) ++ [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, ColonContext, Pieces),
+        MaybeConstructor = error1(one_or_more(Spec, []))
+    else
+        get_existential_constraints_from_term(ModuleName, VarSet, Term,
+            BeforeConstraintsTerm, MaybeConstraints),
         (
-            MaybeFunctorAndArgTerms = error2(FAASpecs),
-            MaybeFunctor = error1([]),
-            MaybeConstructorArgs = error1(FAASpecs)
+            MaybeConstraints = error1(Specs),
+            MaybeConstructor = error1(Specs)
         ;
-            MaybeFunctorAndArgTerms = ok2(Functor0, ArgTerms),
-            MaybeFunctor = ok1(Functor0),
-            MaybeConstructorArgs = convert_constructor_arg_list(ModuleName,
-                VarSet, ArgTerms)
-        ),
-        (
-            ExistQVars = [],
+            MaybeConstraints = ok1(Constraints),
+            ( if
+                % Note that as a special case, one level of curly braces around
+                % the constructor are ignored. This is to allow you to define
+                % ';'/2 and 'some'/2 constructors.
+                % XXX I (zs) don't think that this is a good idea; I think such
+                % constructors are much more likely to be confusing
+                % than useful.
+                BeforeConstraintsTerm = term.functor(term.atom("{}"),
+                    [InsideBracesTerm], _Context)
+            then
+                MainTerm = InsideBracesTerm
+            else
+                MainTerm = BeforeConstraintsTerm
+            ),
+            ContextPieces =
+                cord.singleton(words("In constructor definition:")),
+            parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+                ContextPieces, MainTerm, MaybeFunctorAndArgTerms),
             (
-                Constraints = [],
-                MaybeMaybeExistConstraints = ok1(no_exist_constraints)
+                MaybeFunctorAndArgTerms = error2(FAASpecs),
+                MaybeFunctor = error1([]),
+                MaybeConstructorArgs = error1(FAASpecs)
             ;
-                Constraints = [_ | _],
+                MaybeFunctorAndArgTerms = ok2(Functor0, ArgTerms),
+                MaybeFunctor = ok1(Functor0),
+                MaybeConstructorArgs = convert_constructor_arg_list(ModuleName,
+                    VarSet, ArgTerms)
+            ),
+            (
+                ExistQVars = [],
                 (
-                    MaybeFunctor = ok1(Functor1),
-                    FunctorName1 = unqualify_name(Functor1),
-                    MCPieces = [words("Error: since")] ++
-                        color_as_subject([fixed(FunctorName1)]) ++
-                        [words("has no existentially quantified"),
-                        words("arguments,")] ++
-                        color_as_incorrect([words("it should have"),
-                            words("no constraints on them.")]) ++
-                        [nl],
-                    MCSpec = spec($pred, severity_error, phase_t2pt,
-                        get_term_context(Term), MCPieces),
-                    MaybeMaybeExistConstraints = error1([MCSpec])
+                    Constraints = [],
+                    MaybeMaybeExistConstraints = ok1(no_exist_constraints)
                 ;
-                    MaybeFunctor = error1(_),
-                    MaybeMaybeExistConstraints = error1([])
+                    Constraints = [_ | _],
+                    (
+                        MaybeFunctor = ok1(Functor1),
+                        FunctorName1 = unqualify_name(Functor1),
+                        MCPieces = [words("Error: since")] ++
+                            color_as_subject([fixed(FunctorName1)]) ++
+                            [words("has no existentially quantified"),
+                            words("arguments,")] ++
+                            color_as_incorrect([words("it should have"),
+                                words("no constraints on them.")]) ++
+                            [nl],
+                        MCSpec = spec($pred, severity_error, phase_t2pt,
+                            get_term_context(Term), MCPieces),
+                        MaybeMaybeExistConstraints = error1([MCSpec])
+                    ;
+                        MaybeFunctor = error1(_),
+                        MaybeMaybeExistConstraints = error1([])
+                    )
                 )
+            ;
+                ExistQVars = [_ | _],
+                GetConstraintArgTypes = (func(constraint(_, Ts)) = Ts),
+                ConstrainedTypeLists =
+                    list.map(GetConstraintArgTypes, Constraints),
+                list.condense(ConstrainedTypeLists, ConstrainedTypes),
+                % We compute ConstrainedQVars in this roundabout way to give it
+                % the same ordering as ExistQVars. Also, the list returned
+                % by type_vars_in_types may contain duplicates.
+                type_vars_in_types(ConstrainedTypes, ConstrainedQVars0),
+                list.delete_elems(ExistQVars, ConstrainedQVars0,
+                    UnconstrainedQVars),
+                list.delete_elems(ExistQVars, UnconstrainedQVars,
+                    ConstrainedQVars),
+                ExistConstraints = cons_exist_constraints(ExistQVars,
+                    Constraints, UnconstrainedQVars, ConstrainedQVars),
+                MaybeMaybeExistConstraints =
+                    ok1(exist_constraints(ExistConstraints))
+            ),
+            MainTermContext = get_term_context(MainTerm),
+            ( if
+                MaybeMaybeExistConstraints = ok1(exist_constraints(_)),
+                MaybeConstructorArgs = ok1([]),
+                MaybeFunctor = ok1(Functor2)
+            then
+                FunctorName2 = unqualify_name(Functor2),
+                NoArgsPieces = [words("Error: since")] ++
+                    color_as_subject([fixed(FunctorName2)]) ++
+                    [words("has no arguments,"),
+                    words("(existentially quantified or otherwise),")] ++
+                    color_as_incorrect([words("it should have"),
+                        words("no constraints on them.")]) ++
+                    [nl],
+                NoArgsSpecs = [spec($pred, severity_error, phase_t2pt,
+                    MainTermContext, NoArgsPieces)]
+            else
+                NoArgsSpecs = []
+            ),
+            ( if
+                MaybeMaybeExistConstraints = ok1(MaybeExistConstraints),
+                MaybeConstructorArgs = ok1(ConstructorArgs),
+                MaybeFunctor = ok1(Functor),
+                NoArgsSpecs = []
+            then
+                list.length(ConstructorArgs, Arity),
+                Ctor = ctor(Ordinal, MaybeExistConstraints,
+                    Functor, ConstructorArgs, Arity, MainTermContext),
+                MaybeConstructor = ok1(Ctor)
+            else
+                Specs = get_any_errors1el(MaybeMaybeExistConstraints) ++
+                    get_any_errors1el(MaybeFunctor) ++
+                    get_any_errors1(MaybeConstructorArgs) ++ NoArgsSpecs,
+                det_list_to_one_or_more(Specs, OoMSpecs),
+                MaybeConstructor = error1(OoMSpecs)
             )
-        ;
-            ExistQVars = [_ | _],
-            GetConstraintArgTypes = (func(constraint(_, Ts)) = Ts),
-            ConstrainedTypeLists =
-                list.map(GetConstraintArgTypes, Constraints),
-            list.condense(ConstrainedTypeLists, ConstrainedTypes),
-            % We compute ConstrainedQVars in this roundabout way to give it
-            % the same ordering as ExistQVars. Also, the list returned
-            % by type_vars_in_types may contain duplicates.
-            type_vars_in_types(ConstrainedTypes, ConstrainedQVars0),
-            list.delete_elems(ExistQVars, ConstrainedQVars0,
-                UnconstrainedQVars),
-            list.delete_elems(ExistQVars, UnconstrainedQVars,
-                ConstrainedQVars),
-            ExistConstraints = cons_exist_constraints(ExistQVars,
-                Constraints, UnconstrainedQVars, ConstrainedQVars),
-            MaybeMaybeExistConstraints =
-                ok1(exist_constraints(ExistConstraints))
-        ),
-        MainTermContext = get_term_context(MainTerm),
-        ( if
-            MaybeMaybeExistConstraints = ok1(exist_constraints(_)),
-            MaybeConstructorArgs = ok1([]),
-            MaybeFunctor = ok1(Functor2)
-        then
-            FunctorName2 = unqualify_name(Functor2),
-            NoArgsPieces = [words("Error: since")] ++
-                color_as_subject([fixed(FunctorName2)]) ++
-                [words("has no arguments,"),
-                words("(existentially quantified or otherwise),")] ++
-                color_as_incorrect([words("it should have"),
-                    words("no constraints on them.")]) ++
-                [nl],
-            NoArgsSpecs = [spec($pred, severity_error, phase_t2pt,
-                MainTermContext, NoArgsPieces)]
-        else
-            NoArgsSpecs = []
-        ),
-        ( if
-            MaybeMaybeExistConstraints = ok1(MaybeExistConstraints),
-            MaybeConstructorArgs = ok1(ConstructorArgs),
-            MaybeFunctor = ok1(Functor),
-            NoArgsSpecs = []
-        then
-            list.length(ConstructorArgs, Arity),
-            Ctor = ctor(Ordinal, MaybeExistConstraints,
-                Functor, ConstructorArgs, Arity, MainTermContext),
-            MaybeConstructor = ok1(Ctor)
-        else
-            Specs = get_any_errors1el(MaybeMaybeExistConstraints) ++
-                get_any_errors1el(MaybeFunctor) ++
-                get_any_errors1(MaybeConstructorArgs) ++ NoArgsSpecs,
-            det_list_to_one_or_more(Specs, OoMSpecs),
-            MaybeConstructor = error1(OoMSpecs)
         )
     ).
 

@@ -1,0 +1,8 @@
+du_type_with_colon.m:023: Error: attempt to define a data constructor named
+du_type_with_colon.m:023:   `:'/2, which is a sign that a typo has replaced the
+du_type_with_colon.m:023:   [38;5;40msemicolon[39;49m between two data constructors with a
+du_type_with_colon.m:023:   [38;5;203mcolon.[39;49m
+du_type_with_colon.m:028: Error: attempt to define a data constructor named
+du_type_with_colon.m:028:   `:'/2, which is a sign that a typo has replaced the
+du_type_with_colon.m:028:   [38;5;40msemicolon[39;49m between two data constructors with a
+du_type_with_colon.m:028:   [38;5;203mcolon.[39;49m
