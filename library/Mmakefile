@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1997-2012 The University of Melbourne.
-# Copyright (C) 2013-2017, 2019-2023 The Mercury team.
+# Copyright (C) 2013-2017, 2019-2023, 2026 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -518,6 +518,10 @@ $(os_subdir)par_builtin.pic_o \
 	: ../runtime/mercury_context.h \
 	../runtime/mercury_par_builtin.h \
 	../runtime/mercury_thread.h
+
+$(os_subdir)string.$O \
+$(os_subdir)string.pic_o \
+	: ../runtime/mercury_string_conversions.h
 
 $(os_subdir)thread.$O \
 $(os_subdir)thread.pic_o \

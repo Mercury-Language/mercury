@@ -143,6 +143,14 @@ BODY_HDRS = \
 	mercury_tabling_stats_undefs.h		\
 	mercury_unify_compare_body.h
 
+# $(LIB_HDRS) contains header files that are NOT used by the runtime itself;
+# instead, they are included only by modules in the Mercury standard library.
+# They should all depend only on standard platform and Mercury runtime header
+# files, and they should all be syntactically well-formed.
+
+LIB_HDRS = \
+	mercury_string_conversions.h
+
 MACHHDRS = \
 	machdeps/aarch64_regs.h			\
 	machdeps/arm_regs.h			\
