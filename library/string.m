@@ -1644,7 +1644,6 @@
 %---------------------%
 % Converting chars to strings.
 
-
     % char_to_string(Char, String):
     %
     % Converts a character to a string, or vice versa.
@@ -6085,105 +6084,12 @@ can_use_to_int_fast_path(Base, NumDigits) :-
     WordSize = bits_per_int,
     (
         WordSize = 32,
-        safe_int_digits_for_word32_and_base(Base, SafeDigits)
+        safe_num_digits_for_base_i32_u32_i64_u64(Base, SafeDigits, _, _, _)
     ;
         WordSize = 64,
-        safe_int_digits_for_word64_and_base(Base, SafeDigits)
+        safe_num_digits_for_base_i32_u32_i64_u64(Base, _, _, SafeDigits, _)
     ),
     NumDigits =< SafeDigits.
-
-    % safe_int_digits_for_word32_and_base(Base, SafeDigits):
-    %
-    % For a given base Base, SafeDigits is the largest number of digits such
-    % that every string of SafeDigits base Base digits denotes a value that
-    % fits in a 32-bit signed int. That is, SafeDigits is the largest number
-    % such that:
-    %
-    %   Base ^ SafeDigits - 1 =< max_int, where max_int = 2 ^ (32 - 1) - 1.
-    %
-    % We use the same value of SafeDigits for negative ints. That is safe,
-    % since abs(min_int) = max_int + 1 (i.e., a bound that holds for max_int
-    % also holds for min_int).
-    %
-:- pred safe_int_digits_for_word32_and_base(int::in, int::out) is semidet.
-
-safe_int_digits_for_word32_and_base(2, 31).
-safe_int_digits_for_word32_and_base(3, 19).
-safe_int_digits_for_word32_and_base(4, 15).
-safe_int_digits_for_word32_and_base(5, 13).
-safe_int_digits_for_word32_and_base(6, 11).
-safe_int_digits_for_word32_and_base(7, 11).
-safe_int_digits_for_word32_and_base(8, 10).
-safe_int_digits_for_word32_and_base(9, 9).
-safe_int_digits_for_word32_and_base(10, 9).
-safe_int_digits_for_word32_and_base(11, 8).
-safe_int_digits_for_word32_and_base(12, 8).
-safe_int_digits_for_word32_and_base(13, 8).
-safe_int_digits_for_word32_and_base(14, 8).
-safe_int_digits_for_word32_and_base(15, 7).
-safe_int_digits_for_word32_and_base(16, 7).
-safe_int_digits_for_word32_and_base(17, 7).
-safe_int_digits_for_word32_and_base(18, 7).
-safe_int_digits_for_word32_and_base(19, 7).
-safe_int_digits_for_word32_and_base(20, 7).
-safe_int_digits_for_word32_and_base(21, 7).
-safe_int_digits_for_word32_and_base(22, 6).
-safe_int_digits_for_word32_and_base(23, 6).
-safe_int_digits_for_word32_and_base(24, 6).
-safe_int_digits_for_word32_and_base(25, 6).
-safe_int_digits_for_word32_and_base(26, 6).
-safe_int_digits_for_word32_and_base(27, 6).
-safe_int_digits_for_word32_and_base(28, 6).
-safe_int_digits_for_word32_and_base(29, 6).
-safe_int_digits_for_word32_and_base(30, 6).
-safe_int_digits_for_word32_and_base(31, 6).
-safe_int_digits_for_word32_and_base(32, 6).
-safe_int_digits_for_word32_and_base(33, 6).
-safe_int_digits_for_word32_and_base(34, 6).
-safe_int_digits_for_word32_and_base(35, 6).
-safe_int_digits_for_word32_and_base(36, 5).
-
-    % safe_int_digits_for_word64_and_base(Base, SafeDigits):
-    %
-    % As above, but for 64-bit ints.
-    %
-:- pred safe_int_digits_for_word64_and_base(int::in, int::out) is semidet.
-
-safe_int_digits_for_word64_and_base(2, 63).
-safe_int_digits_for_word64_and_base(3, 39).
-safe_int_digits_for_word64_and_base(4, 31).
-safe_int_digits_for_word64_and_base(5, 27).
-safe_int_digits_for_word64_and_base(6, 24).
-safe_int_digits_for_word64_and_base(7, 22).
-safe_int_digits_for_word64_and_base(8, 21).
-safe_int_digits_for_word64_and_base(9, 19).
-safe_int_digits_for_word64_and_base(10, 18).
-safe_int_digits_for_word64_and_base(11, 18).
-safe_int_digits_for_word64_and_base(12, 17).
-safe_int_digits_for_word64_and_base(13, 17).
-safe_int_digits_for_word64_and_base(14, 16).
-safe_int_digits_for_word64_and_base(15, 16).
-safe_int_digits_for_word64_and_base(16, 15).
-safe_int_digits_for_word64_and_base(17, 15).
-safe_int_digits_for_word64_and_base(18, 15).
-safe_int_digits_for_word64_and_base(19, 14).
-safe_int_digits_for_word64_and_base(20, 14).
-safe_int_digits_for_word64_and_base(21, 14).
-safe_int_digits_for_word64_and_base(22, 14).
-safe_int_digits_for_word64_and_base(23, 13).
-safe_int_digits_for_word64_and_base(24, 13).
-safe_int_digits_for_word64_and_base(25, 13).
-safe_int_digits_for_word64_and_base(26, 13).
-safe_int_digits_for_word64_and_base(27, 13).
-safe_int_digits_for_word64_and_base(28, 13).
-safe_int_digits_for_word64_and_base(29, 12).
-safe_int_digits_for_word64_and_base(30, 12).
-safe_int_digits_for_word64_and_base(31, 12).
-safe_int_digits_for_word64_and_base(32, 12).
-safe_int_digits_for_word64_and_base(33, 12).
-safe_int_digits_for_word64_and_base(34, 12).
-safe_int_digits_for_word64_and_base(35, 12).
-safe_int_digits_for_word64_and_base(36, 12).
 
 %---------------------%
 
@@ -6398,101 +6304,77 @@ can_use_to_uint_fast_path(Base, NumDigits) :-
     WordSize = bits_per_uint,
     (
         WordSize = 32,
-        safe_uint_digits_for_word32_and_base(Base, SafeDigits)
+        safe_num_digits_for_base_i32_u32_i64_u64(Base, _, SafeDigits, _, _)
     ;
         WordSize = 64,
-        safe_uint_digits_for_word64_and_base(Base, SafeDigits)
+        safe_num_digits_for_base_i32_u32_i64_u64(Base, _, _, _, SafeDigits)
     ),
     NumDigits =< SafeDigits.
 
-    % safe_uint_digits_for_word32_and_base(Base, SafeDigits):
+%---------------------%
+
+    % safe_num_digits_for_base_i32_u32_i64_u64(Base,
+    %   SafeDigitsI32, SafeDigitsU32, SafeDigitsI64, SafeDigitsU64):
     %
-    % For a given base Base, SafeDigits is the largest number of digits such
-    % that every string of SafeDigits base Base digits denotes a value that
-    % fits in a 32-bit unsigned int. That is, SafeDigits is the largest number
-    % such that:
+    % For a given base Base, SafeDigitsI32 is the largest number of digits
+    % such that every string of SafeDigits base Base digits denotes a value
+    % that fits in a 32-bit signed int. That is, SafeDigits is the
+    % largest number such that:
+    %
+    %   Base ^ SafeDigits - 1 =< max_int, where max_int = 2 ^ (32 - 1) - 1.
+    %
+    % We use the same value of SafeDigits for negative ints. That is safe,
+    % since abs(min_int) = max_int + 1 (i.e., a bound that holds for max_int
+    % also holds for min_int).
+    %
+    % For a given base Base, SafeDigitsU32 is the largest number of digits
+    % such that every string of SafeDigits base Base digits denotes a value
+    % that fits in a 32-bit unsigned int. That is, SafeDigits is the
+    % largest number such that:
     %
     %   Base ^ SafeDigits - 1 =< max_uint, where max_uint = 2 ^ 32 - 1.
     %
-:- pred safe_uint_digits_for_word32_and_base(int::in, int::out) is semidet.
-
-safe_uint_digits_for_word32_and_base(2, 32).
-safe_uint_digits_for_word32_and_base(3, 20).
-safe_uint_digits_for_word32_and_base(4, 16).
-safe_uint_digits_for_word32_and_base(5, 13).
-safe_uint_digits_for_word32_and_base(6, 12).
-safe_uint_digits_for_word32_and_base(7, 11).
-safe_uint_digits_for_word32_and_base(8, 10).
-safe_uint_digits_for_word32_and_base(9, 10).
-safe_uint_digits_for_word32_and_base(10, 9).
-safe_uint_digits_for_word32_and_base(11, 9).
-safe_uint_digits_for_word32_and_base(12, 8).
-safe_uint_digits_for_word32_and_base(13, 8).
-safe_uint_digits_for_word32_and_base(14, 8).
-safe_uint_digits_for_word32_and_base(15, 8).
-safe_uint_digits_for_word32_and_base(16, 8).
-safe_uint_digits_for_word32_and_base(17, 7).
-safe_uint_digits_for_word32_and_base(18, 7).
-safe_uint_digits_for_word32_and_base(19, 7).
-safe_uint_digits_for_word32_and_base(20, 7).
-safe_uint_digits_for_word32_and_base(21, 7).
-safe_uint_digits_for_word32_and_base(22, 7).
-safe_uint_digits_for_word32_and_base(23, 7).
-safe_uint_digits_for_word32_and_base(24, 6).
-safe_uint_digits_for_word32_and_base(25, 6).
-safe_uint_digits_for_word32_and_base(26, 6).
-safe_uint_digits_for_word32_and_base(27, 6).
-safe_uint_digits_for_word32_and_base(28, 6).
-safe_uint_digits_for_word32_and_base(29, 6).
-safe_uint_digits_for_word32_and_base(30, 6).
-safe_uint_digits_for_word32_and_base(31, 6).
-safe_uint_digits_for_word32_and_base(32, 6).
-safe_uint_digits_for_word32_and_base(33, 6).
-safe_uint_digits_for_word32_and_base(34, 6).
-safe_uint_digits_for_word32_and_base(35, 6).
-safe_uint_digits_for_word32_and_base(36, 6).
-
-    % safe_uint_digits_for_word64_and_base(Base, SafeDigits):
+    % SafeDigitsI64 and SafeDigitsU64 are their 64-bit equivalents.
     %
-    % As above, but for 64-bit uints.
-    %
-:- pred safe_uint_digits_for_word64_and_base(int::in, int::out) is semidet.
+:- pred safe_num_digits_for_base_i32_u32_i64_u64(int::in,
+    int::out, int::out, int::out, int::out) is semidet.
+:- pragma inline(pred(safe_num_digits_for_base_i32_u32_i64_u64/5)).
 
-safe_uint_digits_for_word64_and_base(2, 64).
-safe_uint_digits_for_word64_and_base(3, 40).
-safe_uint_digits_for_word64_and_base(4, 32).
-safe_uint_digits_for_word64_and_base(5, 27).
-safe_uint_digits_for_word64_and_base(6, 24).
-safe_uint_digits_for_word64_and_base(7, 22).
-safe_uint_digits_for_word64_and_base(8, 21).
-safe_uint_digits_for_word64_and_base(9, 20).
-safe_uint_digits_for_word64_and_base(10, 19).
-safe_uint_digits_for_word64_and_base(11, 18).
-safe_uint_digits_for_word64_and_base(12, 17).
-safe_uint_digits_for_word64_and_base(13, 17).
-safe_uint_digits_for_word64_and_base(14, 16).
-safe_uint_digits_for_word64_and_base(15, 16).
-safe_uint_digits_for_word64_and_base(16, 16).
-safe_uint_digits_for_word64_and_base(17, 15).
-safe_uint_digits_for_word64_and_base(18, 15).
-safe_uint_digits_for_word64_and_base(19, 15).
-safe_uint_digits_for_word64_and_base(20, 14).
-safe_uint_digits_for_word64_and_base(21, 14).
-safe_uint_digits_for_word64_and_base(22, 14).
-safe_uint_digits_for_word64_and_base(23, 14).
-safe_uint_digits_for_word64_and_base(24, 13).
-safe_uint_digits_for_word64_and_base(25, 13).
-safe_uint_digits_for_word64_and_base(26, 13).
-safe_uint_digits_for_word64_and_base(27, 13).
-safe_uint_digits_for_word64_and_base(28, 13).
-safe_uint_digits_for_word64_and_base(29, 13).
-safe_uint_digits_for_word64_and_base(30, 13).
-safe_uint_digits_for_word64_and_base(31, 12).
-safe_uint_digits_for_word64_and_base(32, 12).
-safe_uint_digits_for_word64_and_base(33, 12).
-safe_uint_digits_for_word64_and_base(34, 12).
-safe_uint_digits_for_word64_and_base(35, 12).
-safe_uint_digits_for_word64_and_base(36, 12).
+safe_num_digits_for_base_i32_u32_i64_u64( 2, 31, 32, 63, 64).
+safe_num_digits_for_base_i32_u32_i64_u64( 3, 19, 20, 39, 40).
+safe_num_digits_for_base_i32_u32_i64_u64( 4, 15, 16, 31, 32).
+safe_num_digits_for_base_i32_u32_i64_u64( 5, 13, 13, 27, 27).
+safe_num_digits_for_base_i32_u32_i64_u64( 6, 11, 12, 24, 24).
+safe_num_digits_for_base_i32_u32_i64_u64( 7, 11, 11, 22, 22).
+safe_num_digits_for_base_i32_u32_i64_u64( 8, 10, 10, 21, 21).
+safe_num_digits_for_base_i32_u32_i64_u64( 9,  9, 10, 19, 20).
+safe_num_digits_for_base_i32_u32_i64_u64(10,  9,  9, 18, 19).
+safe_num_digits_for_base_i32_u32_i64_u64(11,  8,  9, 18, 18).
+safe_num_digits_for_base_i32_u32_i64_u64(12,  8,  8, 17, 17).
+safe_num_digits_for_base_i32_u32_i64_u64(13,  8,  8, 17, 17).
+safe_num_digits_for_base_i32_u32_i64_u64(14,  8,  8, 16, 16).
+safe_num_digits_for_base_i32_u32_i64_u64(15,  7,  8, 16, 16).
+safe_num_digits_for_base_i32_u32_i64_u64(16,  7,  8, 15, 16).
+safe_num_digits_for_base_i32_u32_i64_u64(17,  7,  7, 15, 15).
+safe_num_digits_for_base_i32_u32_i64_u64(18,  7,  7, 15, 15).
+safe_num_digits_for_base_i32_u32_i64_u64(19,  7,  7, 14, 15).
+safe_num_digits_for_base_i32_u32_i64_u64(20,  7,  7, 14, 14).
+safe_num_digits_for_base_i32_u32_i64_u64(21,  7,  7, 14, 14).
+safe_num_digits_for_base_i32_u32_i64_u64(22,  6,  7, 14, 14).
+safe_num_digits_for_base_i32_u32_i64_u64(23,  6,  7, 13, 14).
+safe_num_digits_for_base_i32_u32_i64_u64(24,  6,  6, 13, 13).
+safe_num_digits_for_base_i32_u32_i64_u64(25,  6,  6, 13, 13).
+safe_num_digits_for_base_i32_u32_i64_u64(26,  6,  6, 13, 13).
+safe_num_digits_for_base_i32_u32_i64_u64(27,  6,  6, 13, 13).
+safe_num_digits_for_base_i32_u32_i64_u64(28,  6,  6, 13, 13).
+safe_num_digits_for_base_i32_u32_i64_u64(29,  6,  6, 12, 13).
+safe_num_digits_for_base_i32_u32_i64_u64(30,  6,  6, 12, 13).
+safe_num_digits_for_base_i32_u32_i64_u64(31,  6,  6, 12, 12).
+safe_num_digits_for_base_i32_u32_i64_u64(32,  6,  6, 12, 12).
+safe_num_digits_for_base_i32_u32_i64_u64(33,  6,  6, 12, 12).
+safe_num_digits_for_base_i32_u32_i64_u64(34,  6,  6, 12, 12).
+safe_num_digits_for_base_i32_u32_i64_u64(35,  6,  6, 12, 12).
+safe_num_digits_for_base_i32_u32_i64_u64(36,  5,  6, 12, 12).
 
 %---------------------%
 
@@ -6740,7 +6622,7 @@ int_to_base_string_group(N, Base, GroupLength, Sep) = Str :-
     % Curr is how many digits have been processed since the last separator
     % was inserted.
     % int_to_base_string_group_loop/6 is almost identical to
-    % int_to_base_string_loop/3 above so any changes here might also
+    % int_to_base_string_loop/3 above, so any changes here might also
     % need to be applied to int_to_base_string_loop/3.
     %
 :- pred int_to_base_string_group_loop(int::in, int::in, int::in, int::in,
