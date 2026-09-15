@@ -245,7 +245,9 @@ dead_proc_warn(ModuleInfo, Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-% We deal with three kinds of entities, procedures, type_ctor_info structures
+% XXX This comment has suffered significant comment rot.
+%
+% We deal with three kinds of entities: procedures, type_ctor_info structures,
 % and constant structures.
 %
 % The algorithm has three main data structures:
