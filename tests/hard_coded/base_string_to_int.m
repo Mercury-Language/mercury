@@ -208,7 +208,7 @@ test_10_in_base(Base, !IO) :-
     % string.base_string_to_uint(Base, Str, UInt) writing out
     % the call then results: the numeric value of the Int / UInt if both
     % calls succeed, "no" if they fail, or "exception" if they throw
-    % an exception. If the results differ between the signed and signed
+    % an exception. If the results differ between the signed and unsigned
     % version, write out both results.
     %
 :- pred test(int::in, string::in, io::di, io::uo) is cc_multi.
