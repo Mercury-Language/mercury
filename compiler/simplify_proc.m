@@ -363,7 +363,7 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTable2,
             HeadVars, ArgModes, !ModuleInfo),
         check_typeclass_records(!.ModuleInfo, PredId, ProcId,
-            PredInfo0, !.ProcInfo, VarTable2, RttiVarMaps0, !Specs)
+            PredInfo0, !.ProcInfo, VarTable2, RttiVarMaps0, !.Specs, _)
     else
         VarTable2 = VarTable1
     ),
