@@ -7,6 +7,8 @@ tci_liveness_abort.m:020:   information about them on the other hand.
 tci_liveness_abort.m:020:   The constraint involved is:
 tci_liveness_abort.m:020:     host(T)
 tci_liveness_abort.m:020:       on line 53
+tci_liveness_abort.m:020:     (The code on that line may have been duplicated
+tci_liveness_abort.m:020:     by the compiler.)
 tci_liveness_abort.m:020:   The limitation occurs when the definition of a
 tci_liveness_abort.m:020:   predicate or function contains both the
 tci_liveness_abort.m:020:   deconstructions of terms that contain existentially
@@ -24,3 +26,5 @@ tci_liveness_abort.m:022:   information about them on the other hand.
 tci_liveness_abort.m:022:   The constraint involved is:
 tci_liveness_abort.m:022:     host(T)
 tci_liveness_abort.m:022:       on line 77
+tci_liveness_abort.m:022:     (The code on that line may have been duplicated
+tci_liveness_abort.m:022:     by the compiler.)

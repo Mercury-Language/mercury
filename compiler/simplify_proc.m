@@ -615,8 +615,7 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
         look_for_typeclass_info_conflict_in_goal(DupTCIVars,
             TCIVarToConstraintMap, InstMap0, ElseGoal,
             multi_map.init, ElseTCIConstraints, !ConflictConstraints),
-        detect_conflicts_in_arms(set.init,
-            [ThenTCIConstraints, ElseTCIConstraints],
+        detect_conflicts_in_arms([ThenTCIConstraints, ElseTCIConstraints],
             !TCIConstraints, !ConflictConstraints)
     ;
         GoalExpr = negation(SubGoal),
@@ -698,7 +697,7 @@ look_for_typeclass_info_conflict_in_disj(DupTCIVars, TCIVarToConstraintMap,
     look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
         TCIVarToConstraintMap, InstMap0, Disjuncts, ArmTCIConstraints,
         !ConflictConstraints),
-    detect_conflicts_in_arms(set.init, ArmTCIConstraints,
+    detect_conflicts_in_arms(ArmTCIConstraints,
         !TCIConstraints, !ConflictConstraints).
 
 :- pred look_for_typeclass_info_conflict_in_disjuncts(set_of_progvar::in,
@@ -730,7 +729,7 @@ look_for_typeclass_info_conflict_in_switch(DupTCIVars, TCIVarToConstraintMap,
     look_for_typeclass_info_conflict_in_cases(DupTCIVars,
         TCIVarToConstraintMap, InstMap0, Disjuncts, ArmTCIConstraints,
         !ConflictConstraints),
-    detect_conflicts_in_arms(set.init, ArmTCIConstraints,
+    detect_conflicts_in_arms(ArmTCIConstraints,
         !TCIConstraints, !ConflictConstraints).
 
 :- pred look_for_typeclass_info_conflict_in_cases(set_of_progvar::in,
@@ -756,30 +755,62 @@ look_for_typeclass_info_conflict_in_cases(DupTCIVars, TCIVarToConstraintMap,
 
 %---------------------%
 
-:- pred detect_conflicts_in_arms(set(prog_constraint)::in,
-    list(constraint_tci_db)::in,
+:- pred detect_conflicts_in_arms(list(constraint_tci_db)::in,
     constraint_tci_db::in, constraint_tci_db::out,
     conflict_constraints::in, conflict_constraints::out) is det.
 
-detect_conflicts_in_arms(_, [], !AllArmTCIConstraints, !ConflictConstraints).
-detect_conflicts_in_arms(!.SeenConstraints,
-        [HeadArmTCIConstraints | TailArmTCIConstraints],
+detect_conflicts_in_arms(ArmTCIConstraints,
         !AllArmTCIConstraints, !ConflictConstraints) :-
+    detect_conflict_constraints_in_arms(ArmTCIConstraints,
+        set.init, set.init, DupConstraints, !AllArmTCIConstraints),
+    collect_conflict_constraints_in_arms(DupConstraints,
+        ArmTCIConstraints, multi_map.init, NewConflictConstraints),
+    multi_map.merge(NewConflictConstraints, !ConflictConstraints).
+
+:- pred detect_conflict_constraints_in_arms(list(constraint_tci_db)::in,
+    set(prog_constraint)::in,
+    set(prog_constraint)::in, set(prog_constraint)::out,
+    constraint_tci_db::in, constraint_tci_db::out) is det.
+
+detect_conflict_constraints_in_arms([], _,
+        !DupConstraints, !AllArmTCIConstraints).
+detect_conflict_constraints_in_arms(
+        [HeadArmTCIConstraints | TailArmTCIConstraints],
+        !.SeenConstraints, !DupConstraints, !AllArmTCIConstraints) :-
     multi_map.keys_as_set(HeadArmTCIConstraints, HeadConstraints),
     set.intersect(!.SeenConstraints, HeadConstraints, SeenHeadConstraints),
     ( if set.is_non_empty(SeenHeadConstraints) then
         % This arm and one (or more) of the previous arms both define
         % typeclass_infos for the constraints in SeenHeadConstraints.
-        multi_map.select(HeadArmTCIConstraints, SeenHeadConstraints,
-            HeadArmSeenTCIConstraints),
-        multi_map.merge(HeadArmSeenTCIConstraints, !ConflictConstraints)
+        %
+        % We *could* record HeadArmTCIConstraints in !ConflictConstraints,
+        % but we are too late to record in !ConflictConstraints the
+        % constraint_tcis for the *earlier* branch. This is why we just
+        % record this as a duplicate constraint, and let the later
+        % collect_conflict_constraints_in_arms pass collect constraint_tcis
+        % for the DupConstraints from *all* the branches.
+        set.union(SeenHeadConstraints, !DupConstraints)
     else
         true
     ),
     set.union(HeadConstraints, !SeenConstraints),
     multi_map.merge(HeadArmTCIConstraints, !AllArmTCIConstraints),
-    detect_conflicts_in_arms(!.SeenConstraints, TailArmTCIConstraints,
-        !AllArmTCIConstraints, !ConflictConstraints).
+    detect_conflict_constraints_in_arms(TailArmTCIConstraints,
+        !.SeenConstraints, !DupConstraints, !AllArmTCIConstraints).
+
+:- pred collect_conflict_constraints_in_arms(set(prog_constraint)::in,
+    list(constraint_tci_db)::in,
+    conflict_constraints::in, conflict_constraints::out) is det.
+
+collect_conflict_constraints_in_arms(_, [], !ConflictConstraints).
+collect_conflict_constraints_in_arms(DupConstraints,
+        [HeadArmTCIConstraints | TailArmTCIConstraints],
+        !ConflictConstraints) :-
+    multi_map.select(HeadArmTCIConstraints, DupConstraints,
+        HeadDupTCIConstraints),
+    multi_map.merge(HeadDupTCIConstraints, !ConflictConstraints),
+    collect_conflict_constraints_in_arms(DupConstraints,
+        TailArmTCIConstraints, !ConflictConstraints).
 
 %---------------------%
 
@@ -858,10 +889,18 @@ conflict_constraint_to_piece(TVarSet, Constraint - ConstraintTCIs, Pieces) :-
         ),
     LineNumberPieces0 = list.map(ContextToLineNumberPiece, ConstraintTCIs),
     list.sort_and_remove_dups(LineNumberPieces0, LineNumberPieces),
-    OnLineS = choose_number(LineNumberPieces, "on line", "on lines"),
+    ( if list.length(LineNumberPieces) > 1 then
+        OnLineS = "on lines",
+        LineSuffixPieces = []
+    else
+        OnLineS = "on line",
+        LineSuffixPieces = [words("(The code on that line"),
+            words("may have been duplicated by the compiler.)"), nl]
+    ),
     LineNumbersPieces = piece_list_to_pieces("and", LineNumberPieces),
     Pieces = [words(ConstraintStr), nl_indent_delta(1)] ++
-        [words(OnLineS)] ++ LineNumbersPieces ++ [nl_indent_delta(-1)].
+        [words(OnLineS)] ++ LineNumbersPieces ++ [nl_indent_delta(-1)] ++
+        LineSuffixPieces.
 
 %---------------------------------------------------------------------------%
 
