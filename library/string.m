@@ -1961,7 +1961,9 @@
 
 #include ""mercury_string.h""   // for MR_allocate_aligned_string*() etc.
 #include ""mercury_tags.h""     // for MR_list_*()
+").
 
+:- pragma foreign_decl("C", local, "
 #include ""mercury_string_conversions.h""
 ").
 
