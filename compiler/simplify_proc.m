@@ -113,6 +113,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
@@ -361,8 +362,8 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         proc_info_get_argmodes(!.ProcInfo, ArgModes),
         find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTable2,
             HeadVars, ArgModes, !ModuleInfo),
-        check_typeclass_records(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
-            VarTable2, RttiVarMaps0, !Specs)
+        check_typeclass_records(!.ModuleInfo, PredId, ProcId,
+            PredInfo0, !.ProcInfo, VarTable2, RttiVarMaps0, !Specs)
     else
         VarTable2 = VarTable1
     ),
@@ -489,10 +490,10 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
     ).
 
 :- pred check_typeclass_records(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, var_table::in, rtti_varmaps::in,
+    pred_info::in, proc_info::in, var_table::in, rtti_varmaps::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
-check_typeclass_records(ModuleInfo, PredId, ProcId, ProcInfo,
+check_typeclass_records(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         VarTable, RttiVarMaps, !Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, body_typeinfo_liveness,
@@ -521,20 +522,17 @@ check_typeclass_records(ModuleInfo, PredId, ProcId, ProcInfo,
             proc_info_get_goal(ProcInfo, Goal),
             look_for_typeclass_info_conflict_in_goal(DupTCIVars,
                 DupTCIVarsToConstraintMap, InstMap0, Goal,
-                multi_map.init, _, no_typeclass_info_conflict, Conflict),
-            (
-                Conflict = no_typeclass_info_conflict
-            ;
-                Conflict = found_typeclass_info_conflict,
+                multi_map.init, _, set.init, ConflictConstraints),
+            ( if set.is_empty(ConflictConstraints) then
+                true
+            else
                 report_typeclass_info_problem(ModuleInfo, PredId, ProcId,
-                    ProcInfo, !Specs)
+                    PredInfo, ProcInfo, ConflictConstraints, !Specs)
             )
         )
     ).
 
-:- type typeclass_info_conflict
-    --->    no_typeclass_info_conflict
-    ;       found_typeclass_info_conflict.
+:- type conflict_constraints == set(prog_constraint).
 
     % Look for branched goals in which two different branches
     % produce typeclass_infos for the same constraint.
@@ -554,10 +552,10 @@ check_typeclass_records(ModuleInfo, PredId, ProcId, ProcInfo,
     map(prog_var, prog_constraint)::in, instmap::in, hlds_goal::in,
     multi_map(prog_constraint, prog_var)::in,
     multi_map(prog_constraint, prog_var)::out,
-    typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
+    conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Goal, !TCIConstraints, !Conflict) :-
+        InstMap0, Goal, !TCIConstraints, !ConflictConstraints) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         ( GoalExpr = unify(_, _, _, _, _)
@@ -584,37 +582,37 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
         % for parallel_conjs as well.
         look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
             TCIVarToConstraintMap, InstMap0, Conjuncts,
-            !TCIConstraints, !Conflict)
+            !TCIConstraints, !ConflictConstraints)
     ;
         GoalExpr = disj(Disjuncts),
         look_for_typeclass_info_conflict_in_disj(DupTCIVars,
             TCIVarToConstraintMap, InstMap0, Disjuncts,
-            !TCIConstraints, !Conflict)
+            !TCIConstraints, !ConflictConstraints)
     ;
         GoalExpr = switch(_, _, Cases),
         look_for_typeclass_info_conflict_in_switch(DupTCIVars,
             TCIVarToConstraintMap, InstMap0, Cases,
-            !TCIConstraints, !Conflict)
+            !TCIConstraints, !ConflictConstraints)
     ;
         GoalExpr = if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
         look_for_typeclass_info_conflict_in_goal(DupTCIVars,
             TCIVarToConstraintMap, InstMap0, CondGoal,
-            multi_map.init, CondTCIConstraints, !Conflict),
+            multi_map.init, CondTCIConstraints, !ConflictConstraints),
         apply_goal_instmap_delta(CondGoal, InstMap0, InstMapAfterCond),
         look_for_typeclass_info_conflict_in_goal(DupTCIVars,
             TCIVarToConstraintMap, InstMapAfterCond, ThenGoal,
-            CondTCIConstraints, ThenTCIConstraints, !Conflict),
+            CondTCIConstraints, ThenTCIConstraints, !ConflictConstraints),
         look_for_typeclass_info_conflict_in_goal(DupTCIVars,
             TCIVarToConstraintMap, InstMap0, ElseGoal,
-            multi_map.init, ElseTCIConstraints, !Conflict),
+            multi_map.init, ElseTCIConstraints, !ConflictConstraints),
         detect_conflicts_in_arms(set.init,
             [ThenTCIConstraints, ElseTCIConstraints],
-            !TCIConstraints, !Conflict)
+            !TCIConstraints, !ConflictConstraints)
     ;
         GoalExpr = negation(SubGoal),
         look_for_typeclass_info_conflict_in_goal(DupTCIVars,
             TCIVarToConstraintMap, InstMap0, SubGoal,
-            !TCIConstraints, !Conflict)
+            !TCIConstraints, !ConflictConstraints)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -627,7 +625,7 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
         else
             look_for_typeclass_info_conflict_in_goal(DupTCIVars,
                 TCIVarToConstraintMap, InstMap0, SubGoal,
-                !TCIConstraints, !Conflict)
+                !TCIConstraints, !ConflictConstraints)
         )
     ;
         GoalExpr = shorthand(ShortHand),
@@ -637,7 +635,7 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
             Disjuncts = [MainGoal | OrElseGoals],
             look_for_typeclass_info_conflict_in_disj(DupTCIVars,
                 TCIVarToConstraintMap, InstMap0, Disjuncts,
-                !TCIConstraints, !Conflict)
+                !TCIConstraints, !ConflictConstraints)
         ;
             ShortHand = try_goal(_, _, _),
             % These should have been expanded out by now.
@@ -665,19 +663,19 @@ record_delta_typeclass_info_var(TCIVarToConstraintMap, TCIVar,
     map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
     multi_map(prog_constraint, prog_var)::in,
     multi_map(prog_constraint, prog_var)::out,
-    typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
+    conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_plain_conj(_, _, _, [],
-        !TCIConstraints, !Conflict).
+        !TCIConstraints, !ConflictConstraints).
 look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
         TCIVarToConstraintMap, InstMap0, [Conjunct | Conjuncts],
-        !TCIConstraints, !Conflict) :-
+        !TCIConstraints, !ConflictConstraints) :-
     look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Conjunct, !TCIConstraints, !Conflict),
+        InstMap0, Conjunct, !TCIConstraints, !ConflictConstraints),
     apply_goal_instmap_delta(Conjunct, InstMap0, InstMap1),
     look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
         TCIVarToConstraintMap, InstMap1, Conjuncts,
-        !TCIConstraints, !Conflict).
+        !TCIConstraints, !ConflictConstraints).
 
 %---------------------%
 
@@ -685,30 +683,32 @@ look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
     map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
     multi_map(prog_constraint, prog_var)::in,
     multi_map(prog_constraint, prog_var)::out,
-    typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
+    conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_disj(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Disjuncts, !TCIConstraints, !Conflict) :-
+        InstMap0, Disjuncts, !TCIConstraints, !ConflictConstraints) :-
     look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
         TCIVarToConstraintMap, InstMap0, Disjuncts, ArmTCIConstraints,
-        !Conflict),
+        !ConflictConstraints),
     detect_conflicts_in_arms(set.init, ArmTCIConstraints,
-        !TCIConstraints, !Conflict).
+        !TCIConstraints, !ConflictConstraints).
 
 :- pred look_for_typeclass_info_conflict_in_disjuncts(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
     list(multi_map(prog_constraint, prog_var))::out,
-    typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
+    conflict_constraints::in, conflict_constraints::out) is det.
 
-look_for_typeclass_info_conflict_in_disjuncts(_, _, _, [], [], !Conflict).
+look_for_typeclass_info_conflict_in_disjuncts(_, _, _, [], [],
+        !ConflictConstraints).
 look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
         TCIVarToConstraintMap, InstMap0, [HeadDisjunct | TailDisjuncts],
-        [HeadTCIConstraints | TailTCIConstraints], !Conflict) :-
+        [HeadTCIConstraints | TailTCIConstraints], !ConflictConstraints) :-
     look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, HeadDisjunct, multi_map.init, HeadTCIConstraints, !Conflict),
+        InstMap0, HeadDisjunct, multi_map.init, HeadTCIConstraints,
+        !ConflictConstraints),
     look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
         TCIVarToConstraintMap, InstMap0,
-        TailDisjuncts, TailTCIConstraints, !Conflict).
+        TailDisjuncts, TailTCIConstraints, !ConflictConstraints).
 
 %---------------------%
 
@@ -716,34 +716,36 @@ look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
     map(prog_var, prog_constraint)::in, instmap::in, list(case)::in,
     multi_map(prog_constraint, prog_var)::in,
     multi_map(prog_constraint, prog_var)::out,
-    typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
+    conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_switch(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Disjuncts, !TCIConstraints, !Conflict) :-
+        InstMap0, Disjuncts, !TCIConstraints, !ConflictConstraints) :-
     look_for_typeclass_info_conflict_in_cases(DupTCIVars,
         TCIVarToConstraintMap, InstMap0, Disjuncts, ArmTCIConstraints,
-        !Conflict),
+        !ConflictConstraints),
     detect_conflicts_in_arms(set.init, ArmTCIConstraints,
-        !TCIConstraints, !Conflict).
+        !TCIConstraints, !ConflictConstraints).
 
 :- pred look_for_typeclass_info_conflict_in_cases(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(case)::in,
     list(multi_map(prog_constraint, prog_var))::out,
-    typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
+    conflict_constraints::in, conflict_constraints::out) is det.
 
-look_for_typeclass_info_conflict_in_cases(_, _, _, [], [], !Conflict).
+look_for_typeclass_info_conflict_in_cases(_, _, _, [], [],
+        !ConflictConstraints).
 look_for_typeclass_info_conflict_in_cases(DupTCIVars, TCIVarToConstraintMap,
         InstMap0, [HeadCase | TailCases],
-        [HeadTCIConstraints | TailTCIConstraints], !Conflict) :-
+        [HeadTCIConstraints | TailTCIConstraints], !ConflictConstraints) :-
     HeadCase = case(_MainConsId, _OtherConsIds, HeadGoal),
     % We ignore the instmap changes resulting from binding the switched-on
     % variable to MainConsId or OtherConsIds, because they cannot affect
     % the compiler-generated code that binds typeclass infos.
     look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, HeadGoal, multi_map.init, HeadTCIConstraints, !Conflict),
+        InstMap0, HeadGoal, multi_map.init, HeadTCIConstraints,
+        !ConflictConstraints),
     look_for_typeclass_info_conflict_in_cases(DupTCIVars,
         TCIVarToConstraintMap, InstMap0,
-        TailCases, TailTCIConstraints, !Conflict).
+        TailCases, TailTCIConstraints, !ConflictConstraints).
 
 %---------------------%
 
@@ -751,36 +753,54 @@ look_for_typeclass_info_conflict_in_cases(DupTCIVars, TCIVarToConstraintMap,
     list(multi_map(prog_constraint, prog_var))::in,
     multi_map(prog_constraint, prog_var)::in,
     multi_map(prog_constraint, prog_var)::out,
-    typeclass_info_conflict::in, typeclass_info_conflict::out) is det.
+    conflict_constraints::in, conflict_constraints::out) is det.
 
-detect_conflicts_in_arms(_, [], !AllArmTCIConstraints, !Conflict).
+detect_conflicts_in_arms(_, [], !AllArmTCIConstraints, !ConflictConstraints).
 detect_conflicts_in_arms(!.SeenConstraints,
         [HeadArmTCIConstraints | TailArmTCIConstraints],
-        !AllArmTCIConstraints, !Conflict) :-
+        !AllArmTCIConstraints, !ConflictConstraints) :-
     multi_map.keys_as_set(HeadArmTCIConstraints, HeadConstraints),
     set.intersect(!.SeenConstraints, HeadConstraints, SeenHeadConstraints),
     ( if set.is_non_empty(SeenHeadConstraints) then
         % This arm and one (or more) of the previous arms both define
         % typeclass_infos for the constraints in SeenHeadConstraints.
-        !:Conflict = found_typeclass_info_conflict
+        set.union(SeenHeadConstraints, !ConflictConstraints)
     else
         true
     ),
     set.union(HeadConstraints, !SeenConstraints),
     multi_map.merge(HeadArmTCIConstraints, !AllArmTCIConstraints),
     detect_conflicts_in_arms(!.SeenConstraints, TailArmTCIConstraints,
-        !AllArmTCIConstraints, !Conflict).
+        !AllArmTCIConstraints, !ConflictConstraints).
 
 %---------------------%
 
 :- pred report_typeclass_info_problem(module_info::in,
-    pred_id::in, proc_id::in, proc_info::in,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in,
+    conflict_constraints::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
-report_typeclass_info_problem(ModuleInfo, PredId, ProcId, ProcInfo, !Specs) :-
+report_typeclass_info_problem(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+        ConflictConstraintSet, !Specs) :-
     ProcPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
-        output_debug, yes(color_subject), should_module_qualify, [],
+        output_debug, yes(color_subject), should_not_module_qualify, [],
         proc(PredId, ProcId)),
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    set.to_sorted_list(ConflictConstraintSet, ConflictConstraints),
+    list.map(conflict_constraint_to_piece(TVarSet),
+        ConflictConstraints, ConflictConstraintPieces0),
+    list.intersperse(nl, ConflictConstraintPieces0, ConflictConstraintPieces),
+    ( if list.length(ConflictConstraints) > 1 then
+        ConflictPieces =
+            [words("The constraints involved are:"), nl_indent_delta(1)] ++
+            ConflictConstraintPieces ++
+            [nl_indent_delta(-1)]
+    else
+        ConflictPieces =
+            [words("The constraint involved is:"), nl_indent_delta(1)] ++
+            ConflictConstraintPieces ++
+            [nl_indent_delta(-1)]
+    ),
     proc_info_get_context(ProcInfo, Context),
     % We say "debugging enabled", because this is by far
     % the most common way for body_typeinfo_liveness to be set.
@@ -792,7 +812,8 @@ report_typeclass_info_problem(ModuleInfo, PredId, ProcId, ProcInfo, !Specs) :-
         words("the mapping between typeclass on the one hand,"),
         words("and the hidden, compiler-generated variables"),
         words("storing information about them on the other hand."),
-        nl],
+        nl] ++
+        ConflictPieces,
     VerbosePieces =
         [words("The limitation occurs when the definition"),
         words("of a predicate or function contains"),
@@ -808,6 +829,14 @@ report_typeclass_info_problem(ModuleInfo, PredId, ProcId, ProcInfo, !Specs) :-
     Phase = phase_simplify(report_in_any_mode),
     Spec = gen_spec($pred, severity_error, Phase, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+:- pred conflict_constraint_to_piece(tvarset::in, prog_constraint::in,
+    format_piece::out) is det.
+
+conflict_constraint_to_piece(TVarSet, Constraint, Piece) :-
+    ConstraintStr = mercury_constraint_to_string(TVarSet, print_name_only,
+        Constraint),
+    Piece = words(ConstraintStr).
 
 %---------------------------------------------------------------------------%
 
