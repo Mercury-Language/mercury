@@ -127,9 +127,11 @@
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -522,8 +524,8 @@ check_typeclass_records(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
             proc_info_get_goal(ProcInfo, Goal),
             look_for_typeclass_info_conflict_in_goal(DupTCIVars,
                 DupTCIVarsToConstraintMap, InstMap0, Goal,
-                multi_map.init, _, set.init, ConflictConstraints),
-            ( if set.is_empty(ConflictConstraints) then
+                multi_map.init, _, multi_map.init, ConflictConstraints),
+            ( if multi_map.is_empty(ConflictConstraints) then
                 true
             else
                 report_typeclass_info_problem(ModuleInfo, PredId, ProcId,
@@ -532,7 +534,11 @@ check_typeclass_records(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         )
     ).
 
-:- type conflict_constraints == set(prog_constraint).
+:- type constraint_tci_db == multi_map(prog_constraint, constraint_tci).
+:- type constraint_tci
+    --->    constraint_tci(prog_var, prog_context).
+
+:- type conflict_constraints == constraint_tci_db.
 
     % Look for branched goals in which two different branches
     % produce typeclass_infos for the same constraint.
@@ -550,8 +556,7 @@ check_typeclass_records(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     %
 :- pred look_for_typeclass_info_conflict_in_goal(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, hlds_goal::in,
-    multi_map(prog_constraint, prog_var)::in,
-    multi_map(prog_constraint, prog_var)::out,
+    constraint_tci_db::in, constraint_tci_db::out,
     conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
@@ -567,8 +572,11 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
         set_of_var.intersect(DupTCIVars, ChangedVars, ChangedDupTCIVars),
         ( if set_of_var.is_non_empty(ChangedDupTCIVars) then
+            Context = goal_info_get_context(GoalInfo),
             set_of_var.to_sorted_list(ChangedDupTCIVars, ChangedDupTCIVarList),
-            list.foldl(record_delta_typeclass_info_var(TCIVarToConstraintMap),
+            list.foldl(
+                record_delta_typeclass_info_var(TCIVarToConstraintMap,
+                    Context),
                 ChangedDupTCIVarList, !TCIConstraints)
         else
             true
@@ -648,21 +656,20 @@ look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
     ).
 
 :- pred record_delta_typeclass_info_var(map(prog_var, prog_constraint)::in,
-    prog_var::in,
-    multi_map(prog_constraint, prog_var)::in,
-    multi_map(prog_constraint, prog_var)::out) is det.
+    prog_context::in, prog_var::in,
+    constraint_tci_db::in, constraint_tci_db::out) is det.
 
-record_delta_typeclass_info_var(TCIVarToConstraintMap, TCIVar,
+record_delta_typeclass_info_var(TCIVarToConstraintMap, Context, TCIVar,
         !TCIConstraints) :-
     map.lookup(TCIVarToConstraintMap, TCIVar, Constraint),
-    multi_map.add(Constraint, TCIVar, !TCIConstraints).
+    ConstraintTCI = constraint_tci(TCIVar, Context),
+    multi_map.add(Constraint, ConstraintTCI, !TCIConstraints).
 
 %---------------------%
 
 :- pred look_for_typeclass_info_conflict_in_plain_conj(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
-    multi_map(prog_constraint, prog_var)::in,
-    multi_map(prog_constraint, prog_var)::out,
+    constraint_tci_db::in, constraint_tci_db::out,
     conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_plain_conj(_, _, _, [],
@@ -681,8 +688,7 @@ look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
 
 :- pred look_for_typeclass_info_conflict_in_disj(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
-    multi_map(prog_constraint, prog_var)::in,
-    multi_map(prog_constraint, prog_var)::out,
+    constraint_tci_db::in, constraint_tci_db::out,
     conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_disj(DupTCIVars, TCIVarToConstraintMap,
@@ -695,7 +701,7 @@ look_for_typeclass_info_conflict_in_disj(DupTCIVars, TCIVarToConstraintMap,
 
 :- pred look_for_typeclass_info_conflict_in_disjuncts(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
-    list(multi_map(prog_constraint, prog_var))::out,
+    list(constraint_tci_db)::out,
     conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_disjuncts(_, _, _, [], [],
@@ -714,8 +720,7 @@ look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
 
 :- pred look_for_typeclass_info_conflict_in_switch(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(case)::in,
-    multi_map(prog_constraint, prog_var)::in,
-    multi_map(prog_constraint, prog_var)::out,
+    constraint_tci_db::in, constraint_tci_db::out,
     conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_switch(DupTCIVars, TCIVarToConstraintMap,
@@ -728,7 +733,7 @@ look_for_typeclass_info_conflict_in_switch(DupTCIVars, TCIVarToConstraintMap,
 
 :- pred look_for_typeclass_info_conflict_in_cases(set_of_progvar::in,
     map(prog_var, prog_constraint)::in, instmap::in, list(case)::in,
-    list(multi_map(prog_constraint, prog_var))::out,
+    list(constraint_tci_db)::out,
     conflict_constraints::in, conflict_constraints::out) is det.
 
 look_for_typeclass_info_conflict_in_cases(_, _, _, [], [],
@@ -750,9 +755,8 @@ look_for_typeclass_info_conflict_in_cases(DupTCIVars, TCIVarToConstraintMap,
 %---------------------%
 
 :- pred detect_conflicts_in_arms(set(prog_constraint)::in,
-    list(multi_map(prog_constraint, prog_var))::in,
-    multi_map(prog_constraint, prog_var)::in,
-    multi_map(prog_constraint, prog_var)::out,
+    list(constraint_tci_db)::in,
+    constraint_tci_db::in, constraint_tci_db::out,
     conflict_constraints::in, conflict_constraints::out) is det.
 
 detect_conflicts_in_arms(_, [], !AllArmTCIConstraints, !ConflictConstraints).
@@ -764,7 +768,9 @@ detect_conflicts_in_arms(!.SeenConstraints,
     ( if set.is_non_empty(SeenHeadConstraints) then
         % This arm and one (or more) of the previous arms both define
         % typeclass_infos for the constraints in SeenHeadConstraints.
-        set.union(SeenHeadConstraints, !ConflictConstraints)
+        multi_map.select(HeadArmTCIConstraints, SeenHeadConstraints,
+            HeadArmSeenTCIConstraints),
+        multi_map.merge(HeadArmSeenTCIConstraints, !ConflictConstraints)
     else
         true
     ),
@@ -786,10 +792,12 @@ report_typeclass_info_problem(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         output_debug, yes(color_subject), should_not_module_qualify, [],
         proc(PredId, ProcId)),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    set.to_sorted_list(ConflictConstraintSet, ConflictConstraints),
+    multi_map.to_sorted_assoc_list(ConflictConstraintSet, ConflictConstraints),
     list.map(conflict_constraint_to_piece(TVarSet),
-        ConflictConstraints, ConflictConstraintPieces0),
-    list.intersperse(nl, ConflictConstraintPieces0, ConflictConstraintPieces),
+        ConflictConstraints, ConflictConstraintPieceLists0),
+    list.intersperse([nl],
+        ConflictConstraintPieceLists0, ConflictConstraintPieceLists),
+    list.condense(ConflictConstraintPieceLists, ConflictConstraintPieces),
     ( if list.length(ConflictConstraints) > 1 then
         ConflictPieces =
             [words("The constraints involved are:"), nl_indent_delta(1)] ++
@@ -806,10 +814,11 @@ report_typeclass_info_problem(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     % the most common way for body_typeinfo_liveness to be set.
     % Both alternatives, the use of .agc grades and manual setting
     % of the option, are extremely rare.
-    MainPieces = [words("Sorry: the compiler cannot compile")] ++
+    MainPieces = [words("Sorry: the compiler")] ++
+        color_as_incorrect([words("cannot correctly compile")]) ++
         ProcPieces ++ [words("with debugging enabled."),
         words("This is due to a known limitation that concerns"),
-        words("the mapping between typeclass on the one hand,"),
+        words("the mapping between typeclass constraints on the one hand,"),
         words("and the hidden, compiler-generated variables"),
         words("storing information about them on the other hand."),
         nl] ++
@@ -830,13 +839,25 @@ report_typeclass_info_problem(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     Spec = gen_spec($pred, severity_error, Phase, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-:- pred conflict_constraint_to_piece(tvarset::in, prog_constraint::in,
-    format_piece::out) is det.
+:- pred conflict_constraint_to_piece(tvarset::in,
+    pair(prog_constraint, list(constraint_tci))::in,
+    list(format_piece)::out) is det.
 
-conflict_constraint_to_piece(TVarSet, Constraint, Piece) :-
+conflict_constraint_to_piece(TVarSet, Constraint - ConstraintTCIs, Pieces) :-
     ConstraintStr = mercury_constraint_to_string(TVarSet, print_name_only,
         Constraint),
-    Piece = words(ConstraintStr).
+    ContextToLineNumberPiece =
+        ( func(ConstraintTCI) = LineNumberPiece :-
+            ConstraintTCI = constraint_tci(_TCIVar, Context),
+            LineNumber = context_line(Context),
+            LineNumberPiece = int_fixed(LineNumber)
+        ),
+    LineNumberPieces0 = list.map(ContextToLineNumberPiece, ConstraintTCIs),
+    list.sort_and_remove_dups(LineNumberPieces0, LineNumberPieces),
+    OnLineS = choose_number(LineNumberPieces, "on line", "on lines"),
+    LineNumbersPieces = piece_list_to_pieces("and", LineNumberPieces),
+    Pieces = [words(ConstraintStr), nl_indent_delta(1)] ++
+        [words(OnLineS)] ++ LineNumbersPieces ++ [nl_indent_delta(-1)].
 
 %---------------------------------------------------------------------------%
 

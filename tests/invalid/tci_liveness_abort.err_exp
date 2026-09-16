@@ -1,11 +1,12 @@
-tci_liveness_abort.m:020: Sorry: the compiler cannot compile predicate
-tci_liveness_abort.m:020:   [38;5;87m`test1'/4[39;49m with debugging enabled. This is due to a
-tci_liveness_abort.m:020:   known limitation that concerns the mapping between
-tci_liveness_abort.m:020:   typeclass on the one hand, and the hidden,
-tci_liveness_abort.m:020:   compiler-generated variables storing information
-tci_liveness_abort.m:020:   about them on the other hand.
+tci_liveness_abort.m:020: Sorry: the compiler [38;5;203mcannot correctly compile[39;49m
+tci_liveness_abort.m:020:   predicate [38;5;87m`test1'/4[39;49m with debugging enabled. This is
+tci_liveness_abort.m:020:   due to a known limitation that concerns the mapping
+tci_liveness_abort.m:020:   between typeclass constraints on the one hand, and
+tci_liveness_abort.m:020:   the hidden, compiler-generated variables storing
+tci_liveness_abort.m:020:   information about them on the other hand.
 tci_liveness_abort.m:020:   The constraint involved is:
 tci_liveness_abort.m:020:     tci_liveness_abort.host(T)
+tci_liveness_abort.m:020:       on line 53
 tci_liveness_abort.m:020:   The limitation occurs when the definition of a
 tci_liveness_abort.m:020:   predicate or function contains both the
 tci_liveness_abort.m:020:   deconstructions of terms that contain existentially
@@ -14,11 +15,12 @@ tci_liveness_abort.m:020:   if-then-elses, disjunctions and/or switches. You
 tci_liveness_abort.m:020:   can work around the limitation by moving such
 tci_liveness_abort.m:020:   deconstruction unifications to helper predicates
 tci_liveness_abort.m:020:   that contain no branching.
-tci_liveness_abort.m:022: Sorry: the compiler cannot compile predicate
-tci_liveness_abort.m:022:   [38;5;87m`test2'/3[39;49m with debugging enabled. This is due to a
-tci_liveness_abort.m:022:   known limitation that concerns the mapping between
-tci_liveness_abort.m:022:   typeclass on the one hand, and the hidden,
-tci_liveness_abort.m:022:   compiler-generated variables storing information
-tci_liveness_abort.m:022:   about them on the other hand.
+tci_liveness_abort.m:022: Sorry: the compiler [38;5;203mcannot correctly compile[39;49m
+tci_liveness_abort.m:022:   predicate [38;5;87m`test2'/3[39;49m with debugging enabled. This is
+tci_liveness_abort.m:022:   due to a known limitation that concerns the mapping
+tci_liveness_abort.m:022:   between typeclass constraints on the one hand, and
+tci_liveness_abort.m:022:   the hidden, compiler-generated variables storing
+tci_liveness_abort.m:022:   information about them on the other hand.
 tci_liveness_abort.m:022:   The constraint involved is:
 tci_liveness_abort.m:022:     tci_liveness_abort.host(T)
+tci_liveness_abort.m:022:       on line 77

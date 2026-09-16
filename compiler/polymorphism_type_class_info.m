@@ -310,8 +310,9 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
                 list.det_index1(OtherArgs, Index, SelectedArg),
                 SelectedArg = csa_const_struct(SelectedConstNum)
             then
-                materialize_typeclass_info_var(Constraint, SelectedConstNum,
-                    TypeClassInfoVar, MaybeConsId, Goals, !Info),
+                materialize_typeclass_info_var(Context, Constraint,
+                    SelectedConstNum, TypeClassInfoVar, MaybeConsId,
+                    Goals, !Info),
                 TypeClassInfoVarMCA = TypeClassInfoVar - yes(SelectedArg),
                 record_constructed_typeclass_info_var("subclass constant",
                     do_not_dump_all_tables, -1, Constraint,
@@ -425,7 +426,7 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
         search_for_constant_instance(ConstStructDb0, ConstInstanceId,
             InstanceIdConstNum)
     then
-        materialize_typeclass_info_var(Constraint, InstanceIdConstNum,
+        materialize_typeclass_info_var(Context, Constraint, InstanceIdConstNum,
             TypeClassInfoVar, MaybeConsId, Goals, !Info),
         CSA = csa_const_struct(InstanceIdConstNum),
         TypeClassInfoVarMCA = TypeClassInfoVar - yes(CSA),
@@ -564,7 +565,8 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
             instance_id(InstanceNum), InstanceTypes, BaseConsId),
         materialize_base_typeclass_info_var(Constraint, BaseConsId, BaseVar,
             BaseGoals, !Info),
-        construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
+        construct_typeclass_info(Context, Constraint,
+            BaseVar, BaseConsId, ArgVarsMCAs,
             InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
             BaseGoals ++ PrevGoals, Goals, !Info),
         TypeClassInfoVarMCA = TypeClassInfoVar - TypeClassInfoMCA,
@@ -630,14 +632,14 @@ make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred construct_typeclass_info(prog_constraint::in,
+:- pred construct_typeclass_info(prog_context::in, prog_constraint::in,
     prog_var::in, cons_id::in,
     assoc_list(prog_var, maybe(const_struct_arg))::in, var_maps::in,
     prog_var::out, maybe(const_struct_arg)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
-construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
+construct_typeclass_info(Context, Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
         PrevGoals, AllGoals, !Info) :-
     % Build a unification to add the argvars to the base_typeclass_info.
@@ -688,18 +690,15 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
             Unification, UnifyContext),
 
         % Create a goal_info for the unification.
-        goal_info_init(GoalInfo0),
         NonLocals = set_of_var.make_singleton(TypeClassInfoVar),
-        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
         % Note that we could perhaps be more accurate than `ground(shared)',
         % but it shouldn't make any difference.
         TypeClassInfoInst = bound(shared, inst_test_results_fgtc,
             [bound_functor(ConsId, [])]),
         TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
         InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
-        goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
-        goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
-
+        goal_info_init(NonLocals, InstMapDelta, detism_erroneous,
+            purity_pure, Context, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         % XXX reset varset and vartypes
         AllGoals = [Goal]
@@ -726,9 +725,7 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
             Unification, UnifyContext),
 
         % Create a goal_info for the unification.
-        goal_info_init(GoalInfo0),
         set_of_var.list_to_set([TypeClassInfoVar | AllArgVars], NonLocals),
-        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
         list.duplicate(NumArgs, Ground, ArgInsts),
         % Note that we could perhaps be more accurate than `ground(shared)',
         % but it shouldn't make any difference.
@@ -744,8 +741,8 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
             [bound_functor(InstConsId, ArgInsts)]),
         TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
         InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
-        goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
-        goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
+        goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+            Context, GoalInfo),
 
         Goal = hlds_goal(GoalExpr, GoalInfo),
         AllGoals = PrevGoals ++ [Goal]
@@ -1006,17 +1003,17 @@ materialize_base_typeclass_info_var(Constraint, ConsId, Var, Goals, !Info) :-
 
     % Create the rest of the unification goal.
     NonLocals = set_of_var.make_singleton(Var),
-    InstmapDelta = instmap_delta_bind_var(Var),
-    goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
+    InstMapDelta = instmap_delta_bind_var(Var),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         GoalInfo),
     Goal = hlds_goal(Unify, GoalInfo),
     Goals = [Goal].
 
-:- pred materialize_typeclass_info_var(prog_constraint::in, int::in,
-    prog_var::out, maybe(cons_id)::out, list(hlds_goal)::out,
+:- pred materialize_typeclass_info_var(prog_context::in, prog_constraint::in,
+    int::in, prog_var::out, maybe(cons_id)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
-materialize_typeclass_info_var(Constraint, InstanceIdConstNum,
+materialize_typeclass_info_var(Context, Constraint, InstanceIdConstNum,
         Var, MaybeConsId, Goals, !Info) :-
     poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap0),
     InstanceIdConstArg = csa_const_struct(InstanceIdConstNum),
@@ -1048,9 +1045,9 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum,
 
         % Create a goal_info for the unification.
         NonLocals = set_of_var.make_singleton(Var),
-        InstmapDelta = instmap_delta_bind_var(Var),
-        goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
-            GoalInfo),
+        InstMapDelta = instmap_delta_bind_var(Var),
+        goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+            Context, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Goals = [Goal]
     ).

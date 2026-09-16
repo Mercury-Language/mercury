@@ -466,7 +466,7 @@ describe_one_proc_name_pred_info_maybe_argmodes(PredInfo, Lang, MaybeColor,
         % front by polymorphism.m - we only want the last `PredFormArity'
         % of them.
         list.det_drop(NumExtraArgs, ArgModes0, ArgModes),
-        strip_module_names_from_mode_list(strip_builtin_module_name,
+        strip_module_names_from_mode_list(strip_all_module_names,
             set_default_func, ArgModes, StrippedArgModes0),
         strip_typed_insts_from_mode_list(StrippedArgModes0, StrippedArgModes),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),

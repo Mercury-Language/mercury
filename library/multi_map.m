@@ -246,6 +246,13 @@
 :- pred to_assoc_list(multi_map(K, V)::in,
     assoc_list(K, list(V))::out) is det.
 
+    % Convert a multi_map to an association list, with all the values
+    % for each key in one element of the association list, sorted on the keys.
+    %
+:- func to_sorted_assoc_list(multi_map(K, V)) = assoc_list(K, list(V)).
+:- pred to_sorted_assoc_list(multi_map(K, V)::in,
+    assoc_list(K, list(V))::out) is det.
+
     % Convert an association list with all the values for each key
     % in one element of the list to a multi_map.
     %
@@ -587,6 +594,12 @@ to_assoc_list(MultiMap) = AssocList :-
 
 to_assoc_list(MultiMap, AssocList) :-
     map.to_assoc_list(MultiMap, AssocList).
+
+to_sorted_assoc_list(MultiMap) = AssocList :-
+    multi_map.to_sorted_assoc_list(MultiMap, AssocList).
+
+to_sorted_assoc_list(MultiMap, AssocList) :-
+    map.to_sorted_assoc_list(MultiMap, AssocList).
 
 from_assoc_list(AssocList) = MultiMap :-
     multi_map.from_assoc_list(AssocList, MultiMap).

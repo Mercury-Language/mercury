@@ -822,6 +822,8 @@ Changes to the Mercury standard library
     - func `all_ucount/1`
     - pred `all_ucount/2`
     - func `get_values_for_key/2`
+    - func `to_sorted_assoc_list/1`
+    - pred `to_sorted_assoc_list/2`
     - func `ucount/1`
     - pred `ucount/2`
 
