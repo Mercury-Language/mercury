@@ -825,10 +825,10 @@ starts_with_digit(functor(float(_), _, _)).
 starts_with_digit(functor(atom(Op), Args, _)) :-
     (
         Args = [Arg, _],
-        ops.lookup_infix_op(ops.init_mercury_op_table, Op, _, _, _)
+        ops.mercury_op_table_search_infix_op(Op, _, _, _)
     ;
         Args = [Arg],
-        ops.lookup_postfix_op(ops.init_mercury_op_table, Op, _, _)
+        ops.mercury_op_table_search_postfix_op(Op, _, _)
     ),
     starts_with_digit(Arg).
 
