@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Test conversion of uints to strings.
 % The .exp file is from systems where uint is 32 bit.
-% The .exp2 file is for systems wwhere uint is 64 bit.
+% The .exp2 file is for systems where uint is 64 bit.
 %---------------------------------------------------------------------------%
 
 :- module uint_string_conv.
@@ -28,8 +28,7 @@ main(!IO) :-
     list.foldl(do_test, test_values, !IO),
     io.nl(!IO).
 
-:- pred do_test( uint, io, io).
-:- mode do_test(in, di, uo) is det.
+:- pred do_test(uint::in, io::di, io::uo) is det.
 
 do_test(U, !IO) :-
     Decimal = uint_to_string(U),
