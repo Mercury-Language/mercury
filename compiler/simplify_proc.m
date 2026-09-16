@@ -116,6 +116,8 @@
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
@@ -844,8 +846,10 @@ report_typeclass_info_problem(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     list(format_piece)::out) is det.
 
 conflict_constraint_to_piece(TVarSet, Constraint - ConstraintTCIs, Pieces) :-
+    strip_module_names_from_constraint(strip_all_module_names,
+        set_default_func, Constraint, StrippedConstraint),
     ConstraintStr = mercury_constraint_to_string(TVarSet, print_name_only,
-        Constraint),
+        StrippedConstraint),
     ContextToLineNumberPiece =
         ( func(ConstraintTCI) = LineNumberPiece :-
             ConstraintTCI = constraint_tci(_TCIVar, Context),

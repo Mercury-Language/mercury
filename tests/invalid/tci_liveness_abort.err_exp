@@ -5,7 +5,7 @@ tci_liveness_abort.m:020:   between typeclass constraints on the one hand, and
 tci_liveness_abort.m:020:   the hidden, compiler-generated variables storing
 tci_liveness_abort.m:020:   information about them on the other hand.
 tci_liveness_abort.m:020:   The constraint involved is:
-tci_liveness_abort.m:020:     tci_liveness_abort.host(T)
+tci_liveness_abort.m:020:     host(T)
 tci_liveness_abort.m:020:       on line 53
 tci_liveness_abort.m:020:   The limitation occurs when the definition of a
 tci_liveness_abort.m:020:   predicate or function contains both the
@@ -22,5 +22,5 @@ tci_liveness_abort.m:022:   between typeclass constraints on the one hand, and
 tci_liveness_abort.m:022:   the hidden, compiler-generated variables storing
 tci_liveness_abort.m:022:   information about them on the other hand.
 tci_liveness_abort.m:022:   The constraint involved is:
-tci_liveness_abort.m:022:     tci_liveness_abort.host(T)
+tci_liveness_abort.m:022:     host(T)
 tci_liveness_abort.m:022:       on line 77
