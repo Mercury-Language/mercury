@@ -15,8 +15,10 @@ robdd.m
 rtti_implementation.m
 stm_builtin.m
 string.format.m
+string.from_int.m
 string.parse_runtime.m
 string.parse_util.m
+string.to_int.m
 string.to_string.m
 table_builtin.m
 term_size_prof_builtin.m

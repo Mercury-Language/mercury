@@ -727,8 +727,10 @@ stdlib_module_doc_undoc("stream.string_writer",         doc).
 stdlib_module_doc_undoc("string",                       doc).
 stdlib_module_doc_undoc("string.builder",               doc).
 stdlib_module_doc_undoc("string.format",                undoc).
+stdlib_module_doc_undoc("string.from_int",              undoc).
 stdlib_module_doc_undoc("string.parse_runtime",         undoc).
 stdlib_module_doc_undoc("string.parse_util",            undoc).
+stdlib_module_doc_undoc("string.to_int",                undoc).
 stdlib_module_doc_undoc("string.to_string",             undoc).
 stdlib_module_doc_undoc("table_builtin",                undoc).
 stdlib_module_doc_undoc("table_statistics",             doc).
