@@ -22,7 +22,7 @@
 % When Mercury is compiled to Java, strings are represented using Java's
 % String type. When Mercury is compiled to C#, strings are represented using
 % C#'s `System.String' type. Both of these types use the UTF-16 encoding.
-% With UTF-16, each code unit is a 16 bit integer, and a single code point
+% With UTF-16, each code unit is a 16-bit integer, and a single code point
 % requires one or two of these code units to encode.
 %
 % The Mercury compiler will only allow well-formed UTF-8 or UTF-16 string
@@ -58,6 +58,7 @@
 % - Computing hashes of strings.
 % - Tests on strings.
 % - Appending strings.
+% - Making strings from smaller pieces.
 % - Splitting up strings.
 % - Dealing with prefixes and suffixes.
 % - Transformations of strings.
@@ -295,7 +296,7 @@
 
     % index_next(String, Index, NextIndex, Char):
     %
-    % Succeeds if and only if Index is between 0 and Len-1 (both inclusive)
+    % Succeeds if-and-only-if Index is between 0 and Len-1 (both inclusive)
     % where Len is the number of code units in String.
     %
     % If Index is the initial code unit offset of a well-formed code unit
@@ -305,7 +306,7 @@
     %
     % If Index is *not* the initial code unit offset of a well-formed
     % code unit sequence, NextIndex will be set to Index + 1, but the value
-    % of Char will depend on string encoding used by the target platform.
+    % of Char will depend on the string encoding used by the target platform.
     %
     % - On platforms that encode strings using UTF-8 (i.e. when targeting C)
     %   Char will be set to U+FFFD (the Unicode replacement character).
@@ -331,7 +332,7 @@
     %   in String starting at Index, and that code point is U+FFFD, then
     %   MaybeReplaced will also be `not_replaced'.
     %
-    % - If Char is U+FFFD but there is *no* well formed code point encoded
+    % - If Char is U+FFFD but there is *no* well-formed code point encoded
     %   in String starting at Index, then MaybeReplaced will be
     %   `replaced_code_unit(CodeUnit)', where CodeUnit is the code unit
     %   at offset Index in String.
@@ -554,7 +555,7 @@
     % code_point_offset(String, StartOffset, Count, Offset):
     %
     % Let S be the substring of String from code unit StartOffset to the
-    % end of the string. Offset is code unit offset after advancing Count
+    % end of the string. Offset is the code unit offset after advancing Count
     % steps in S, where each step skips over either:
     %  - one encoding of a Unicode code point, or
     %  - one code unit that is part of an ill-formed sequence.
@@ -601,6 +602,7 @@
 
     % Cross-compilation-friendly versions of hash, hash2 and hash3
     % respectively.
+    %
 :- func hash4(string) = int.
 :- func hash5(string) = int.
 :- func hash6(string) = int.
@@ -1228,7 +1230,7 @@
 :- mode to_upper(in, in) is semidet.        % implied
 
     % Converts a string to lowercase.
-    % Only letters (a-z) in the ASCII range are converted.
+    % Only letters (A-Z) in the ASCII range are converted.
     %
     % This function transforms each code point individually.
     % Letters that occur within a combining sequence will be converted,
@@ -1351,7 +1353,7 @@
     % characters are replaced by a single space.
     %
     % See char.is_whitespace for the definition of whitespace characters
-    % used by this predicate.
+    % used by this function.
     %
 :- func word_wrap(string, int) = string.
 
@@ -1432,7 +1434,7 @@
 :- mode foldl_between(in(pred(in, in, out) is multi), in, in, in,
     in, out) is multi.
 
-    % foldl2_between(Pred, String, Start, End, !Acc1, !Acc2)
+    % foldl2_between(Pred, String, Start, End, !Acc1, !Acc2):
     % A variant of foldl_between with two accumulators.
     %
     % Start and End are in terms of code units.
@@ -1505,14 +1507,14 @@
     % - the fields on each line are separated with Separator;
     % - successive lines are separated by newlines.
     %
-    % There won't be a newline at the end of Table, to allow callers to decide
-    % whether they want to add one or not.
+    % There will not be a newline at the end of Table, to allow callers to
+    % decide whether they want to add one or not.
     %
-    % This predicate considers the length of a string to be the number of
+    % This function considers the length of a string to be the number of
     % code points in the string. Note that this is only an approximation:
     % it will be inaccurate in the presence of e.g. combining characters.
     %
-    % This predicate requires all the columns to contain the same number
+    % This function requires all the columns to contain the same number
     % of strings, and throws an exception if this is not the case.
     %
     % An example:
@@ -1678,7 +1680,7 @@
     % or uppercase letters (A-Z). There will be no leading zeros.
     %
     % Base must be between 2 and 36, both inclusive; if it is not,
-    % the predicate will throw an exception.
+    % the function will throw an exception.
     %
 :- func int_to_base_string(int::in, int::in) = (string::uo) is det.
 :- pred int_to_base_string(int::in, int::in, string::uo) is det.
@@ -1698,7 +1700,7 @@
     % in the output. Useful for formatting numbers like "1,300,000".
     %
     % Base must be between 2 and 36, both inclusive; if it is not,
-    % the predicate will throw an exception.
+    % the function will throw an exception.
     %
 :- func int_to_base_string_group(int, int, int, string) = string.
 :- mode int_to_base_string_group(in, in, in, in) = uo is det.
@@ -1764,7 +1766,7 @@
 % Converting floats to strings.
 
     % Convert a float to a string.
-    % In the current implementation, the resulting float will be in the form
+    % In the current implementation, the resulting string will be in the form
     % that it was printed using the format string "%#.<prec>g".
     % <prec> will be in the range p to (p+2)
     % where p = floor(mantissa_digits * log2(base_radix) / log2(10)).
@@ -1916,7 +1918,7 @@
 % The modules string.format and string.parse_util have to be visible
 % from outside the string module, since they need to be visible to the
 % compiler (specifically, to format_call.m and its submodule
-% parse_format_string.m.). However, they should not be part of the
+% parse_format_string.m). However, they should not be part of the
 % publicly documented interface of the Mercury standard library,
 % since we do not want any user code to depend on the implementation
 % details they contain.
@@ -5258,7 +5260,7 @@ word_wrap_separator(Str, N, BrokenWordSep0) = Wrapped :-
     % the linewrapped version of the original word stream.
     %
     % Words is the list of words to process. BrokenWordSep is the string to use
-    % as a separator if a word has to split between two lines, because it is
+    % as a separator if a word has to be split between two lines, because it is
     % too long to fit on one line. BrokenWordSepLen is the length of
     % BrokenWordSep.
     %
@@ -5593,7 +5595,7 @@ pad_row([SenseWidth | SenseWidths], [ColumnStr0 | ColumnStrs0],
             ColumnStr = pad_left(ColumnStr0, ' ', ColumnWidth)
         )
     else
-        % This is wider the "max width" of this column, but, as per
+        % This is wider than the "max width" of this column, but, as per
         % the discussion on m-rev on 2023 May 22, splitting up ColumnStr0
         % at ColumnWidth would be a bad idea, because there is a nontrivial
         % chance that the cut would come between two combining Unicode
@@ -5867,7 +5869,7 @@ int_to_base_string(N, Base, Str) :-
     ),
     % Note that in order to handle MININT correctly, we need to do the
     % conversion of the absolute number into digits using negative numbers.
-    % we can't use positive numbers, because -MININT overflows.
+    % We can't use positive numbers, because -MININT overflows.
     ( if N < 0 then
         int_to_base_string_loop(N, Base, ['-'], RevChars)
     else
