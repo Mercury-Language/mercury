@@ -1434,7 +1434,8 @@ modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        Goal1 = true_goal,
+        Context = goal_info_get_context(GoalInfo0),
+        Goal1 = true_goal(Context),
         InstMap = InstMap1,
         Goal1 = hlds_goal(_, ExitGoalInfo)
     ),
@@ -1490,7 +1491,8 @@ unique_modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0,
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        Goal1 = true_goal,
+        Context = goal_info_get_context(GoalInfo0),
+        Goal1 = true_goal(Context),
         Goal1 = hlds_goal(_, ExitGoalInfo)
     ),
 

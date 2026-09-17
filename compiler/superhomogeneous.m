@@ -843,8 +843,7 @@ unravel_special_if_then_else(XVar, CondTerm0, ThenTerm0, ElseTerm0,
         MaybeVarsCond = error4({OoMVarsCondErrSpecs, VarsConsWarnSpecs}),
         add_unravel_oom_errs(OoMVarsCondErrSpecs, !UrInfo),
         add_unravel_warns(VarsConsWarnSpecs, !UrInfo),
-        Expansion = expansion(not_fgti,
-            cord.singleton(true_goal_with_context(Context)))
+        Expansion = expansion(not_fgti, cord.singleton(true_goal(Context)))
     ).
 
 :- pred unravel_special_field_get(prog_var::in, prog_term::in, prog_term::in,

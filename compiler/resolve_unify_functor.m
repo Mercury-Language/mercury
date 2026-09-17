@@ -242,7 +242,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
                 IsPlainUnify = is_not_plain_unify
             ;
                 MaybeProcId = no,
-                Goal = true_goal,
+                Goal = true_goal(Context),
                 SNA = sym_name_arity(SymName0, Arity),
                 Pieces = [words("Error: the predicate or function")] ++
                     color_as_subject([qual_sym_name_arity(SNA)]) ++

@@ -355,12 +355,16 @@ expand_one_arg_in_proc_2(ModuleInfo, TypeTable, HeadVar0, ArgMode0,
             !VarTable),
         list.duplicate(list.length(NewHeadVars), ArgMode0, NewArgModes),
         MaybeHeadVarsAndArgModes = yes(NewHeadVars - NewArgModes),
+        !.Goal = hlds_goal(_, GoalInfo),
+        Context = goal_info_get_context(GoalInfo),
         ( if ArgMode0 = in_mode then
-            construct_functor(HeadVar0, ConsId, NewHeadVars, UnifGoal),
-            conjoin_goals_keep_detism(UnifGoal, !Goal)
+            construct_functor(Context, HeadVar0, ConsId, NewHeadVars,
+                UnifyGoal),
+            conjoin_goals_keep_detism(Context, UnifyGoal, !Goal)
         else if ArgMode0 = out_mode then
-            deconstruct_functor(HeadVar0, ConsId, NewHeadVars, UnifGoal),
-            conjoin_goals_keep_detism(!.Goal, UnifGoal, !:Goal)
+            deconstruct_functor(Context, HeadVar0, ConsId, NewHeadVars,
+                UnifyGoal),
+            conjoin_goals_keep_detism(Context, !.Goal, UnifyGoal, !:Goal)
         else
             unexpected($pred, "unsupported mode")
         ),
@@ -385,15 +389,15 @@ create_untuple_vars(ModuleInfo, ParentName, Num,
     create_untuple_vars(ModuleInfo, ParentName, Num + 1,
         Types, NewVars, !VarTable).
 
-:- pred conjoin_goals_keep_detism(hlds_goal::in, hlds_goal::in,
-    hlds_goal::out) is det.
+:- pred conjoin_goals_keep_detism(prog_context::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::out) is det.
 
-conjoin_goals_keep_detism(GoalA, GoalB, Goal) :-
+conjoin_goals_keep_detism(Context, GoalA, GoalB, Goal) :-
     goal_to_conj_list(GoalA, GoalListA),
     goal_to_conj_list(GoalB, GoalListB),
     GoalList = GoalListA ++ GoalListB,
     goal_list_determinism(GoalList, Determinism),
-    goal_info_init(GoalInfo0),
+    goal_info_init(Context, GoalInfo0),
     goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
     Goal = hlds_goal(conj(plain_conj, GoalList), GoalInfo).
 
@@ -538,11 +542,13 @@ fix_calls_in_goal(ModuleInfo, TransformMap, Goal0, Goal, !VarTable) :-
             module_info_pred_proc_info(ModuleInfo, CalleePredId,
                 CalleeProcId, _CalleePredInfo, CalleeProcInfo),
             proc_info_get_argmodes(CalleeProcInfo, OrigArgModes),
-            expand_call_args(ModuleInfo, TypeTable, OrigArgs, OrigArgModes,
-                Args, EnterUnifs, ExitUnifs, !VarTable),
+            Context = goal_info_get_context(GoalInfo0),
+            expand_call_args(ModuleInfo, TypeTable, Context,
+                OrigArgs, OrigArgModes, Args,
+                EnterUnifyGoals, ExitUnifyGoals, !VarTable),
             ( if CallAux = CallAux0 ^ call_args := Args then
                 Call = hlds_goal(CallAux, CallAuxInfo),
-                ConjList = EnterUnifs ++ [Call] ++ ExitUnifs,
+                ConjList = EnterUnifyGoals ++ [Call] ++ ExitUnifyGoals,
                 conj_list_to_goal(ConjList, GoalInfo0, Goal)
             else
                 unexpected($pred, "not a call template")
@@ -651,29 +657,30 @@ fix_calls_in_cases(ModuleInfo, TransformMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred expand_call_args(module_info::in, type_table::in,
+:- pred expand_call_args(module_info::in, type_table::in, prog_context::in,
     list(prog_var)::in, list(mer_mode)::in,
     list(prog_var)::out, list(hlds_goal)::out, list(hlds_goal)::out,
     var_table::in, var_table::out) is det.
 
-expand_call_args(ModuleInfo, TypeTable, ArgVars0, ArgModes0, ArgVars,
-        EnterUnifs, ExitUnifs, !VarTable) :-
-    expand_call_args_2(ModuleInfo, TypeTable, [], ArgVars0, ArgModes0, ArgVars,
-        EnterUnifs, ExitUnifs, !VarTable).
+expand_call_args(ModuleInfo, TypeTable, Context, ArgVars0, ArgModes0, ArgVars,
+        EnterUnifyGoals, ExitUnifyGoals, !VarTable) :-
+    expand_call_args_2(ModuleInfo, TypeTable, Context,
+        [], ArgVars0, ArgModes0, ArgVars,
+        EnterUnifyGoals, ExitUnifyGoals, !VarTable).
 
-:- pred expand_call_args_2(module_info::in, type_table::in, list(mer_type)::in,
-    list(prog_var)::in, list(mer_mode)::in,
+:- pred expand_call_args_2(module_info::in, type_table::in, prog_context::in,
+    list(mer_type)::in, list(prog_var)::in, list(mer_mode)::in,
     list(prog_var)::out, list(hlds_goal)::out, list(hlds_goal)::out,
     var_table::in, var_table::out) is det.
 
-expand_call_args_2(_, _, _, [], [], [], [], [], !VarTable).
-expand_call_args_2(_, _, _, [], [_ | _], _, _, _, !VarTable) :-
+expand_call_args_2(_, _, _, _, [], [], [], [], [], !VarTable).
+expand_call_args_2(_, _, _, _, [], [_ | _], _, _, _, !VarTable) :-
     unexpected($pred, "length mismatch").
-expand_call_args_2(_, _, _, [_ | _], [], _, _, _, !VarTable) :-
+expand_call_args_2(_, _, _, _, [_ | _], [], _, _, _, !VarTable) :-
     unexpected($pred, "length mismatch").
-expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes0,
+expand_call_args_2(ModuleInfo, TypeTable, Context, ContainerTypes0,
         [ArgVar0 | ArgVars0], [ArgMode | ArgModes], ArgVars,
-        EnterUnifs, ExitUnifs, !VarTable) :-
+        EnterUnifyGoals, ExitUnifyGoals, !VarTable) :-
     lookup_var_type(!.VarTable, ArgVar0, Arg0Type),
     expand_argument(ArgMode, Arg0Type, ContainerTypes0, TypeTable, Expansion),
     (
@@ -683,24 +690,26 @@ expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes0,
         list.duplicate(NumVars, ArgMode, ReplacementModes),
         ContainerTypes = [Arg0Type | ContainerTypes0],
         ( if ArgMode = in_mode then
-            deconstruct_functor(ArgVar0, ConsId, ReplacementArgVars, Unif),
-            EnterUnifs = [Unif | EnterUnifs1],
-            expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes,
+            deconstruct_functor(Context, ArgVar0, ConsId, ReplacementArgVars,
+                UnifyGoal),
+            expand_call_args_2(ModuleInfo, TypeTable, Context, ContainerTypes,
                 ReplacementArgVars ++ ArgVars0, ReplacementModes ++ ArgModes,
-                ArgVars, EnterUnifs1, ExitUnifs, !VarTable)
+                ArgVars, EnterUnifyGoals1, ExitUnifyGoals, !VarTable),
+            EnterUnifyGoals = [UnifyGoal | EnterUnifyGoals1]
         else if ArgMode = out_mode then
-            construct_functor(ArgVar0, ConsId, ReplacementArgVars, Unif),
-            ExitUnifs = ExitUnifs1 ++ [Unif],
-            expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes,
+            construct_functor(Context, ArgVar0, ConsId, ReplacementArgVars,
+                UnifyGoal),
+            expand_call_args_2(ModuleInfo, TypeTable, Context, ContainerTypes,
                 ReplacementArgVars ++ ArgVars0, ReplacementModes ++ ArgModes,
-                ArgVars, EnterUnifs, ExitUnifs1, !VarTable)
+                ArgVars, EnterUnifyGoals, ExitUnifyGoals1, !VarTable),
+            ExitUnifyGoals = ExitUnifyGoals1 ++ [UnifyGoal]
         else
             unexpected($pred, "unsupported mode")
         )
     ;
         Expansion = no_expansion,
-        expand_call_args(ModuleInfo, TypeTable, ArgVars0, ArgModes, ArgVars1,
-            EnterUnifs, ExitUnifs, !VarTable),
+        expand_call_args(ModuleInfo, TypeTable, Context, ArgVars0, ArgModes,
+            ArgVars1, EnterUnifyGoals, ExitUnifyGoals, !VarTable),
         ArgVars = [ArgVar0 | ArgVars1]
     ).
 

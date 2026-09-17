@@ -106,6 +106,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module univ.
 :- import_module varset.
 
@@ -1167,7 +1168,9 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         goals_size([EarlierGoal | BetweenGoals], NegSizeDelta),
         SizeDelta = - NegSizeDelta,
         pd_info_incr_size_delta(SizeDelta, !PDInfo),
-        create_call_goal(VersionPredProcId, VersionInfo, Renaming,
+        EarlierGoal = hlds_goal(_, EarlierGoalInfo),
+        Context = goal_info_get_context(EarlierGoalInfo),
+        create_call_goal(Context, VersionPredProcId, VersionInfo, Renaming,
             TypeRenaming, Goal, !PDInfo),
         MaybeGoal = yes(Goal)
     else
@@ -1390,12 +1393,12 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 
     % Create a goal to call a newly created version.
     %
-:- pred create_call_goal(pred_proc_id::in, version_info::in,
+:- pred create_call_goal(prog_context::in, pred_proc_id::in, version_info::in,
     map(prog_var, prog_var)::in, tsubst::in, hlds_goal::out,
     pd_info::in, pd_info::out) is det.
 
-create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
-        !PDInfo) :-
+create_call_goal(Context, proc(PredId, ProcId), VersionInfo,
+        Renaming, TypeSubn, Goal, !PDInfo) :-
     OldArgVars = VersionInfo ^ version_arg_vars,
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -1427,7 +1430,8 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
     proc_info_interface_determinism(ProcInfo, Detism),
     set_of_var.list_to_set(ArgVars, NonLocals),
     pred_info_get_purity(CalledPredInfo, Purity),
-    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
+        GoalInfo),
 
     PredModule = pred_info_module(CalledPredInfo),
     PredName = pred_info_name(CalledPredInfo),
@@ -1478,13 +1482,12 @@ create_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, NonLocals, FoldGoal) :-
     goal_list_instmap_delta(DeforestConj, InstMapDelta0),
     instmap_delta_restrict(NonLocals, InstMapDelta0, InstMapDelta),
     goal_list_purity(DeforestConj, Purity),
-    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, ConjInfo0),
-
+    EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     % Give the conjunction a context so that the generated predicate
     % name points to the location of the first goal.
-    EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     EarlierContext = goal_info_get_context(EarlierGoalInfo),
-    goal_info_set_context(EarlierContext, ConjInfo0, ConjInfo),
+    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, EarlierContext,
+        ConjInfo),
     FoldGoal = hlds_goal(conj(plain_conj, DeforestConj), ConjInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1689,7 +1692,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
         !.VarTable, _),
 
     % Only fill in as much as pd_util.goals_match actually looks at.
-    goal_info_init(GoalInfo),
+    goal_info_init(dummy_context, GoalInfo),
     NonGeneralFirstGoalExpr = plain_call(NonGeneralisedPredId,
         NonGeneralisedProcId, NewArgVars, not_builtin, no, unqualified("")),
     NonGeneralFirstGoal = hlds_goal(NonGeneralFirstGoalExpr, GoalInfo),
@@ -1845,7 +1848,7 @@ can_move_goal_backward(ModuleInfo, FullyStrict, ThisGoal, Goals) :-
 push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
         BetweenGoals, LaterGoal, Goal, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
-    EarlierGoal = hlds_goal(EarlierGoalExpr, _),
+    EarlierGoal = hlds_goal(EarlierGoalExpr, EarlierGoalInfo),
     (
         EarlierGoalExpr = switch(Var1, CanFail1, Cases1),
         set_of_var.insert(Var1, NonLocals, CaseNonLocals),
@@ -1870,6 +1873,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
             NonLocals, 1, DeforestInfo, Disjuncts0, Disjuncts, !PDInfo),
         GoalExpr = disj(Disjuncts)
     ;
+        % XXX SUBTYPE
         ( EarlierGoalExpr = unify(_, _, _, _, _)
         ; EarlierGoalExpr = plain_call(_, _, _, _, _, _)
         ; EarlierGoalExpr = generic_call(_, _, _, _, _)
@@ -1893,7 +1897,8 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     goal_list_purity([EarlierGoal | BetweenGoals], Purity0),
     Purity1 = goal_info_get_purity(LaterInfo),
     worst_purity(Purity0, Purity1) = Purity,
-    goal_info_init(NonLocals, Delta, Detism, Purity, GoalInfo),
+    Context = goal_info_get_context(EarlierGoalInfo),
+    goal_info_init(NonLocals, Delta, Detism, Purity, Context, GoalInfo),
     Goal2 = hlds_goal(GoalExpr, GoalInfo),
 
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
@@ -1965,13 +1970,15 @@ append_goal(Goal0, BetweenGoals, GoalToAppend0, NonLocals0,
     goal_to_conj_list(GoalToAppend, GoalListToAppend),
     list.condense([GoalList0, BetweenGoals, GoalListToAppend], Goals),
 
+    Goal0 = hlds_goal(_, GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
     goal_list_nonlocals(Goals, SubNonLocals),
     set_of_var.intersect(NonLocals0, SubNonLocals, NonLocals),
     goal_list_instmap_delta(Goals, Delta0),
     instmap_delta_restrict(NonLocals, Delta0, Delta),
     goal_list_determinism(Goals, Detism),
     goal_list_purity(Goals, Purity),
-    goal_info_init(NonLocals, Delta, Detism, Purity, GoalInfo),
+    goal_info_init(NonLocals, Delta, Detism, Purity, Context, GoalInfo),
     Goal = hlds_goal(conj(plain_conj, Goals), GoalInfo).
 
 %-----------------------------------------------------------------------------%

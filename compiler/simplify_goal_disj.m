@@ -86,7 +86,7 @@ simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     (
         Disjuncts = [],
         Context = goal_info_get_context(GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
+        hlds_goal(GoalExpr, GoalInfo) = fail_goal(Context)
     ;
         Disjuncts = [SingleGoal],
         % A singleton disjunction is equivalent to the goal itself.
@@ -431,7 +431,8 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
         Cond = Disjunct,
         Cond = hlds_goal(_CondGoal, CondGoalInfo),
 
-        Then = true_goal,
+        ThenContext = goal_info_get_context(CondGoalInfo),
+        Then = true_goal(ThenContext),
 
         det_disj_to_ite(Disjuncts, GoalInfo, Rest),
         Rest = hlds_goal(_RestGoal, RestGoalInfo),

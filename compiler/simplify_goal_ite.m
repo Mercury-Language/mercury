@@ -512,12 +512,12 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % Replace `not true' with `fail'.
         SubGoal1 = hlds_goal(conj(plain_conj, []), _)
     then
-        hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
+        hlds_goal(GoalExpr, GoalInfo) = fail_goal(Context)
     else if
         % Replace `not fail' with `true'.
         SubGoal1 = hlds_goal(disj([]), _)
     then
-        hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
+        hlds_goal(GoalExpr, GoalInfo) = true_goal(Context)
     else if
         % Remove double negation.
         SubGoal1 =

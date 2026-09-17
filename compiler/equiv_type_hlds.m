@@ -1475,7 +1475,8 @@ hash_cons_inst(Inst0, Inst, !Cache) :-
 
 replace_in_goal(TypeEqvMap, Goal0, Goal, Changed, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed0, !Info),
+    replace_in_goal_expr(TypeEqvMap, GoalInfo0, GoalExpr0, GoalExpr,
+        Changed0, !Info),
 
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     TVarSet0 = !.Info ^ ethri_tvarset,
@@ -1527,11 +1528,12 @@ replace_in_goals(TypeEqvMap, List0 @ [Goal0 | Goals0], List, Changed, !Acc) :-
         List = [Goal | Goals]
     ).
 
-:- pred replace_in_goal_expr(type_eqv_map::in,
+:- pred replace_in_goal_expr(type_eqv_map::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out, maybe_changed::out,
     replace_info::in, replace_info::out) is det.
 
-replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
+replace_in_goal_expr(TypeEqvMap, GoalInfo0, GoalExpr0, GoalExpr,
+        Changed, !Info) :-
     (
         GoalExpr0 = conj(ConjType, Goals0),
         replace_in_goals(TypeEqvMap, Goals0, Goals, Changed, !Info),
@@ -1654,7 +1656,8 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
                 ),
                 unexpected($pred, "info not found")
             ),
-            polymorphism_make_type_info_var_mi(TypeInfoType, dummy_context,
+            Context = goal_info_get_context(GoalInfo0),
+            polymorphism_make_type_info_var_mi(Context, TypeInfoType,
                 TypeInfoVar, Goals0, ModuleInfo0, ModuleInfo,
                 PredInfo1, PredInfo, ProcInfo0, ProcInfo),
             pred_info_get_typevarset(PredInfo, TVarSet),

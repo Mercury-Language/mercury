@@ -96,7 +96,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % An empty switch always fails.
         simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info),
         Context = goal_info_get_context(GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
+        hlds_goal(GoalExpr, GoalInfo) = fail_goal(Context)
     ;
         Cases = [Case],
         Case = case(MainConsId, OtherConsIds, SingleGoal),
@@ -127,8 +127,10 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                     simplify_info_set_module_info(ModuleInfo2, !Info),
                     goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
                 else
-                    create_test_unification(Var, MainConsId, MainConsIdArity,
-                        UnifyGoal, InstMap0, !Info),
+                    Context = goal_info_get_context(GoalInfo0),
+                    create_test_unification(Context, Var,
+                        MainConsId, MainConsIdArity, UnifyGoal,
+                        InstMap0, !Info),
 
                     % Conjoin the test and the rest of the case.
                     goal_to_conj_list(SingleGoal, SingleGoalConj),
@@ -147,7 +149,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                     det_conjunction_detism(detism_semi, CaseDetism, Detism),
                     goal_list_purity(GoalList, Purity),
                     goal_info_init(NonLocals, InstMapDelta, Detism, Purity,
-                        CombinedGoalInfo),
+                        Context, CombinedGoalInfo),
 
                     simplify_info_set_rerun_quant_instmap_delta(!Info),
                     GoalExpr = conj(plain_conj, GoalList),
@@ -326,10 +328,12 @@ simplify_switch_cases(Var, [Case0 | Cases0], NestedContext0, InstMap0, Common0,
     % in a can_fail switch.
     % This will abort if the cons_id is existentially typed.
     %
-:- pred create_test_unification(prog_var::in, cons_id::in, int::in,
-    hlds_goal::out, instmap::in, simplify_info::in, simplify_info::out) is det.
+:- pred create_test_unification(prog_context::in, prog_var::in,
+    cons_id::in, int::in, hlds_goal::out, instmap::in,
+    simplify_info::in, simplify_info::out) is det.
 
-create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
+create_test_unification(Context, Var, ConsId, ConsArity, ExtraGoal,
+        InstMap0, !Info) :-
     simplify_info_get_var_table(!.Info, VarTable0),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     lookup_var_type(VarTable0, Var, VarType),
@@ -357,7 +361,7 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
     % The test can't bind any variables, so the InstMapDelta should be empty.
     instmap_delta_init_reachable(InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_semi, purity_pure,
-        ExtraGoalInfo),
+        Context, ExtraGoalInfo),
     ExtraGoal = hlds_goal(ExtraGoalExpr, ExtraGoalInfo).
 
 %---------------------------------------------------------------------------%

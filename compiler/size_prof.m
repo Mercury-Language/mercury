@@ -877,8 +877,8 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
     else if type_to_ctor_and_args(Type, TypeCtor, ArgTypes) then
         (
             ArgTypes = [],
-            make_type_ctor_info(TypeCtor, [], TypeCtorVar, TypeCtorGoals,
-                !Info),
+            make_type_ctor_info(Context, TypeCtor, [],
+                TypeCtorVar, TypeCtorGoals, !Info),
             TypeInfoVar = TypeCtorVar,
             TypeInfoGoals = TypeCtorGoals
         ;
@@ -937,7 +937,8 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     list.map2_foldl(make_type_info(Context), ArgTypes,
         ArgTypeInfoVars, ArgTypeInfoGoalLists, !Info),
     ArgTypeInfoGoals = list.condense(ArgTypeInfoGoalLists),
-    make_type_ctor_info(TypeCtor, ArgTypes, TypeCtorVar, TypeCtorGoals, !Info),
+    make_type_ctor_info(Context, TypeCtor, ArgTypes,
+        TypeCtorVar, TypeCtorGoals, !Info),
     (
         CtorIsVarArity = yes,
         list.length(ArgTypes, Arity),
@@ -963,7 +964,7 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
         new_type_info_var_vt(Type, type_info, TypeInfoVar,
             VarTable2, VarTable, RttiVarMaps2, RttiVarMaps3)
     ),
-    init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
+    init_type_info_var(Context, Type, ArgVars, TypeInfoVar, TypeInfoGoal,
         RttiVarMaps3, RttiVarMaps),
 
     !Info ^ spi_var_table := VarTable,
@@ -975,10 +976,12 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     % type_ctor_info. Return the variable holding the type_ctor_info in
     % TypeCtorVar, and the goals needed to create it in TypeCtorGoals.
     %
-:- pred make_type_ctor_info(type_ctor::in, list(mer_type)::in, prog_var::out,
-    list(hlds_goal)::out, size_prof_info::in, size_prof_info::out) is det.
+:- pred make_type_ctor_info(prog_context::in,
+    type_ctor::in, list(mer_type)::in, prog_var::out, list(hlds_goal)::out,
+    size_prof_info::in, size_prof_info::out) is det.
 
-make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
+make_type_ctor_info(Context, TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals,
+        !Info) :-
     ( if
         map.search(!.Info ^ spi_type_ctor_map, TypeCtor, TypeCtorVarPrime)
     then
@@ -992,8 +995,9 @@ make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
         ),
         VarTable0 = !.Info ^ spi_var_table,
         RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
-        init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorVar, _ConsId,
-            TypeCtorGoal, VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
+        init_const_type_ctor_info_var(Context, Type, TypeCtor, TypeCtorVar,
+            _ConsId, TypeCtorGoal, VarTable0, VarTable,
+            RttiVarMaps0, RttiVarMaps),
         TypeCtorGoals = [TypeCtorGoal],
         !Info ^ spi_var_table := VarTable,
         !Info ^ spi_rtti_varmaps := RttiVarMaps

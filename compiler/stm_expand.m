@@ -1150,7 +1150,7 @@ create_test_on_exception(Context, ExceptVar, StmVar, ReturnType, RecCall, Goal,
         !NewPredInfo) :-
     create_aux_variable(univ_type, yes("ExceptUnivVar"), ExceptUnivVar,
         !NewPredInfo),
-    deconstruct_functor(ExceptVar, exception_exception_functor,
+    deconstruct_functor(Context, ExceptVar, exception_exception_functor,
         [ExceptUnivVar], DeconstructException),
     make_type_info(stm_rollback_exception_type, TypeInfoRollbackVar,
         TypeInfoRollbackAssign, !NewPredInfo),
@@ -1690,7 +1690,7 @@ create_or_else_pred(Context, AtomicGoalVars, BranchGoalVars, Closures,
     create_cloned_pred(InputVars ++ OutputVars ++ [StmDI, StmUO],
         InputTypes ++ OutputTypes ++ [stm_state_type, stm_state_type],
         InputModes ++ OutputModes ++ [di_mode, uo_mode], stmck_or_else,
-        true_goal, MaybeDetism, NewPredInfo0, CallGoal, !StmInfo),
+        true_goal(Context), MaybeDetism, NewPredInfo0, CallGoal, !StmInfo),
 
     create_aux_variable(stm_state_type, yes("STMDI"), NewStmDI,
         NewPredInfo0, NewPredInfo1),
@@ -2000,7 +2000,7 @@ create_or_else_branch(Context, AtomicGoalVars, ReturnType, OuterStmDIVar,
     % Code to extract the exception result.
     create_aux_variable(univ_type, yes("ExceptUnivVar"), ExceptUnivVar,
         !NewPredInfo),
-    deconstruct_functor(ReturnExceptVar, exception_exception_functor,
+    deconstruct_functor(Context, ReturnExceptVar, exception_exception_functor,
         [ExceptUnivVar], DeconstructException),
 
     create_plain_conj([DiscardCall, RethrowCall], NotRetryBranch),
@@ -2053,6 +2053,7 @@ deconstruct_output(AtomicGoalVars, ReturnType, ReturnExceptVar,
         Goal, StmInfo, !NewPredInfo) :-
     get_input_output_varlist(AtomicGoalVars, _, OutputVars),
     get_input_output_types(AtomicGoalVars, StmInfo, _, OutputTypes),
+    Context = dummy_context,
 
     (
         OutputTypes = [],
@@ -2061,24 +2062,25 @@ deconstruct_output(AtomicGoalVars, ReturnType, ReturnExceptVar,
         % causing an exception in a later stage.
         create_aux_variable(ReturnType, yes("BoringResult"), SuccessResultVar,
             !NewPredInfo),
-        deconstruct_functor(ReturnExceptVar, exception_succeeded_functor,
-            [SuccessResultVar], Goal)
+        deconstruct_functor(Context, ReturnExceptVar,
+            exception_succeeded_functor, [SuccessResultVar], Goal)
     ;
         OutputTypes = [_],
         % Wrapper returns a single value -- Simply get the value from the
         % exception result and return.
         OutVar = list.det_head(OutputVars),
-        deconstruct_functor(ReturnExceptVar, exception_succeeded_functor,
-            [OutVar], Goal)
+        deconstruct_functor(Context, ReturnExceptVar,
+            exception_succeeded_functor, [OutVar], Goal)
     ;
         OutputTypes = [_, _ | _],
         % Wrapper returns a tuple. Get the tuple result and return it.
         make_type_info(ReturnType, _, MakeType, !NewPredInfo),
         create_aux_variable(ReturnType, yes("SuccessResult"), SuccessResultVar,
             !NewPredInfo),
-        deconstruct_functor(ReturnExceptVar, exception_succeeded_functor,
-            [SuccessResultVar], DeconstructGoal),
-        deconstruct_tuple(SuccessResultVar, OutputVars, UnifyOutputGoal),
+        deconstruct_functor(Context, ReturnExceptVar,
+            exception_succeeded_functor, [SuccessResultVar], DeconstructGoal),
+        deconstruct_tuple(Context, SuccessResultVar, OutputVars,
+            UnifyOutputGoal),
 
         create_plain_conj([DeconstructGoal, UnifyOutputGoal | MakeType],
             Goal)
@@ -2118,7 +2120,7 @@ construct_output(Context, AtomicGoalVars, ResultType, ResultVar, StmInfo,
         OutputTypes = [_, _ | _],
         % Wrapper returns a tuple. Creates a tuple from the output values.
         make_type_info(ResultType, _, MakeType, !NewPredInfo),
-        construct_tuple(ResultVar, OutputVars, Goal),
+        construct_tuple(Context, ResultVar, OutputVars, Goal),
         Goals = [Goal | MakeType]
     ).
 
@@ -2335,7 +2337,8 @@ create_closure(PredProcID, Args, ArgTypes, ArgModes, ClosureVar,
     construct_higher_order_pred_type(purity_pure, ArgTypes, ClosureType),
     ClosureCons = closure_cons(ShroudPredProcID),
     create_aux_variable(ClosureType, yes("Closure"), ClosureVar, !NewPredInfo),
-    construct_functor(ClosureVar, ClosureCons, Args, ClosureAssignGoal0),
+    construct_functor(dummy_context, ClosureVar, ClosureCons, Args,
+        ClosureAssignGoal0),
 
     ClosureAssignInstmapDeltaList = assoc_list.from_corresponding_lists(
         [ClosureVar], [ground(shared, higher_order(pred_inst_info(
@@ -2422,7 +2425,7 @@ create_plain_conj(GoalsInConj, ConjGoal) :-
 make_type_info(Type, TypeInfoVar, Goals, NewPredInfo0, NewPredInfo) :-
     NewPredInfo0 = stm_new_pred_info(ModuleInfo0, PredId, ProcId,
         PredInfo0, ProcInfo0, Context, VarCnt),
-    polymorphism_make_type_info_var_mi(Type, Context, TypeInfoVar, Goals,
+    polymorphism_make_type_info_var_mi(Context, Type, TypeInfoVar, Goals,
         ModuleInfo0, ModuleInfo, PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     NewPredInfo = stm_new_pred_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo, Context, VarCnt).

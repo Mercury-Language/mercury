@@ -429,10 +429,9 @@ add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity, TypeSpecInfo0,
         ArgVarSet0, ArgVarSet),
 
     pred_info_get_context(PredInfo0, PredContext),
-    goal_info_init(GoalInfo0),
+    goal_info_init(PredContext, GoalInfo0),
     set_of_var.list_to_set(ArgVars, NonLocals),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
-    goal_info_set_context(PredContext, GoalInfo1, GoalInfo),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 
     % We don't record the called predicate as used -- it is only used
     % if there is some other call. This call is only used to make

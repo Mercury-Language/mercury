@@ -28,18 +28,14 @@
 
     % Return the HLDS equivalent of `true'.
     %
-:- func true_goal = hlds_goal.
 :- func true_goal_expr = hlds_goal_expr.
-
-:- func true_goal_with_context(prog_context) = hlds_goal.
+:- func true_goal(prog_context) = hlds_goal.
 
     % Return the HLDS equivalent of `fail'.
     %
-:- func fail_goal = hlds_goal.
 :- func fail_goal_expr = hlds_goal_expr.
-:- func fail_goal_info = hlds_goal_info.
-
-:- func fail_goal_with_context(prog_context) = hlds_goal.
+:- func fail_goal_info(prog_context) = hlds_goal_info.
+:- func fail_goal(prog_context) = hlds_goal.
 
     % Create the hlds_goal for a unification, filling in all the as yet
     % unknown slots with dummy values. The unification is constructed as a
@@ -58,25 +54,25 @@
     prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     hlds_goal::out) is det.
 
-:- pred make_complicated_unify_assigns(list(prog_var)::in, list(prog_var)::in,
-    list(hlds_goal)::out) is det.
+:- pred make_complicated_unify_assigns(prog_context::in,
+    list(prog_var)::in, list(prog_var)::in, list(hlds_goal)::out) is det.
 
-:- pred make_complicated_unify_assign(prog_var::in, prog_var::in,
-    hlds_goal::out) is det.
+:- pred make_complicated_unify_assign(prog_context::in,
+    prog_var::in, prog_var::in, hlds_goal::out) is det.
 
     % Create the hlds_goal for a unification that assigns the second variable
     % to the first. The initial inst of the second variable should be
     % ground_inst. The resulting goal has all its fields filled in.
     %
 :- pred make_simple_assign(prog_var::in, prog_var::in,
-    unify_main_context::in, list(unify_sub_context)::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     hlds_goal::out) is det.
 
     % Create the hlds_goal for a unification that tests the equality of two
     % values of atomic types. The resulting goal has all its fields filled in.
     %
 :- pred make_simple_test(prog_var::in, prog_var::in,
-    unify_main_context::in, list(unify_sub_context)::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     hlds_goal::out) is det.
 
     % Produce a goal to construct a given constant. These predicates all
@@ -130,19 +126,19 @@
     % It fills in the non-locals, instmap_delta and determinism fields
     % of the goal_info.
     %
-:- pred construct_functor(prog_var::in, cons_id::in, list(prog_var)::in,
-    hlds_goal::out) is det.
-:- pred deconstruct_functor(prog_var::in, cons_id::in, list(prog_var)::in,
-    hlds_goal::out) is det.
+:- pred construct_functor(prog_context::in, prog_var::in, cons_id::in,
+    list(prog_var)::in, hlds_goal::out) is det.
+:- pred deconstruct_functor(prog_context::in, prog_var::in, cons_id::in,
+    list(prog_var)::in, hlds_goal::out) is det.
 
     % Produce a goal to construct or deconstruct a tuple containing
     % the given list of arguments, filling in the non-locals,
     % instmap_delta and determinism fields of the goal_info.
     %
-:- pred construct_tuple(prog_var::in, list(prog_var)::in, hlds_goal::out)
-    is det.
-:- pred deconstruct_tuple(prog_var::in, list(prog_var)::in, hlds_goal::out)
-    is det.
+:- pred construct_tuple(prog_context::in, prog_var::in, list(prog_var)::in,
+    hlds_goal::out) is det.
+:- pred deconstruct_tuple(prog_context::in, prog_var::in, list(prog_var)::in,
+    hlds_goal::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -160,32 +156,27 @@
 
 %---------------------------------------------------------------------------%
 
-true_goal = hlds_goal(true_goal_expr, GoalInfo) :-
-    instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(set_of_var.init, InstMapDelta, detism_det, purity_pure,
-        GoalInfo).
-
 true_goal_expr = conj(plain_conj, []).
 
-true_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
-    hlds_goal(GoalExpr, GoalInfo0) = true_goal,
-    goal_info_set_context(Context, GoalInfo0, GoalInfo).
+:- func true_goal_info(prog_context) = hlds_goal_info.
 
-fail_goal = hlds_goal(fail_goal_expr, GoalInfo) :-
-    instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(set_of_var.init, InstMapDelta, detism_failure, purity_pure,
-        GoalInfo).
+true_goal_info(Context) = GoalInfo :-
+    instmap_delta_init_reachable(InstMapDelta),
+    goal_info_init(set_of_var.init, InstMapDelta, detism_det, purity_pure,
+        Context, GoalInfo).
+
+true_goal(Context) = Goal :-
+    Goal = hlds_goal(true_goal_expr, true_goal_info(Context)).
 
 fail_goal_expr = disj([]).
 
-fail_goal_info = GoalInfo :-
+fail_goal_info(Context) = GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
     goal_info_init(set_of_var.init, InstMapDelta, detism_failure, purity_pure,
-        GoalInfo).
+        Context, GoalInfo).
 
-fail_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
-    hlds_goal(GoalExpr, GoalInfo0) = fail_goal,
-    goal_info_set_context(Context, GoalInfo0, GoalInfo).
+fail_goal(Context) = Goal :-
+    Goal = hlds_goal(fail_goal_expr, fail_goal_info(Context)).
 
 %---------------------------------------------------------------------------%
 
@@ -205,19 +196,19 @@ create_pure_atomic_complicated_unification(LHS, RHS, Context,
 
 %---------------------------------------------------------------------------%
 
-make_complicated_unify_assigns([], [_ | _], _) :-
+make_complicated_unify_assigns(_, [], [_ | _], _) :-
     unexpected($pred, "length mismatch").
-make_complicated_unify_assigns([_ | _], [], _) :-
+make_complicated_unify_assigns(_, [_ | _], [], _) :-
     unexpected($pred, "length mismatch").
-make_complicated_unify_assigns([], [], []).
-make_complicated_unify_assigns([Var1 | Vars1], [Var2 | Vars2],
+make_complicated_unify_assigns(_, [], [], []).
+make_complicated_unify_assigns(Context, [Var1 | Vars1], [Var2 | Vars2],
         [Goal | Goals]) :-
-    make_complicated_unify_assign(Var1, Var2, Goal),
-    make_complicated_unify_assigns(Vars1, Vars2, Goals).
+    make_complicated_unify_assign(Context, Var1, Var2, Goal),
+    make_complicated_unify_assigns(Context, Vars1, Vars2, Goals).
 
-make_complicated_unify_assign(Var1, Var2, Goal) :-
+make_complicated_unify_assign(Context, Var1, Var2, Goal) :-
     ( if Var1 = Var2 then
-        Goal = true_goal
+        Goal = true_goal(Context)
     else
         create_pure_atomic_complicated_unification(Var1, rhs_var(Var2),
             dummy_context, umc_explicit, [], Goal)
@@ -225,23 +216,23 @@ make_complicated_unify_assign(Var1, Var2, Goal) :-
 
 %---------------------------------------------------------------------------%
 
-make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
+make_simple_assign(X, Y, Context, UnifyMainContext, UnifySubContext, Goal) :-
     Ground = ground(shared, none_or_default_func),
     UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
     Unification = assign(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_var(X),
-        detism_det, purity_pure, GoalInfo),
+        detism_det, purity_pure, Context, GoalInfo),
     GoalExpr = unify(X, rhs_var(Y), UnifyMode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
+make_simple_test(X, Y, Context, UnifyMainContext, UnifySubContext, Goal) :-
     Ground = ground(shared, none_or_default_func),
     UnifyMode = unify_modes_li_lf_ri_rf(Ground, Ground, Ground, Ground),
     Unification = simple_test(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_no_var,
-        detism_semi, purity_pure, GoalInfo),
+        detism_semi, purity_pure, Context, GoalInfo),
     GoalExpr = unify(X, rhs_var(Y), UnifyMode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -340,7 +331,7 @@ make_const_construction_alloc(ConsId, Type, IsDummyType, Name, Goal, Var,
 
 %---------------------------------------------------------------------------%
 
-construct_functor(Var, ConsId, Args, Goal) :-
+construct_functor(Context, Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
     RHS = rhs_functor(ConsId, is_not_exist_constr, Args),
     UnifyMode = unify_modes_li_lf_ri_rf(free_inst, ground_inst,
@@ -352,10 +343,11 @@ construct_functor(Var, ConsId, Args, Goal) :-
     Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
     set_of_var.list_to_set([Var | Args], NonLocals),
     InstMapDelta = instmap_delta_bind_var(Var),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+        Context, GoalInfo),
     Goal = hlds_goal(Unify, GoalInfo).
 
-deconstruct_functor(Var, ConsId, Args, Goal) :-
+deconstruct_functor(Context, Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
     RHS = rhs_functor(ConsId, is_not_exist_constr, Args),
     UnifyMode = unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
@@ -367,18 +359,19 @@ deconstruct_functor(Var, ConsId, Args, Goal) :-
     Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
     set_of_var.list_to_set([Var | Args], NonLocals),
     InstMapDelta = instmap_delta_bind_vars(Args),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+        Context, GoalInfo),
     Goal = hlds_goal(Unify, GoalInfo).
 
-construct_tuple(Tuple, Args, Goal) :-
+construct_tuple(Context, Tuple, Args, Goal) :-
     list.length(Args, Arity),
     ConsId = tuple_cons(Arity),
-    construct_functor(Tuple, ConsId, Args, Goal).
+    construct_functor(Context, Tuple, ConsId, Args, Goal).
 
-deconstruct_tuple(Tuple, Args, Goal) :-
+deconstruct_tuple(Context, Tuple, Args, Goal) :-
     list.length(Args, Arity),
     ConsId = tuple_cons(Arity),
-    deconstruct_functor(Tuple, ConsId, Args, Goal).
+    deconstruct_functor(Context, Tuple, ConsId, Args, Goal).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_goal.

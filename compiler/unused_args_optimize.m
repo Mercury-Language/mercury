@@ -619,7 +619,8 @@ delete_unused_args_in_goal_expr(Goal0, Goal, !Info, Changed) :-
         then
             UnusedVars = !.Info ^ delete_unused_vars,
             ( if list.member(TermVar, UnusedVars) then
-                Goal = true_goal,
+                Context = goal_info_get_context(GoalInfo0),
+                Goal = true_goal(Context),
                 % We don't change the set of unneeded variables.
                 Changed = unchanged
             else

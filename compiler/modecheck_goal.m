@@ -614,7 +614,9 @@ modecheck_case_list(MultiModeErrorMap0, Var, [Case0 | Cases0], [Case | Cases],
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        Goal1 = true_goal,
+        Goal0 = hlds_goal(_, GoalInfo0),
+        Context = goal_info_get_context(GoalInfo0),
+        Goal1 = true_goal(Context),
         InstMap = InstMap1
     ),
 
@@ -867,7 +869,9 @@ modecheck_goal_if_then_else(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        Then = true_goal,
+        Then0 = hlds_goal(_, ThenGoalInfo0),
+        ThenContext = goal_info_get_context(ThenGoalInfo0),
+        Then = true_goal(ThenContext),
         InstMapThen = InstMapCond
     ),
     mode_info_set_pred_var_multimode_error_map(MultiModeErrorMap0, !ModeInfo),
@@ -1273,7 +1277,7 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
     mode_info_get_var_table(!.ModeInfo, VarTable0),
     proc_info_set_var_table(VarTable0, ProcInfo0, ProcInfo1),
 
-    polymorphism_make_type_info_var_mi(Type, Context,
+    polymorphism_make_type_info_var_mi(Context, Type,
         TypeInfoVar, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
         PredInfo0, PredInfo, ProcInfo1, ProcInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,

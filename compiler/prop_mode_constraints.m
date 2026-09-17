@@ -494,8 +494,7 @@ replace_call_with_conjunction(CallGoalExpr, Unifications, NewArgs, GoalExpr,
 
     % Create the new conjunction
     GoalExpr = conj(plain_conj, Goals),
-    goal_info_init(!:GoalInfo),
-    goal_info_set_context(Context, !GoalInfo),
+    goal_info_init(Context, !:GoalInfo),
     goal_info_set_nonlocals(CallNonlocals0, !GoalInfo).
 
 %----------------------------------------------------------------------------%

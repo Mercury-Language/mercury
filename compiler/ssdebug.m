@@ -791,7 +791,8 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
         ThenGoal = hlds_goal(conj(plain_conj, GoalsThen), ImpureGoalInfo),
 
         % Create the `else' branch.
-        make_switch_goal(RetryBVar, RecursiveGoal, fail_goal,
+        proc_info_get_context(!.ProcInfo, Context),
+        make_switch_goal(RetryBVar, RecursiveGoal, fail_goal(Context),
             SwitchFailPortGoal),
         GoalsElse = list.condense([
             FailArgListGoals,
@@ -825,6 +826,7 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
 ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
         !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarTable] (
+        % XXX Our caller should give us the initial PredInfo.
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
         proc_info_get_var_table(!.ProcInfo, !:VarTable),
@@ -867,8 +869,9 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
 
         make_handle_event(!.ModuleInfo, "handle_event_redo_nondet",
             [ProcIdVar, ExitArgListVar], HandleEventRedoGoal),
+        proc_info_get_context(!.ProcInfo, ProcContext),
         RedoDisjunct = hlds_goal(conj(plain_conj,
-            [HandleEventRedoGoal, fail_goal]),
+            [HandleEventRedoGoal, fail_goal(ProcContext)]),
             impure_backtrack_goal_info(detism_failure)),
 
         ExitOrRedoGoal = hlds_goal(disj([ExitDisjunct, RedoDisjunct]),
@@ -893,7 +896,7 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
             [ProcIdVar, FailArgListVar, RetryVar], HandleEventFailGoal),
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
             FullHeadVars, RecursiveGoal),
-        make_switch_goal(RetryVar, RecursiveGoal, fail_goal,
+        make_switch_goal(RetryVar, RecursiveGoal, fail_goal(ProcContext),
             SwitchFailPortGoal),
         FailDisjunctGoals = list.condense([
             FailArgListGoals,
@@ -907,6 +910,8 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
         BodyDisj = hlds_goal(disj([CallExitRedoDisjunct, FailDisjunct]),
             impure_goal_info(ProcDetism)),
         BodyGoals = ProcIdGoals ++ [BodyDisj],
+        % XXX Returning !.ProcInfo *both* in !:ModuleInfo and as an
+        % argument is dangerous.
         commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !.VarTable,
             !ProcInfo, !ModuleInfo)
     ).
@@ -956,7 +961,9 @@ ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
             FullHeadVars, RecursiveGoal),
 
         % Create the switch on Retry at fail port.
-        make_switch_goal(RetryVar, RecursiveGoal, fail_goal, SwitchGoal),
+        proc_info_get_context(!.ProcInfo, ProcContext),
+        make_switch_goal(RetryVar, RecursiveGoal, fail_goal(ProcContext),
+            SwitchGoal),
 
         % Put it all together.
         proc_info_interface_determinism(!.ProcInfo, ProcDetism),
@@ -1051,11 +1058,12 @@ get_output_args(ModuleInfo, HeadVars, ArgModes, OutputVars) :-
     var_table::in, var_table::out) is det.
 
 rename_outputs(OutputVars, !Goal, UnifyGoal, Renaming, !VarTable) :-
-    GoalInfo0 = get_hlds_goal_info(!.Goal),
+    !.Goal = hlds_goal(_, GoalInfo0),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
     create_renaming(OutputVars, InstMapDelta, !VarTable,
         UnifyGoals, _NewVars, Renaming),
-    goal_info_init(UnifyGoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
+    goal_info_init(Context, UnifyGoalInfo0),
     goal_info_set_determinism(detism_det, UnifyGoalInfo0, UnifyGoalInfo),
     conj_list_to_goal(UnifyGoals, UnifyGoalInfo, UnifyGoal),
     rename_some_vars_in_goal(Renaming, !Goal).
@@ -1142,7 +1150,7 @@ make_switch_goal(SwitchVar, DoRetryGoal, DoNotRetryGoal, SwitchGoal) :-
 
     det_switch_detism(RetryDetism, NoRetryDetism, SwitchDetism),
 
-    goal_info_init(GoalInfo0),
+    goal_info_init(dummy_context, GoalInfo0),
     goal_info_set_determinism(SwitchDetism, GoalInfo0, GoalInfo1),
     goal_info_set_purity(purity_impure, GoalInfo1, GoalInfo),
 
@@ -1180,7 +1188,7 @@ commit_goal_changes(ConjGoals, PredId, ProcId, !.PredInfo, VarTable,
 :- func impure_goal_info(determinism) = hlds_goal_info.
 
 impure_goal_info(Detism) = GoalInfo :-
-    goal_info_init(GoalInfo0),
+    goal_info_init(dummy_context, GoalInfo0),
     goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo1),
     goal_info_set_determinism(Detism, GoalInfo1, GoalInfo).
 
@@ -1246,8 +1254,8 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar, !VarTable) :-
     construct_type(TypeCtor, [], ProcIdType),
     ProcIdVarEntry = vte("ProcId", ProcIdType, is_not_dummy_type),
     add_var_entry(ProcIdVarEntry, ProcIdVar, !VarTable),
-    construct_functor(ProcIdVar, ConsId, [ModuleNameVar, PredNameVar],
-        ConstructProcIdGoal),
+    construct_functor(dummy_context, ProcIdVar, ConsId,
+        [ModuleNameVar, PredNameVar], ConstructProcIdGoal),
 
     Goals = [ConstructModuleName, ConstructPredName, ConstructProcIdGoal].
 
@@ -1323,7 +1331,7 @@ make_arg_list(_Pos, _InstMap, [], _Renaming, OutVar, [Goal], !ModuleInfo,
     ListTypeCtor = type_ctor(ListTypeSymName, 1),
     ConsId = du_data_ctor(du_ctor(qualified(mercury_list_module, "[]" ),
         0, ListTypeCtor)),
-    construct_functor(OutVar, ConsId, [], Goal).
+    construct_functor(dummy_context, OutVar, ConsId, [], Goal).
 make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar, Goals,
         !ModuleInfo, !ProcInfo, !PredInfo, !VarTable, !BoundVarDescs) :-
     Pos = Pos0 + 1,
@@ -1360,7 +1368,8 @@ make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar, Goals,
         ListTypeCtor = type_ctor(ListTypeSymName, 1),
         ConsId = du_data_ctor(du_ctor(qualified(unqualified("list"), "[|]" ),
             2, ListTypeCtor)),
-        construct_functor(OutVar, ConsId, [VarDesc, OutVar0], Goal),
+        construct_functor(dummy_context, OutVar, ConsId, [VarDesc, OutVar0],
+            Goal),
 
         %XXX Optimize me: repeated appends are slow.
         Goals = Goals0 ++ ValueGoals ++ [Goal]
@@ -1401,6 +1410,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
     VarValueTypeIsDummy = is_type_a_dummy(!.ModuleInfo, VarValueType),
     VarDescEntry = vte("VarDesc", VarValueType, VarValueTypeIsDummy),
     add_var_entry(VarDescEntry, VarDesc, !VarTable),
+    Context = dummy_context,
     ( if
         var_is_ground_in_instmap(!.ModuleInfo, !.VarTable, InstMap,
             VarToInspect)
@@ -1419,9 +1429,8 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         % some[T] bound_head_var(string, int, T) ---->
         %   some[T] bound_head_var(type_of_T, string, int, T)
 
-        Context = dummy_context,
         lookup_var_type(!.VarTable, VarToInspect, MerType),
-        polymorphism_make_type_info_var_mi(MerType, Context,
+        polymorphism_make_type_info_var_mi(Context, MerType,
             TypeInfoVar, TypeInfoGoals0, !ModuleInfo, !PredInfo, !ProcInfo),
 
         proc_info_get_var_table(!.ProcInfo, !:VarTable),
@@ -1433,12 +1442,12 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         % Renaming contains the names of all instantiated arguments
         % during the execution of the procedure's body.
         ( if map.is_empty(Renaming) then
-            construct_functor(VarDesc, ConsId,
+            construct_functor(Context, VarDesc, ConsId,
                 [TypeInfoVar, VarNameVar, VarPosVar, VarToInspect],
                 ConstructVarGoal)
         else
             map.lookup(Renaming, VarToInspect, RenamedVar),
-            construct_functor(VarDesc, ConsId,
+            construct_functor(Context, VarDesc, ConsId,
                 [TypeInfoVar, VarNameVar, VarPosVar, RenamedVar],
                 ConstructVarGoal)
         ),
@@ -1457,7 +1466,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         ConsId = du_data_ctor(du_ctor(
             qualified(SSDBModule, "unbound_head_var"), 2,
             VarValueTypeCtor)),
-        construct_functor(VarDesc, ConsId, [VarNameVar, VarPosVar],
+        construct_functor(Context, VarDesc, ConsId, [VarNameVar, VarPosVar],
             ConstructVarGoal),
 
         Goals = [ConstructVarName, ConstructVarPos, ConstructVarGoal]

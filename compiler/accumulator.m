@@ -1636,14 +1636,16 @@ create_orig_goal(Call, Substs, HeadToCallSubst, CallToHeadSubst,
     U = create_new_orig_recursive_goals(UpdateBase, Update,
         HeadToCallSubst, UpdateSubst, C),
 
+    Call = hlds_goal(_, CallGoalInfo),
+    Context = goal_info_get_context(CallGoalInfo),
     rename_some_vars_in_goal(CallToHeadSubst, Call, BaseCall),
     Cbefore = accu_goal_list(set.to_sorted_list(Before), C),
     Uupdate = accu_goal_list(set.to_sorted_list(UpdateBase) ++
         set.to_sorted_list(Update), U),
     Cbase = accu_goal_list(base_case_ids(C), C),
-    calculate_goal_info(conj(plain_conj, Cbefore ++ Uupdate ++ [BaseCall]),
-        OrigRecGoal),
-    calculate_goal_info(conj(plain_conj, Cbase), OrigBaseGoal).
+    calculate_goal_info(Context,
+        conj(plain_conj, Cbefore ++ Uupdate ++ [BaseCall]), OrigRecGoal),
+    calculate_goal_info(Context, conj(plain_conj, Cbase), OrigBaseGoal).
 
     % Create the goals which are to go in the new accumulator version
     % of the predicate.
@@ -1684,13 +1686,16 @@ create_acc_goal(Call, Substs, HeadToCallSubst, BaseIds, BasePairs, Sets,
     BaseCase = accu_goal_list(set.to_sorted_list(AssocBase `union` OtherBase)
         ++ Bafter, B),
 
-    list.map(acc_unification, BasePairs, UpdateBase),
+    Call = hlds_goal(_, CallGoalInfo),
+    Context = goal_info_get_context(CallGoalInfo),
+    list.map(acc_unification(Context), BasePairs, UpdateBase),
 
-    calculate_goal_info(
+    calculate_goal_info(Context,
         conj(plain_conj, Cbefore ++ Rassoc ++ Rupdate ++ [RecCall] ++
             Rconstruct),
         AccRecGoal),
-    calculate_goal_info(conj(plain_conj, UpdateBase ++ BaseCase), AccBaseGoal).
+    calculate_goal_info(Context,
+        conj(plain_conj, UpdateBase ++ BaseCase), AccBaseGoal).
 
     % Create the U set of goals (those that will be used in the original
     % recursive case) by renaming all the goals which are used to initialize
@@ -1737,16 +1742,18 @@ create_new_base_goals(Ids, C, AccVarSubst, HeadToCallSubst)
     %
     % is true if Goal represents the assignment unification Out = Acc.
     %
-:- pred acc_unification(pair(prog_var)::in, hlds_goal::out) is det.
+:- pred acc_unification(prog_context::in, pair(prog_var)::in,
+    hlds_goal::out) is det.
 
-acc_unification(Out - Acc, Goal) :-
+acc_unification(Context, Out - Acc, Goal) :-
     UnifyMode = unify_modes_li_lf_ri_rf(free, ground_inst,
         ground_inst, ground_inst),
-    Context = unify_context(umc_explicit, []),
-    Expr = unify(Out, rhs_var(Acc), UnifyMode, assign(Out,Acc), Context),
+    UnifyContext = unify_context(umc_explicit, []),
+    Expr = unify(Out, rhs_var(Acc), UnifyMode, assign(Out,Acc), UnifyContext),
     set_of_var.list_to_set([Out, Acc], NonLocalVars),
     InstMapDelta = instmap_delta_bind_var(Out),
-    goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure, Info),
+    goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure,
+        Context, Info),
     Goal = hlds_goal(Expr, Info).
 
 %---------------------------------------------------------------------------%
@@ -1904,15 +1911,17 @@ accu_goal_list(Ids, GS) = Goals :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred calculate_goal_info(hlds_goal_expr::in, hlds_goal::out) is det.
+:- pred calculate_goal_info(prog_context::in, hlds_goal_expr::in,
+    hlds_goal::out) is det.
 
-calculate_goal_info(GoalExpr, hlds_goal(GoalExpr, GoalInfo)) :-
+calculate_goal_info(Context, GoalExpr, hlds_goal(GoalExpr, GoalInfo)) :-
     ( if GoalExpr = conj(plain_conj, GoalList) then
         goal_list_nonlocals(GoalList, NonLocals),
         goal_list_instmap_delta(GoalList, InstMapDelta),
         goal_list_determinism(GoalList, Detism),
 
-        goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure, GoalInfo)
+        goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
+            Context, GoalInfo)
     else
         unexpected($pred, "not a conj")
     ).

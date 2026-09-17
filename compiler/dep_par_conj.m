@@ -551,8 +551,9 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
 
 sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
         NewGoal, InstMap, !VarTable, !TSStringTable) :-
+    Context = goal_info_get_context(GoalInfo),
     SharedVarsList = set_of_var.to_sorted_list(SharedVars),
-    list.map_foldl3(allocate_future(ModuleInfo), SharedVarsList,
+    list.map_foldl3(allocate_future(ModuleInfo, Context), SharedVarsList,
         AllocateFuturesGoals, !VarTable, map.init, FutureMap, !TSStringTable),
     list.condense(AllocateFuturesGoals, AllocateFutures),
     list.map_foldl2(
@@ -3130,26 +3131,26 @@ seen_more_signal(FinalSignal0, FinalSignal) = SeenMoreSignal :-
     % to FutureVar to FutureMap, and generate the goal AllocGoal that calls
     % `par_builtin.new_future/1' to allocate FutureVar.
     %
-:- pred allocate_future(module_info::in, prog_var::in, list(hlds_goal)::out,
+:- pred allocate_future(module_info::in, prog_context::in,
+    prog_var::in, list(hlds_goal)::out,
     var_table::in, var_table::out, future_map::in, future_map::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-allocate_future(ModuleInfo, SharedVar, Goals, !VarTable,
+allocate_future(ModuleInfo, Context, SharedVar, Goals, !VarTable,
         !FutureMap, !TSStringTable) :-
     lookup_var_entry(!.VarTable, SharedVar, SharedVarEntry),
     SharedVarType = SharedVarEntry ^ vte_type,
     SharedVarName = var_entry_name(SharedVar, SharedVarEntry),
     make_future_var(SharedVarName, SharedVarType, FutureVar, FutureVarType,
         !VarTable),
-    make_future_name_var_and_goal(SharedVarName, FutureNameVar, SetNameGoal,
-        !VarTable, !TSStringTable),
+    make_future_name_var_and_goal(Context, SharedVarName, FutureNameVar,
+        SetNameGoal, !VarTable, !TSStringTable),
     map.det_insert(SharedVar, FutureVar, !FutureMap),
 
     ModuleName = mercury_par_builtin_module,
     PredName = new_future_pred_name,
     Features = [],
     InstMapDelta = instmap_delta_bind_var(FutureVar),
-    Context = dummy_context,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
         ShouldInline = do_not_inline_par_builtins,
@@ -3191,11 +3192,11 @@ make_future_var(SharedVarName, SharedVarType, FutureVar, FutureVarType,
     FutureVarEntry = vte(FutureVarName, FutureVarType, is_not_dummy_type),
     add_var_entry(FutureVarEntry, FutureVar, !VarTable).
 
-:- pred make_future_name_var_and_goal(string::in,
+:- pred make_future_name_var_and_goal(prog_context::in, string::in,
     prog_var::out, hlds_goal::out, var_table::in, var_table::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-make_future_name_var_and_goal(Name, FutureNameVar, Goal,
+make_future_name_var_and_goal(Context, Name, FutureNameVar, Goal,
         !VarTable, !TSStringTable) :-
     FutureNameVarName = "FutureName" ++ Name,
     FutureNameVarEntry = vte(FutureNameVarName, int_type, is_not_dummy_type),
@@ -3213,7 +3214,7 @@ make_future_name_var_and_goal(Name, FutureNameVar, Goal,
     GoalExpr = unify(FutureNameVar, RHS, UnifyMode, Unification, UnifyContext),
     InstmapDelta = instmap_delta_from_assoc_list([FutureNameVar - Ground]),
     goal_info_init(set_of_var.make_singleton(FutureNameVar), InstmapDelta,
-        detism_det, purity_pure, GoalInfo),
+        detism_det, purity_pure, Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred make_wait_goal(module_info::in, var_table::in,

@@ -955,11 +955,10 @@ quantify_goal_bi_implication(LHS0, RHS0, GoalExpr, OldGoalInfo, !Info) :-
     % ===>
     %   (not (LHS, not RHS)), (not (RHS, not LHS))
     Context = goal_info_get_context(OldGoalInfo),
-    goal_info_init(GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo1),
-    goal_info_set_nonlocals(LHS_NonLocals, GoalInfo1, LHS_GI),
-    goal_info_set_nonlocals(RHS_NonLocals, GoalInfo1, RHS_GI),
-    goal_info_set_nonlocals(NonLocals, GoalInfo1, GI),
+    goal_info_init(Context, GoalInfo0),
+    goal_info_set_nonlocals(LHS_NonLocals, GoalInfo0, LHS_GI),
+    goal_info_set_nonlocals(RHS_NonLocals, GoalInfo0, RHS_GI),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GI),
     NotLHS = hlds_goal(negation(LHS), LHS_GI),
     NotRHS = hlds_goal(negation(RHS), RHS_GI),
     ForwardsImplicationExpr =

@@ -359,7 +359,8 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         RevGoalPath = goal_id_to_reverse_path(ContainingGoalMap, GoalId),
         CPInfo = coverage_point_info(RevGoalPath, CPType),
 
-        make_coverage_point(CPOptions, CPInfo, CPGoals, !Info),
+        Context = goal_info_get_context(GoalInfo1),
+        make_coverage_point(CPOptions, CPInfo, Context, CPGoals, !Info),
         create_conj_from_list([Goal1 | CPGoals], plain_conj, Goal),
 
         AddedImpurity = yes
@@ -495,7 +496,8 @@ coverage_prof_second_pass_disj_2(DPInfo,
     % Insert the coverage point if we decided to above.
     (
         InsertCP = yes,
-        DisjId = goal_info_get_goal_id(HeadDisjunct0 ^ hg_info),
+        HeadDisjunct0  = hlds_goal(_, HeadDisjunctGoalInfo0),
+        DisjId = goal_info_get_goal_id(HeadDisjunctGoalInfo0),
         ContainingGoalMap = !.Info ^ ci_containing_goal_map,
         DisjPath = goal_id_to_reverse_path(ContainingGoalMap, DisjId),
         HeadCoveragePoint = coverage_point_info(DisjPath, cp_type_branch_arm),
@@ -1106,7 +1108,9 @@ coverage_prof_first_pass_switchcase(CPOptions,
     proc_coverage_info::in, proc_coverage_info::out) is det.
 
 insert_coverage_point_before(CPOptions, CPInfo, !Goal, !Info) :-
-    make_coverage_point(CPOptions, CPInfo, CPGoals, !Info),
+    !.Goal = hlds_goal(_, GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
+    make_coverage_point(CPOptions, CPInfo, Context, CPGoals, !Info),
     ( if !.Goal = hlds_goal(conj(plain_conj, InnerGoals), _) then
         Goals = CPGoals ++ InnerGoals
     else
@@ -1118,10 +1122,11 @@ insert_coverage_point_before(CPOptions, CPInfo, !Goal, !Info) :-
     % for a coverage point.
     %
 :- pred make_coverage_point(coverage_profiling_options::in,
-    coverage_point_info::in, list(hlds_goal)::out,
+    coverage_point_info::in, prog_context::in, list(hlds_goal)::out,
     proc_coverage_info::in, proc_coverage_info::out) is det.
 
-make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
+make_coverage_point(CPOptions, CoveragePointInfo, Context,
+        Goals, !CoverageInfo) :-
     CoveragePointInfos0 = !.CoverageInfo ^ ci_coverage_points,
     CPIndexCounter0 = !.CoverageInfo ^ ci_cp_index_counter,
 
@@ -1137,13 +1142,13 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         !:VarTable = !.CoverageInfo ^ ci_var_table,
 
         generate_var_int("CPIndex", CPIndexVar, !VarTable),
-        generate_deep_const_unify(some_int_const(int_const(CPIndex)),
+        generate_deep_const_unify(Context, some_int_const(int_const(CPIndex)),
             CPIndexVar, GoalUnifyIndex),
         % When using dynamic coverage profiling we really on this variable
         % being optimised away later.
         generate_var_c_ptr("ProcLayout", ProcLayoutVar, !VarTable),
         proc_static_cons_id(!.CoverageInfo, ProcStaticConsId),
-        generate_deep_const_unify(ProcStaticConsId, ProcLayoutVar,
+        generate_deep_const_unify(Context, ProcStaticConsId, ProcLayoutVar,
             GoalUnifyProcLayout),
 
         !CoverageInfo ^ ci_var_table := !.VarTable
@@ -1195,12 +1200,12 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
             ForeignArgVars, [], no, ForeignProc),
         NonLocals = set_of_var.list_to_set(ArgVars),
         InstMapDelta = instmap_delta_from_assoc_list([]),
-        CallGoalInfo = impure_init_goal_info(NonLocals, InstMapDelta,
-            detism_det),
+        impure_init_goal_info(NonLocals, InstMapDelta, detism_det, Context,
+            CallGoalInfo),
         CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo)
     ;
         UseCalls = yes,
-        generate_deep_call(ModuleInfo, PredName, PredArity, ArgVars,
+        generate_deep_call(ModuleInfo, Context, PredName, PredArity, ArgVars,
             yes([]), detism_det, CallGoal)
     ),
 

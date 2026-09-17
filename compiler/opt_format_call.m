@@ -1541,7 +1541,8 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
                 set_of_var.is_empty(NeededNonLocals)
             then
                 !:ToDeleteGoals = NewToDeleteGoals,
-                Goal = true_goal
+                Context = goal_info_get_context(GoalInfo),
+                Goal = true_goal(Context)
             else
                 Goal = Goal0,
                 % Assume that all nonlocals are needed.
@@ -1570,7 +1571,8 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
             set_of_var.remove(LHSVar, !ToDeleteVars)
         then
             % This effectively deletes the unification.
-            Goal = true_goal
+            Context = goal_info_get_context(GoalInfo),
+            Goal = true_goal(Context)
         else
             % If _RHS = rhs_lambda_goal, we should optimize any occurrences
             % of format calls inside the lambda goal. Unfortunately,
@@ -1815,7 +1817,7 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Specs,
                 _FmtStrValVars, StateInVar, StateOutVar),
             StateUpdate = io_state_stream(StreamVar)
         ),
-        create_state_update_replacement(ModuleInfo, Specs, Context,
+        create_state_update_replacement(ModuleInfo, Context, Specs,
             StateUpdate, StateInVar, StateOutVar, ReplacementGoal, !VarTable)
     ;
         CallKind = kind_stream_string_writer(Context,
@@ -1868,7 +1870,7 @@ create_string_format_replacement(ModuleInfo, Specs, Context, ResultVar,
         % in the desired variable, this code point is never actually reached.
         % This code is here just in case that ever changes.
         make_simple_assign(ResultVar, ActualResultVar,
-            umc_implicit("replace_string_format"), [], AssignGoal),
+            Context, umc_implicit("replace_string_format"), [], AssignGoal),
         AllGoals = Goals ++ [AssignGoal]
     ),
     set_of_var.insert(ResultVar, ValueVars, NonLocals),
@@ -1966,14 +1968,14 @@ replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
     % anyway, which is another reason why the --warn-implicit-stream-calls
     % option encourages programmers to do that.
     %
-:- pred create_state_update_replacement(module_info::in,
-    list(compiler_format_spec)::in, prog_context::in,
+:- pred create_state_update_replacement(module_info::in, prog_context::in,
+    list(compiler_format_spec)::in,
     state_format::in, prog_var::in, prog_var::in, hlds_goal::out,
     var_table::in, var_table::out) is det.
 
-create_state_update_replacement(ModuleInfo, Specs, Context, StateFormat,
+create_state_update_replacement(ModuleInfo, Context, Specs, StateFormat,
         StateInVar, StateOutVar, ReplacementGoal, !VarTable) :-
-    replace_state_format(ModuleInfo, Specs, StateFormat,
+    replace_state_format(ModuleInfo, Context, Specs, StateFormat,
         StateInVar, StateOutVar, Goals, ValueVars, !VarTable),
 
     make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
@@ -1982,12 +1984,13 @@ create_state_update_replacement(ModuleInfo, Specs, Context, StateFormat,
         Context, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, ReplacementGoal).
 
-:- pred replace_state_format(module_info::in, list(compiler_format_spec)::in,
-    state_format::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
-    set_of_progvar::out, var_table::in, var_table::out) is det.
+:- pred replace_state_format(module_info::in, prog_context::in,
+    list(compiler_format_spec)::in, state_format::in,
+    prog_var::in, prog_var::in, list(hlds_goal)::out, set_of_progvar::out,
+    var_table::in, var_table::out) is det.
 
-replace_state_format(ModuleInfo, Specs, StateFormat, StateInVar, StateOutVar,
-        Goals, !:ValueVars, !VarTable) :-
+replace_state_format(ModuleInfo, Context, Specs, StateFormat,
+        StateInVar, StateOutVar, Goals, !:ValueVars, !VarTable) :-
     set_of_var.init(!:ValueVars),
     (
         Specs = [],
@@ -2001,7 +2004,7 @@ replace_state_format(ModuleInfo, Specs, StateFormat, StateInVar, StateOutVar,
             Unification, UnifyContext),
         make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
         goal_info_init(set_of_var.list_to_set([StateInVar, StateOutVar]),
-            InstMapDelta, detism_det, purity_pure, GoalInfo),
+            InstMapDelta, detism_det, purity_pure, Context, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Goals = [Goal]
     ;
@@ -2166,7 +2169,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             ;
                 MaybeResultVar = yes(ResultVar),
                 make_simple_assign(ResultVar, ValueVar,
-                    umc_implicit("represent_spec"), [], AssignGoal),
+                    Context, umc_implicit("represent_spec"), [], AssignGoal),
                 Goals = [AssignGoal]
             )
         else
@@ -2453,7 +2456,7 @@ build_flags_arg(Context, Flags, Var, Goals, !VarTable) :-
         du_ctor(ConsSymNameCombine, 5, TypeCtorCombine),
     ConsIdCombine = du_data_ctor(DuCtorCombine),
     SpecVars = [VarHash, VarSpace, VarZero, VarMinus, VarPlus],
-    construct_functor(Var, ConsIdCombine, SpecVars, GoalCombine),
+    construct_functor(Context, Var, ConsIdCombine, SpecVars, GoalCombine),
 
     Goals = [GoalHash, GoalSpace, GoalZero, GoalMinus, GoalPlus, GoalCombine].
 

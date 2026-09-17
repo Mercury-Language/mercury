@@ -88,7 +88,7 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
     (
         Goals = [],
         Context = goal_info_get_context(GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
+        hlds_goal(GoalExpr, GoalInfo) = true_goal(Context)
     ;
         Goals = [SingleGoal],
         % A singleton conjunction is equivalent to the goal itself.
@@ -370,7 +370,7 @@ delete_tail_unreachable_goals(!.PrevGoals, HeadGoalContext0, HeadGoal1,
         % result if mode analysis is rerun, since according to the language
         % specification, mode analysis does not use inferred determinism
         % information when deciding what can never succeed.
-        FailGoal = fail_goal_with_context(HeadGoalContext0),
+        FailGoal = fail_goal(HeadGoalContext0),
         cord.snoc(FailGoal, !PrevGoals)
     ),
     Goals = cord.list(!.PrevGoals).
@@ -499,7 +499,7 @@ all_cases_construct_test_var([Case | Cases], TestVar, TestConsId,
         CaseArgs = []
     then
         Context = goal_info_get_context(GoalInfo),
-        TrueGoal = true_goal_with_context(Context),
+        TrueGoal = true_goal(Context),
         TruncatedCase = case(MainConsId, OtherConsIds, TrueGoal),
         !:RevTruncatedSameCases = [TruncatedCase | !.RevTruncatedSameCases]
     else
@@ -1073,7 +1073,7 @@ simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
     (
         Goals0 = [],
         Context = goal_info_get_context(GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
+        hlds_goal(GoalExpr, GoalInfo) = true_goal(Context)
     ;
         Goals0 = [SingleGoal0],
         simplify_goal(SingleGoal0, hlds_goal(SingleGoal, SingleGoalInfo),

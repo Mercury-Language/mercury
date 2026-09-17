@@ -727,7 +727,9 @@ unique_modes_check_cases([Case0 | Cases0], Var, [Case | Cases],
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having unique mode information.
-        Goal1 = true_goal
+        Goal0 = hlds_goal(_, GoalInfo0),
+        Context = goal_info_get_context(GoalInfo0),
+        Goal1 = true_goal(Context)
     ),
 
     mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -800,7 +802,9 @@ unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having unique mode information.
-        Then = true_goal,
+        Then0 = hlds_goal(_, ThenGoalInfo0),
+        ThenContext = goal_info_get_context(ThenGoalInfo0),
+        Then = true_goal(ThenContext),
         InstMapThen = InstMapCond
     ),
     mode_info_set_instmap(InstMap0, !ModeInfo),

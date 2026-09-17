@@ -654,7 +654,7 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
 
     % Create type_info variables for the _unconstrained_ existentially
     % quantified type variables.
-    polymorphism_do_make_type_info_vars(ActualExistentialTypes, Context,
+    polymorphism_do_make_type_info_vars(Context, ActualExistentialTypes,
         ExtraTypeInfoVarsMCAs, ExtraTypeInfoGoals, !Info),
     assoc_list.keys(ExtraTypeInfoVarsMCAs, ExtraTypeInfoVars),
 
@@ -1054,8 +1054,8 @@ polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
         % vars.
         apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedUnivTVars, ActualUnconstrainedUnivTypes),
-        polymorphism_do_make_type_info_vars(ActualUnconstrainedUnivTypes,
-            CallContext, ExtraUnivTypeInfoVarsMCAs,
+        polymorphism_do_make_type_info_vars(CallContext,
+            ActualUnconstrainedUnivTypes, ExtraUnivTypeInfoVarsMCAs,
             ExtraUnivTypeInfoGoals, !Info),
         assoc_list.keys(ExtraUnivTypeInfoVarsMCAs, ExtraUnivTypeInfoVars),
 
@@ -1063,8 +1063,8 @@ polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
         % vars.
         apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedExistTVars, ActualUnconstrainedExistTypes),
-        polymorphism_do_make_type_info_vars(ActualUnconstrainedExistTypes,
-            CallContext, ExtraExistTypeInfoVarsMCAs,
+        polymorphism_do_make_type_info_vars(CallContext,
+            ActualUnconstrainedExistTypes, ExtraExistTypeInfoVarsMCAs,
             ExtraExistTypeInfoGoals, !Info),
         assoc_list.keys(ExtraExistTypeInfoVarsMCAs, ExtraExistTypeInfoVars),
 

@@ -83,6 +83,7 @@
 :- import_module bool.
 :- import_module maybe.
 :- import_module set.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -241,7 +242,7 @@ pd_debug_output_goals(PDInfo, IdStr, Msg, Goals, !IO) :-
     ;
         MaybeDebugStream = yes(DebugStream),
         GoalExpr = conj(plain_conj, Goals),
-        goal_info_init(GoalInfo),
+        goal_info_init(dummy_context, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         pd_debug_definitely_output_goal(PDInfo, DebugStream, IdStr, Msg,
             Goal, !IO)

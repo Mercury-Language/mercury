@@ -100,6 +100,7 @@
 :- import_module list.
 :- import_module require.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -989,7 +990,7 @@ make_assignment_goal(LeftRegVar, RightRegVar, Context, AssignmentGoal) :-
     NonLocals = set_of_var.init,
     InstmapDelta = instmap_delta_bind_var(LeftRegVar),
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
-        AssignmentInfo),
+        dummy_context, AssignmentInfo),
     AssignmentGoal = hlds_goal(AssignmentExpr, AssignmentInfo).
 
 %---------------------------------------------------------------------------%

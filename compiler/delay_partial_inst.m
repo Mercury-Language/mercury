@@ -579,7 +579,8 @@ delay_partial_inst_in_deconstruct(DelayInfo, Goal0, UnifyMode, Unify, Goal,
         lookup_var_type(VarTable, Var, Type),
         UnifyMode = unify_modes_li_lf_ri_rf(_, LHSFinalInst, _, _),
         ( if inst_is_ground(ModuleInfo, Type, LHSFinalInst) then
-            construct_functor(Var, ConsId, CanonArgs, ConstructGoal),
+            construct_functor(ProgContext, Var, ConsId, CanonArgs,
+                ConstructGoal),
 
             % Delete the variable on the LHS from the construct map
             % since it has been constructed.

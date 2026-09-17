@@ -923,7 +923,9 @@ gen_aux_proc_case(Info, Case, AuxCase) :-
 
 gen_aux_proc_handle_non_recursive_call(Info, Goal, AuxGoal) :-
     ( if invariant_goal(Info ^ gapi_inv_goals, Goal) then
-        AuxGoal = true_goal
+        Goal = hlds_goal(_, GoalInfo),
+        Context = goal_info_get_context(GoalInfo),
+        AuxGoal = true_goal(Context)
     else
         AuxGoal = Goal
     ).

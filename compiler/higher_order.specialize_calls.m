@@ -841,12 +841,13 @@ maybe_specialize_method_call(TypeClassInfoVar, MethodProcNum, Args,
             CallerProcInfo = CallerProcInfo0,
             AllArgs = Args
         else
-            get_unconstrained_instance_type_infos(ModuleInfo,
+            Context = goal_info_get_context(GoalInfo0),
+            get_unconstrained_instance_type_infos(ModuleInfo, Context,
                 TypeClassInfoVar, UnconstrainedTVarTypes, 1,
                 ArgTypeInfoGoals, ArgTypeInfoVars,
                 CallerProcInfo0, CallerProcInfo1),
             FirstArgTypeclassInfo = list.length(UnconstrainedTVarTypes) + 1,
-            get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar,
+            get_arg_typeclass_infos(ModuleInfo, Context, TypeClassInfoVar,
                 InstanceConstraints, FirstArgTypeclassInfo,
                 ArgTypeClassInfoGoals, ArgTypeClassInfoVars,
                 CallerProcInfo1, CallerProcInfo),
@@ -914,14 +915,14 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
     % This simulates the action of `do_call_class_method' in
     % runtime/mercury_ho_call.c.
     %
-:- pred get_arg_typeclass_infos(module_info::in, prog_var::in,
-    list(prog_constraint)::in, int::in, list(hlds_goal)::out,
+:- pred get_arg_typeclass_infos(module_info::in, prog_context::in,
+    prog_var::in, list(prog_constraint)::in, int::in, list(hlds_goal)::out,
     list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
-get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
-        Index, Goals, Vars, !ProcInfo) :-
+get_arg_typeclass_infos(ModuleInfo, Context, TypeClassInfoVar,
+        InstanceConstraints, Index, Goals, Vars, !ProcInfo) :-
     MakeResultType = (func(_) = typeclass_info_type),
-    get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
+    get_typeclass_info_args(ModuleInfo, Context, TypeClassInfoVar,
         "instance_constraint_from_typeclass_info", MakeResultType,
         InstanceConstraints, Index, Goals, Vars, !ProcInfo).
 
@@ -933,39 +934,42 @@ get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
     % runtime/mercury_ho_call.c.
     %
 :- pred get_unconstrained_instance_type_infos(module_info::in,
-    prog_var::in, list(mer_type)::in, int::in, list(hlds_goal)::out,
-    list(prog_var)::out, proc_info::in, proc_info::out) is det.
+    prog_context::in, prog_var::in, list(mer_type)::in, int::in,
+    list(hlds_goal)::out, list(prog_var)::out,
+    proc_info::in, proc_info::out) is det.
 
-get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
+get_unconstrained_instance_type_infos(ModuleInfo, Context, TypeClassInfoVar,
         UnconstrainedTVarTypes, Index, Goals, Vars, !ProcInfo) :-
     MakeResultType = build_type_info_type,
-    get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
+    get_typeclass_info_args(ModuleInfo, Context, TypeClassInfoVar,
         "unconstrained_type_info_from_typeclass_info",
         MakeResultType, UnconstrainedTVarTypes,
         Index, Goals, Vars, !ProcInfo).
 
-:- pred get_typeclass_info_args(module_info::in, prog_var::in, string::in,
-    (func(T) = mer_type)::in, list(T)::in, int::in, list(hlds_goal)::out,
-    list(prog_var)::out, proc_info::in, proc_info::out) is det.
+:- pred get_typeclass_info_args(module_info::in, prog_context::in,
+    prog_var::in, string::in, (func(T) = mer_type)::in, list(T)::in, int::in,
+    list(hlds_goal)::out, list(prog_var)::out,
+    proc_info::in, proc_info::out) is det.
 
-get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
-        Args, Index, Goals, Vars, !ProcInfo) :-
+get_typeclass_info_args(ModuleInfo, Context, TypeClassInfoVar,
+        PredName, MakeResultType, Args, Index, Goals, Vars, !ProcInfo) :-
     lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
         PredName, pf_predicate, user_arity(3), only_mode, ExtractArgPredId,
         ExtractArgProcId),
-    get_typeclass_info_args_loop(ModuleInfo, TypeClassInfoVar,
+    get_typeclass_info_args_loop(ModuleInfo, Context, TypeClassInfoVar,
         ExtractArgPredId, ExtractArgProcId,
         qualified(mercury_private_builtin_module, PredName),
         MakeResultType, Args, Index, Goals, Vars, !ProcInfo).
 
-:- pred get_typeclass_info_args_loop(module_info::in, prog_var::in,
-    pred_id::in, proc_id::in, sym_name::in, (func(T) = mer_type)::in,
-    list(T)::in, int::in, list(hlds_goal)::out,
-    list(prog_var)::out, proc_info::in, proc_info::out) is det.
+:- pred get_typeclass_info_args_loop(module_info::in, prog_context::in,
+    prog_var::in, pred_id::in, proc_id::in, sym_name::in,
+    (func(T) = mer_type)::in, list(T)::in, int::in,
+    list(hlds_goal)::out, list(prog_var)::out,
+    proc_info::in, proc_info::out) is det.
 
-get_typeclass_info_args_loop(_, _, _, _, _, _, [], _, [], [], !ProcInfo).
-get_typeclass_info_args_loop(ModuleInfo, TypeClassInfoVar, PredId, ProcId,
-        SymName, MakeResultType, [Arg | Args], Index,
+get_typeclass_info_args_loop(_, _, _, _, _, _, _, [], _, [], [], !ProcInfo).
+get_typeclass_info_args_loop(ModuleInfo, Context, TypeClassInfoVar,
+        PredId, ProcId, SymName, MakeResultType, [Arg | Args], Index,
         [IndexGoal, CallGoal | Goals], [ResultVar | Vars], !ProcInfo) :-
     ResultType = MakeResultType(Arg),
     IsDummy = is_type_a_dummy(ModuleInfo, ResultType),
@@ -980,12 +984,14 @@ get_typeclass_info_args_loop(ModuleInfo, TypeClassInfoVar, PredId, ProcId,
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert_var(ResultVar, ground(shared, none_or_default_func),
         InstMapDelta0, InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+        Context, GoalInfo),
     CallGoalExpr = plain_call(PredId, ProcId, CallArgs, not_builtin,
         MaybeContext, SymName),
     CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
-    get_typeclass_info_args_loop(ModuleInfo, TypeClassInfoVar, PredId, ProcId,
-        SymName, MakeResultType, Args, Index + 1, Goals, Vars, !ProcInfo).
+    get_typeclass_info_args_loop(ModuleInfo, Context, TypeClassInfoVar,
+        PredId, ProcId, SymName, MakeResultType, Args, Index + 1,
+        Goals, Vars, !ProcInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -1278,7 +1284,7 @@ maybe_specialize_ordinary_call(CanRequest, CalleePredProcId,
             MatchedNewPred =
                 new_pred(NewPredProcId, _, _, NewName, _, _, _, _, _),
 
-            construct_extra_type_infos(ExtraTypeInfoTypes,
+            construct_extra_type_infos(Context, ExtraTypeInfoTypes,
                 ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
 
             NewPredProcId = proc(NewCalleePred, NewCalleeProc),
@@ -1603,16 +1609,17 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
         VarInfo = non_rtti_var
     ).
 
-:- pred construct_extra_type_infos(list(mer_type)::in,
+:- pred construct_extra_type_infos(prog_context::in, list(mer_type)::in,
     list(prog_var)::out, list(hlds_goal)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
+construct_extra_type_infos(Context, Types, TypeInfoVars, TypeInfoGoals,
+        !Info) :-
     GlobalInfo0 = hoi_get_global_info(!.Info),
     ModuleInfo0 = hogi_get_module_info(GlobalInfo0),
     PredInfo0 = hoi_get_pred_info(!.Info),
     ProcInfo0 = hoi_get_proc_info(!.Info),
-    polymorphism_make_type_info_vars_mi(Types, dummy_context,
+    polymorphism_make_type_info_vars_mi(Context, Types,
         TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo,
         PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     hoi_set_pred_info(PredInfo, !Info),

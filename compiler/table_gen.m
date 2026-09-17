@@ -1018,7 +1018,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta, Detism,
             purity_impure, Context, InactiveGoalInfo),
         InactiveGoal = hlds_goal(InactiveGoalExpr, InactiveGoalInfo),
-        FailedGoal = fail_goal,
+        FailedGoal = fail_goal(Context),
 
         SwitchArms = [
             case(memo_semi_active_cons_id, [], ActiveGoal),
@@ -1332,7 +1332,7 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
         MaybeProcTableIOInfo = yes(ProcTableIOInfo)
     ;
         TableIoEntryKind = entry_stores_outputs,
-        TableIoEntryDescGoal = true_goal,
+        TableIoEntryDescGoal = true_goal(Context),
         NumberedRestoreVars =
             list.map(project_out_arg_method, SavedOutputVars),
         NumberedSaveVars = NumberedRestoreVars,
@@ -2987,7 +2987,7 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
         Goal = ShortcutGoal
     ;
         NumberedOutputVars = [],
-        Goal = true_goal
+        Goal = true_goal(Context)
     ).
 
     % Generate a goal for restoring the output arguments from
@@ -3272,7 +3272,7 @@ append_fail(Goal, GoalAndThenFail) :-
     goal_info_init_hide(NonLocals, UnreachInstMapDelta, detism_failure,
         purity_impure, Context, ConjGoalInfo),
     GoalAndThenFail =
-        hlds_goal(conj(plain_conj, [Goal, fail_goal]), ConjGoalInfo).
+        hlds_goal(conj(plain_conj, [Goal, fail_goal(Context)]), ConjGoalInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -3791,7 +3791,7 @@ table_gen_make_type_info_vars(Types, Context, !VarTable, !TableInfo,
     proc_info_set_var_table(!.VarTable, ProcInfo0, ProcInfo1),
 
     % Generate the code that creates the type_infos.
-    polymorphism_make_type_info_vars_mi(Types, Context,
+    polymorphism_make_type_info_vars_mi(Context, Types,
         TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo,
         PredInfo0, PredInfo, ProcInfo1, ProcInfo),
 

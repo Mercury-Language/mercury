@@ -696,7 +696,8 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
 
         % Build an insertion map of where the deconstruction
         % unifications are needed.
-        build_insert_map(CellVar, FieldVars, IntervalInfo, InsertMap),
+        proc_info_get_context(!.ProcInfo, Context),
+        build_insert_map(Context, CellVar, FieldVars, IntervalInfo, InsertMap),
 
         % Make a transformed version of the procedure and add it to
         % the module.
@@ -747,8 +748,9 @@ make_transformed_proc(InsertMap, CellVar, FieldVarsList, !ProcInfo) :-
     % We could make build_insert_map add such required unifications to the
     % insert map, but record_decisions_in_goal would need to be modified
     % as well.
-    %
-    deconstruct_tuple(CellVar, FieldVarsList, ProcStartDeconstruct),
+    Goal0 = hlds_goal(_, GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
+    deconstruct_tuple(Context, CellVar, FieldVarsList, ProcStartDeconstruct),
     ProcStartInsert = insert_spec(ProcStartDeconstruct,
         set_of_var.list_to_set(FieldVarsList)),
     insert_proc_start_deconstruction(ProcStartInsert, Goal1, Goal2,
@@ -1624,25 +1626,25 @@ use_cell(_CellVar, _FieldVarList, _ConsId, _Goal,
     % deconstruction unification that is to be inserted _after_ the
     % interval beginning with that left anchor.
     %
-:- pred build_insert_map(prog_var::in, list(prog_var)::in, interval_info::in,
-    insert_map::out) is det.
+:- pred build_insert_map(prog_context::in, prog_var::in, list(prog_var)::in,
+    interval_info::in, insert_map::out) is det.
 
-build_insert_map(CellVar, FieldVars, IntervalInfo, InsertMap) :-
+build_insert_map(Context, CellVar, FieldVars, IntervalInfo, InsertMap) :-
     FieldVarsSet = set_of_var.list_to_set(FieldVars),
-    map.foldl(build_insert_map_2(CellVar, FieldVars, FieldVarsSet),
+    map.foldl(build_insert_map_2(Context, CellVar, FieldVars, FieldVarsSet),
         IntervalInfo ^ ii_anchor_follow_map, map.init, InsertMap).
 
-:- pred build_insert_map_2(prog_var::in, list(prog_var)::in,
+:- pred build_insert_map_2(prog_context::in, prog_var::in, list(prog_var)::in,
     set_of_progvar::in, anchor::in, anchor_follow_info::in,
     insert_map::in, insert_map::out) is det.
 
-build_insert_map_2(CellVar, FieldVars, FieldVarsSet, Anchor,
+build_insert_map_2(Context, CellVar, FieldVars, FieldVarsSet, Anchor,
         anchor_follow_info(FollowVars, _), !InsertMap) :-
     NeededFieldVars = FieldVarsSet `set_of_var.intersect` FollowVars,
     ( if set_of_var.is_empty(NeededFieldVars) then
         true
     else
-        deconstruct_tuple(CellVar, FieldVars, Goal),
+        deconstruct_tuple(Context, CellVar, FieldVars, Goal),
         InsertSpec = insert_spec(Goal, NeededFieldVars),
         add_insert_spec(Anchor, InsertSpec, !InsertMap)
     ).
@@ -1787,7 +1789,8 @@ fix_calls_in_goal(TransformMap, Goal0, Goal, !VarTable, !RttiVarMaps) :-
             add_var_entry(CellVarEntry, CellVar, !VarTable),
             extract_tupled_args_from_list(Args0, ArgsToTuple,
                 TupledArgs, UntupledArgs),
-            construct_tuple(CellVar, TupledArgs, ConstructGoal),
+            Context = goal_info_get_context(GoalInfo0),
+            construct_tuple(Context, CellVar, TupledArgs, ConstructGoal),
             ( if
                 NewArgs = UntupledArgs ++ [CellVar],
                 CallAux = CallAux0 ^ call_args := NewArgs

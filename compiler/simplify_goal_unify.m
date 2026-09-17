@@ -125,7 +125,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             RHSVar0 = LHSVar0
         then
             Context = goal_info_get_context(GoalInfo0),
-            hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
+            hlds_goal(GoalExpr, GoalInfo) = true_goal(Context)
         else if
             Unification0 = complicated_unify(ComplMode, CanFail, TypeInfoVars)
         then
@@ -220,10 +220,10 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 Context = goal_info_get_context(GoalInfo0),
                 (
                     ConsIdMatch = cons_id_must_match,
-                    TrueOrFailGoal = true_goal_with_context(Context)
+                    TrueOrFailGoal = true_goal(Context)
                 ;
                     ConsIdMatch = cons_id_cannot_match,
-                    TrueOrFailGoal = fail_goal_with_context(Context)
+                    TrueOrFailGoal = fail_goal(Context)
                 ),
                 TrueOrFailGoal = hlds_goal(GoalExpr, GoalInfo),
                 simplify_info_set_rerun_quant_instmap_delta(!Info),
@@ -273,7 +273,8 @@ process_complicated_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
         Call = hlds_goal(Call1, GoalInfo),
         ExtraGoals = []
     else
-        type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
+        Context = goal_info_get_context(GoalInfo0),
+        type_to_ctor_and_args_det(Type, TypeCtor, ArgTypes),
         determinism_components(Detism, CanFail, at_most_one),
         lookup_mode_num(ModuleInfo, TypeCtor, UnifyMode, Detism, ProcId),
         ( if
@@ -284,7 +285,8 @@ process_complicated_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
             % specialize these cases if possible.
             special_pred_is_generated_lazily(ModuleInfo, TypeCtor)
         then
-            make_type_info_vars([Type], TypeInfoVars, ExtraGoals, !Info),
+            make_type_info_vars(Context, [Type],
+                TypeInfoVars, ExtraGoals, !Info),
             ( if TypeInfoVars = [TypeInfoVarPrime] then
                 TypeInfoVar = TypeInfoVarPrime
             else
@@ -296,7 +298,8 @@ process_complicated_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
             % Convert other complicated unifications into calls to
             % specific unification predicates, inserting extra typeinfo
             % arguments if necessary.
-            make_type_info_vars(TypeArgs, TypeInfoVars, ExtraGoals, !Info),
+            make_type_info_vars(Context, ArgTypes,
+                TypeInfoVars, ExtraGoals, !Info),
             call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
                 ModuleInfo, UnifyContext, GoalInfo0, Call0, CallGoalInfo0),
             simplify_goal_expr(Call0, Call1, CallGoalInfo0, CallGoalInfo1,
@@ -364,10 +367,11 @@ no_cons_id_can_match(ConsId, ArgVars, [BoundFunctor | BoundFunctors]) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred make_type_info_vars(list(mer_type)::in, list(prog_var)::out,
-    list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.
+:- pred make_type_info_vars(prog_context::in, list(mer_type)::in,
+    list(prog_var)::out, list(hlds_goal)::out,
+    simplify_info::in, simplify_info::out) is det.
 
-make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
+make_type_info_vars(Context, Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     % Extract the information from simplify_info.
     simplify_info_get_var_table(!.Info, VarTable0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
@@ -384,7 +388,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         proc_info_set_rtti_varmaps(RttiVarMaps0, !ProcInfo),
 
         % Generate the code that creates the type_infos.
-        polymorphism_make_type_info_vars_mi(Types, dummy_context,
+        polymorphism_make_type_info_vars_mi(Context, Types,
             TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
             !PredInfo, !ProcInfo),
 

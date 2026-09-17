@@ -414,7 +414,9 @@ unneeded_process_goal(UnneededInfo, InitInstMap, FinalInstMap, Goal0, Goal,
         map.to_assoc_list(Branches, BranchList),
         list.foldl(insert_branch_into_refined_goals(Goal0), BranchList,
             !RefinedGoalMap),
-        Goal = true_goal,
+        Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
+        Context = goal_info_get_context(GoalInfo0),
+        Goal = true_goal(Context),
         !:Changed = changed,
 
         Options = UnneededInfo ^ uci_options,
@@ -423,7 +425,6 @@ unneeded_process_goal(UnneededInfo, InitInstMap, FinalInstMap, Goal0, Goal,
             Debug = no
         ;
             Debug = yes(Stream),
-            Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
             goal_info_get_goal_id(GoalInfo0) = goal_id(GoalIdNum0),
             trace [io(!IO)] (
                 io.format(Stream, "unneeded code at goal id %u\n",

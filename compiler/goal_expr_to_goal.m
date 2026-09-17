@@ -248,11 +248,11 @@ transform_parse_tree_goal_to_hlds_unify(LocKind, Renaming, Goal, HLDSGoal,
         else
             true
         ),
-        HLDSGoal = true_goal_with_context(Context)
+        HLDSGoal = true_goal(Context)
     else if TermB = functor(atom("!"), [variable(StateVarB, _)], _) then
         report_svar_unify_error(Context, StateVarB, !UrInfo),
         make_svar_magically_known(StateVarB, !SVarState, !UrInfo),
-        HLDSGoal = true_goal_with_context(Context)
+        HLDSGoal = true_goal(Context)
     else
         unravel_unification(TermA, TermB, Context, umc_explicit, [],
             Purity, HLDSGoal, !SVarState, !UrInfo),
@@ -870,7 +870,7 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Renaming, Goal, HLDSGoal,
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             add_unravel_err(Spec, !UrInfo),
-            HLDSGoal = true_goal_with_context(Context)
+            HLDSGoal = true_goal(Context)
         )
     ).
 

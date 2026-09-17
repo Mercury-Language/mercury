@@ -1947,7 +1947,7 @@ lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
         Changed = no
     ;
         GroundingVarToAddr = [_ | _],
-        list.map_foldl(make_store_goal(ModuleInfo, InstMap1),
+        list.map_foldl(make_store_goal(ModuleInfo, GoalInfo, InstMap1),
             GroundingVarToAddr, StoreGoals, !ProcInfo),
         GoalExpr = conj(plain_conj,
             [hlds_goal(GoalExpr0, GoalInfo) | StoreGoals]),
@@ -1982,11 +1982,11 @@ grounding_to_variant_args(GroundingVarToAddr, OutArgNum, OutArgVars, Subst,
         )
     ).
 
-:- pred make_store_goal(module_info::in, instmap::in,
+:- pred make_store_goal(module_info::in, hlds_goal_info::in, instmap::in,
     pair(prog_var, store_target)::in, hlds_goal::out,
     proc_info::in, proc_info::out) is det.
 
-make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
+make_store_goal(ModuleInfo, GoalInfo0, InstMap, GroundVar - StoreTarget, Goal,
         !ProcInfo) :-
     StoreTarget = store_target(AddrVar, MaybeFieldId),
     (
@@ -2016,11 +2016,11 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
 
         GoalExpr = unify(AddrVar, RHS, UnifyMode, Unification, UnifyContext),
 
-        goal_info_init(GoalInfo0),
-        goal_info_set_determinism(detism_det, GoalInfo0, GoalInfo1),
-        goal_info_set_instmap_delta(instmap_delta_bind_var(AddrVar),
-            GoalInfo1, GoalInfo),
-
+        Context = goal_info_get_context(GoalInfo0),
+        set_of_var.list_to_set([AddrVar | ArgVars], NonLocals),
+        InstMapDelta = instmap_delta_bind_var(AddrVar),
+        goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+            Context, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 

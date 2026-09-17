@@ -839,12 +839,12 @@ add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         InitialSVarState = !.SVarState,
         (
             ClauseType = clause_for_promise(_),
-            HeadUnificationsGoal = true_goal
+            HeadUnificationsGoal = true_goal(Context)
         ;
             ClauseType = clause_not_for_promise,
             PredFormArity = arg_list_arity(ArgTerms0),
             ArgContext = ac_head(PredOrFunc, PredFormArity),
-            HeadUnificationsGoal0 = true_goal,
+            HeadUnificationsGoal0 = true_goal(Context),
             pair_vars_with_terms(HeadVars, ArgTerms, HeadVarsArgTerms),
             insert_arg_unifications(HeadVarsArgTerms, Context, ArgContext,
                 HeadUnificationsGoal0, HeadUnificationsGoal1,

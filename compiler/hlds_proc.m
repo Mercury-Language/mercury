@@ -335,6 +335,7 @@
 :- import_module int.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module unit.
 :- import_module varset.
 
@@ -565,7 +566,7 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
     init_var_table(VarTable0),
     make_fresh_prefix_named_vars_from_types(ModuleInfo, "HeadVar__", 1,
         Types, HeadVars, VarTable0, VarTable),
-    goal_info_init(GoalInfo),
+    goal_info_init(dummy_context, GoalInfo),
     BodyGoal = hlds_goal(conj(plain_conj, []), GoalInfo),
     rtti_varmaps_init(RttiVarMaps),
     % argument InstVarSet

@@ -336,7 +336,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_unify_proc_body_dummy(Context, X, Y, Clause, !Info) :-
-    Goal = true_goal_with_context(Context),
+    Goal = true_goal(Context),
     quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
@@ -484,8 +484,7 @@ generate_unify_proc_body_eqv(Context, EqvType, X, Y, Clause, !Info) :-
     create_pure_atomic_complicated_unification(CastX, rhs_var(CastY),
         Context, umc_explicit, [], UnifyGoal),
 
-    goal_info_init(GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo),
+    goal_info_init(Context, GoalInfo),
     conj_list_to_goal([CastXGoal, CastYGoal, UnifyGoal], GoalInfo, Goal),
     quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
 
@@ -509,7 +508,7 @@ generate_unify_proc_body_solver(Context, X, Y, Clause, !Info) :-
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_unify_proc_body_enum(Context, X, Y, Clause, !Info) :-
-    make_simple_test(X, Y, umc_explicit, [], Goal),
+    make_simple_test(X, Y, Context, umc_explicit, [], Goal),
     quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
@@ -1240,8 +1239,7 @@ generate_compare_proc_body_eqv(Context, EqvType, Res, X, Y, Clause, !Info) :-
     build_simple_call(ModuleInfo, mercury_public_builtin_module,
         "compare", [Res, CastX, CastY], Context, CompareGoal),
 
-    goal_info_init(GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo),
+    goal_info_init(Context, GoalInfo),
     conj_list_to_goal([CastXGoal, CastYGoal, CompareGoal], GoalInfo, Goal),
     quantify_clause_body(all_modes, [Res, X, Y], Goal, Context, Clause, !Info).
 
@@ -1273,8 +1271,7 @@ generate_compare_proc_body_enum(Context, Res, X, Y, Clause, !Info) :-
     generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal),
     build_simple_call(ModuleInfo, mercury_private_builtin_module,
         "builtin_compare_int", [Res, CastX, CastY], Context, CompareGoal),
-    goal_info_init(GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo),
+    goal_info_init(Context, GoalInfo),
     conj_list_to_goal([CastXGoal, CastYGoal, CompareGoal], GoalInfo, Goal),
     quantify_clause_body(all_modes, [Res, X, Y], Goal, Context, Clause, !Info).
 
@@ -1945,8 +1942,7 @@ generate_compare_goal(SpecDefnInfo, UCOptions, ConsIdsMatch, CtorRepn,
             umc_explicit, [], GoalUnifyY),
         GoalList = [GoalUnifyX, GoalUnifyY, CompareArgsGoal]
     ),
-    goal_info_init(GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo),
+    goal_info_init(Context, GoalInfo),
     conj_list_to_goal(GoalList, GoalInfo, Goal).
 
 %---------------------%
@@ -2833,8 +2829,8 @@ build_spec_pred_call(Info, TypeCtor, SpecialPredId, ArgVars,
         PredName, PredId, ProcId),
     GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no, PredName),
     set_of_var.list_to_set(ArgVars, NonLocals),
-    goal_info_init(NonLocals, InstmapDelta, Detism, purity_pure, GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo),
+    goal_info_init(NonLocals, InstmapDelta, Detism, purity_pure, Context,
+        GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %---------------------------------------------------------------------------%
@@ -2874,7 +2870,7 @@ maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes,
         CondGoal = hlds_goal(CondGoalExpr, ContextGoalInfo),
         (
             MaybeCompareRes = no,
-            EqualGoal = true_goal_with_context(Context),
+            EqualGoal = true_goal(Context),
             GoalInfo = ContextGoalInfo
         ;
             MaybeCompareRes = yes(Res),

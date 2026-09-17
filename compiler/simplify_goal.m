@@ -256,7 +256,7 @@ maybe_simplify_goal_to_true_or_fail(InstMap0, Goal0ContainsTrace,
         ),
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
-        Goal = fail_goal_with_context(Context)
+        Goal = fail_goal(Context)
     else if
         % If --no-fully-strict, replace goals which cannot fail and have
         % no output variables with `true'. However, we don't do this for
@@ -328,7 +328,7 @@ maybe_simplify_goal_to_true_or_fail(InstMap0, Goal0ContainsTrace,
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
         Context = goal_info_get_context(GoalInfo0),
-        Goal = true_goal_with_context(Context)
+        Goal = true_goal(Context)
     else
         Goal = Goal0
     ).

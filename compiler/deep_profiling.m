@@ -37,12 +37,12 @@
 :- pred apply_deep_profiling_transform(io.text_output_stream::in,
     module_info::in, module_info::out) is det.
 
-:- pred generate_deep_call(module_info::in, string::in, int::in,
-    list(prog_var)::in, maybe(list(prog_var))::in, determinism::in,
-    hlds_goal::out) is det.
+:- pred generate_deep_call(module_info::in, prog_context::in,
+    string::in, int::in, list(prog_var)::in, maybe(list(prog_var))::in,
+    determinism::in, hlds_goal::out) is det.
 
-:- pred generate_deep_const_unify(cons_id::in, prog_var::in, hlds_goal::out)
-    is det.
+:- pred generate_deep_const_unify(prog_context::in, cons_id::in, prog_var::in,
+    hlds_goal::out) is det.
 
 :- pred get_deep_profile_builtin_ppid(module_info::in, string::in, int::in,
     pred_id::out, proc_id::out) is det.
@@ -772,7 +772,7 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
             CallSites, CoveragePoints),
         ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
         ProcStaticConsId = deep_profiling_proc_layout(ShroudedPredProcId),
-        generate_deep_const_unify(ProcStaticConsId, ProcStaticVar,
+        generate_deep_const_unify(Context, ProcStaticConsId, ProcStaticVar,
             BindProcStaticVarGoal),
 
         % Wrap the procedure body inside more goals that invoke the port codes
@@ -864,23 +864,24 @@ is_proc_in_interface(ModuleInfo, PredId, _ProcId) = IsInInterface :-
 
 build_det_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
         MaybeActivationPtr, GoalInfo0, BindProcStaticVarGoal, Goal0, Goal) :-
+    Context = goal_info_get_context(GoalInfo0),
     (
         MaybeActivationPtr = yes(ActivationPtr1),
-        generate_deep_det_call(ModuleInfo, "det_call_port_code_sr", 4,
+        generate_deep_det_call(ModuleInfo, Context, "det_call_port_code_sr", 4,
             [ProcStaticVar, TopCSD, MiddleCSD, ActivationPtr1],
             [TopCSD, MiddleCSD, ActivationPtr1], CallPortCode0),
         goal_add_feature(feature_save_deep_excp_vars,
             CallPortCode0, CallPortCode),
-        generate_deep_det_call(ModuleInfo, "det_exit_port_code_sr", 3,
+        generate_deep_det_call(ModuleInfo, Context, "det_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, ActivationPtr1], [], ExitPortCode)
     ;
         MaybeActivationPtr = no,
-        generate_deep_det_call(ModuleInfo, "det_call_port_code_ac", 3,
+        generate_deep_det_call(ModuleInfo, Context, "det_call_port_code_ac", 3,
             [ProcStaticVar, TopCSD, MiddleCSD],
             [TopCSD, MiddleCSD], CallPortCode0),
         goal_add_feature(feature_save_deep_excp_vars,
             CallPortCode0, CallPortCode),
-        generate_deep_det_call(ModuleInfo, "det_exit_port_code_ac", 2,
+        generate_deep_det_call(ModuleInfo, Context, "det_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode)
     ),
 
@@ -898,42 +899,49 @@ build_det_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
     % If changing this transformation be sure to change original_root/3 in
     % deep_profiler/program_represenentation_utils.m.
     %
-:- pred build_semi_proc_body(module_info::in, prog_var::in, prog_var::in,
-    prog_var::in, maybe(prog_var)::in, hlds_goal_info::in, hlds_goal::in,
+:- pred build_semi_proc_body(module_info::in,
+    prog_var::in, prog_var::in, prog_var::in,
+    maybe(prog_var)::in, hlds_goal_info::in, hlds_goal::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 build_semi_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
         MaybeActivationPtr, GoalInfo0, BindProcStaticVarGoal, Goal0, Goal) :-
+    Context = goal_info_get_context(GoalInfo0),
     (
         MaybeActivationPtr = yes(ActivationPtr1),
-        generate_deep_det_call(ModuleInfo, "semi_call_port_code_sr", 4,
+        generate_deep_det_call(ModuleInfo, Context,
+            "semi_call_port_code_sr", 4,
             [ProcStaticVar, TopCSD, MiddleCSD, ActivationPtr1],
             [TopCSD, MiddleCSD, ActivationPtr1], CallPortCode0),
         goal_add_feature(feature_save_deep_excp_vars,
             CallPortCode0, CallPortCode),
-        generate_deep_det_call(ModuleInfo, "semi_exit_port_code_sr", 3,
+        generate_deep_det_call(ModuleInfo, Context,
+            "semi_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, ActivationPtr1], [], ExitPortCode),
-        generate_deep_call(ModuleInfo, "semi_fail_port_code_sr", 3,
+        generate_deep_call(ModuleInfo, Context,
+            "semi_fail_port_code_sr", 3,
             [TopCSD, MiddleCSD, ActivationPtr1], maybe.no, detism_failure,
             FailPortCode),
         NewNonlocals =
             set_of_var.list_to_set([TopCSD, MiddleCSD, ActivationPtr1])
     ;
         MaybeActivationPtr = no,
-        generate_deep_det_call(ModuleInfo, "semi_call_port_code_ac", 3,
-            [ProcStaticVar, TopCSD, MiddleCSD],
+        generate_deep_det_call(ModuleInfo, Context,
+            "semi_call_port_code_ac", 3, [ProcStaticVar, TopCSD, MiddleCSD],
             [TopCSD, MiddleCSD], CallPortCode0),
         goal_add_feature(feature_save_deep_excp_vars,
             CallPortCode0, CallPortCode),
-        generate_deep_det_call(ModuleInfo, "semi_exit_port_code_ac", 2,
-            [TopCSD, MiddleCSD], [], ExitPortCode),
-        generate_deep_call(ModuleInfo, "semi_fail_port_code_ac", 2,
-            [TopCSD, MiddleCSD], maybe.no, detism_failure, FailPortCode),
+        generate_deep_det_call(ModuleInfo, Context,
+            "semi_exit_port_code_ac", 2, [TopCSD, MiddleCSD],
+            [], ExitPortCode),
+        generate_deep_call(ModuleInfo, Context,
+            "semi_fail_port_code_ac", 2, [TopCSD, MiddleCSD],
+            maybe.no, detism_failure, FailPortCode),
         NewNonlocals = set_of_var.list_to_set([TopCSD, MiddleCSD])
     ),
 
-    ExitConjGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo0,
-        NewNonlocals),
+    goal_info_add_nonlocals_make_impure(NewNonlocals,
+        GoalInfo0, ExitConjGoalInfo),
 
     make_impure(GoalInfo0, GoalInfo),
     GoalExpr = conj(plain_conj, [
@@ -949,46 +957,48 @@ build_semi_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
     ]),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred build_non_proc_body(module_info::in, prog_var::in, prog_var::in,
-    prog_var::in, maybe(prog_var)::in, prog_var::in, hlds_goal_info::in,
+:- pred build_non_proc_body(module_info::in,
+    prog_var::in, prog_var::in, prog_var::in,
+    maybe(prog_var)::in, prog_var::in, hlds_goal_info::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::out) is det.
 
 build_non_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
         MaybeOldActivationPtr, NewOutermostProcDyn, GoalInfo0,
         BindProcStaticVarGoal, Goal0, Goal) :-
+    Context = goal_info_get_context(GoalInfo0),
     (
         MaybeOldActivationPtr = yes(OldOutermostProcDyn2),
-        generate_deep_det_call(ModuleInfo, "non_call_port_code_sr", 5,
+        generate_deep_det_call(ModuleInfo, Context, "non_call_port_code_sr", 5,
             [ProcStaticVar, TopCSD, MiddleCSD,
             OldOutermostProcDyn2, NewOutermostProcDyn],
             [TopCSD, MiddleCSD, OldOutermostProcDyn2, NewOutermostProcDyn],
             CallPortCode0),
         goal_add_feature(feature_save_deep_excp_vars,
             CallPortCode0, CallPortCode),
-        generate_deep_det_call(ModuleInfo, "non_exit_port_code_sr", 3,
+        generate_deep_det_call(ModuleInfo, Context, "non_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, OldOutermostProcDyn2], [],
             ExitPortCode),
-        generate_deep_call(ModuleInfo, "non_fail_port_code_sr", 3,
+        generate_deep_call(ModuleInfo, Context, "non_fail_port_code_sr", 3,
             [TopCSD, MiddleCSD, OldOutermostProcDyn2], maybe.no,
             detism_failure, FailPortCode),
-        generate_deep_call(ModuleInfo, "non_redo_port_code_sr", 2,
+        generate_deep_call(ModuleInfo, Context, "non_redo_port_code_sr", 2,
             [MiddleCSD, NewOutermostProcDyn], maybe.no,
             detism_failure, RedoPortCode0),
         NewNonlocals =
             set_of_var.list_to_set([TopCSD, MiddleCSD, OldOutermostProcDyn2])
     ;
         MaybeOldActivationPtr = no,
-        generate_deep_det_call(ModuleInfo, "non_call_port_code_ac", 4,
+        generate_deep_det_call(ModuleInfo, Context, "non_call_port_code_ac", 4,
             [ProcStaticVar, TopCSD, MiddleCSD, NewOutermostProcDyn],
             [TopCSD, MiddleCSD, NewOutermostProcDyn],
             CallPortCode0),
         goal_add_feature(feature_save_deep_excp_vars,
             CallPortCode0, CallPortCode),
-        generate_deep_det_call(ModuleInfo, "non_exit_port_code_ac", 2,
+        generate_deep_det_call(ModuleInfo, Context, "non_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode),
-        generate_deep_call(ModuleInfo, "non_fail_port_code_ac", 2,
+        generate_deep_call(ModuleInfo, Context, "non_fail_port_code_ac", 2,
             [TopCSD, MiddleCSD], maybe.no, detism_failure, FailPortCode),
-        generate_deep_call(ModuleInfo, "non_redo_port_code_ac", 2,
+        generate_deep_call(ModuleInfo, Context, "non_redo_port_code_ac", 2,
             [MiddleCSD, NewOutermostProcDyn], maybe.no,
             detism_failure, RedoPortCode0),
         NewNonlocals = set_of_var.list_to_set([TopCSD, MiddleCSD])
@@ -1011,11 +1021,11 @@ build_non_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
     goal_info_set_determinism(Detism, GoalInfo0, GoalInfo1),
 
     set_of_var.insert(NewOutermostProcDyn, NewNonlocals, ExitRedoNonLocals),
-    ExitRedoGoalInfo = impure_reachable_init_goal_info(ExitRedoNonLocals,
-        detism_multi),
+    impure_reachable_init_goal_info(ExitRedoNonLocals, detism_multi, Context,
+        ExitRedoGoalInfo),
 
-    CallExitRedoGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo1,
-        ExitRedoNonLocals),
+    goal_info_add_nonlocals_make_impure(ExitRedoNonLocals,
+        GoalInfo1, CallExitRedoGoalInfo),
 
     make_impure(GoalInfo1, GoalInfo),
     GoalExpr = conj(plain_conj, [
@@ -1270,12 +1280,13 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
     % NULL only temporarily, between the prepare_for_{...}_call and the
     % call port code).
     Goal1 = hlds_goal(GoalExpr0, GoalInfo2),
+    Context = goal_info_get_context(GoalInfo2),
 
     SiteNumCounter0 = !.DeepInfo ^ deep_site_num_counter,
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
     VarTable0 = !.DeepInfo ^ deep_var_table,
     generate_var_int("SiteNum", SiteNumVar, VarTable0, VarTable1),
-    generate_deep_const_unify(some_int_const(int_const(SiteNum)),
+    generate_deep_const_unify(Context, some_int_const(int_const(SiteNum)),
         SiteNumVar, SiteNumVarGoal),
     !DeepInfo ^ deep_var_table := VarTable1,
     !DeepInfo ^ deep_site_num_counter := SiteNumCounter,
@@ -1286,11 +1297,11 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
     (
         CallKind = call_class_normal(PredProcId),
         ( if set.member(feature_deep_self_tail_rec_call, GoalFeatures) then
-            generate_deep_det_call(ModuleInfo, "prepare_for_tail_call", 1,
-                [SiteNumVar], [], PrepareGoal)
+            generate_deep_det_call(ModuleInfo, Context,
+                "prepare_for_tail_call", 1, [SiteNumVar], [], PrepareGoal)
         else
-            generate_deep_det_call(ModuleInfo, "prepare_for_normal_call", 1,
-                [SiteNumVar], [], PrepareGoal)
+            generate_deep_det_call(ModuleInfo, Context,
+                "prepare_for_normal_call", 1, [SiteNumVar], [], PrepareGoal)
         ),
         PredProcId = proc(PredId, ProcId),
         TypeSubst = compute_type_subst(GoalExpr0, !.DeepInfo),
@@ -1320,16 +1331,18 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
         Goal2 = Goal1
     ;
         CallKind = call_class_special(_PredProcId, TypeInfoVar),
-        generate_deep_det_call(ModuleInfo, "prepare_for_special_call", 2,
-            [SiteNumVar, TypeInfoVar], [], PrepareGoal),
+        generate_deep_det_call(ModuleInfo, Context,
+            "prepare_for_special_call", 2, [SiteNumVar, TypeInfoVar], [],
+            PrepareGoal),
         CallSite = special_call(FileName, LineNumber, GoalPath),
         Goal2 = Goal1
     ;
         CallKind = call_class_generic(Generic),
         (
             Generic = higher_order(ClosureVar, _, _, _, _),
-            generate_deep_det_call(ModuleInfo, "prepare_for_ho_call", 2,
-                [SiteNumVar, ClosureVar], [], PrepareGoal),
+            generate_deep_det_call(ModuleInfo, Context,
+                "prepare_for_ho_call", 2, [SiteNumVar, ClosureVar], [],
+                PrepareGoal),
             CallSite = higher_order_call(FileName, LineNumber, GoalPath)
         ;
             Generic = class_method(TypeClassInfoVar,
@@ -1337,9 +1350,11 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
             VarTable2 = !.DeepInfo ^ deep_var_table,
             generate_var_int("MethodNum", MethodNumVar, VarTable2, VarTable3),
             !DeepInfo ^ deep_var_table := VarTable3,
-            generate_deep_const_unify(some_int_const(int_const(MethodNum)),
-                MethodNumVar, MethodNumVarGoal),
-            generate_deep_det_call(ModuleInfo, "prepare_for_method_call", 3,
+            generate_deep_const_unify(Context,
+                some_int_const(int_const(MethodNum)), MethodNumVar,
+                MethodNumVarGoal),
+            generate_deep_det_call(ModuleInfo, Context,
+                "prepare_for_method_call", 3,
                 [SiteNumVar, TypeClassInfoVar, MethodNumVar],
                 [], PrepareCallGoal),
             PrepareCallGoal = hlds_goal(_, PrepareCallGoalInfo),
@@ -1385,8 +1400,8 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
             SaveRestoreVars = []
         ;
             VisSCC = [SCCmember],
-            generate_recursion_counter_saves_and_restores(
-                SCCmember ^ rec_call_sites, MiddleCSD,
+            generate_recursion_counter_saves_and_restores(Context,
+                MiddleCSD, SCCmember ^ rec_call_sites,
                 CallGoals, ExitGoals, FailGoals, SaveRestoreVars, !DeepInfo)
         ;
             VisSCC = [_, _ | _],
@@ -1404,18 +1419,17 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
             ; CodeModel = model_non
             ),
             ExtraVars = set_of_var.list_to_set([MiddleCSD | SaveRestoreVars]),
-            WrappedGoalGoalInfo0 =
-                goal_info_add_nonlocals_make_impure(MdprofInstGoalInfo,
-                    ExtraVars),
+            goal_info_add_nonlocals_make_impure(ExtraVars,
+                MdprofInstGoalInfo, WrappedGoalGoalInfo0),
             goal_info_set_mdprof_inst(goal_is_mdprof_inst,
                 WrappedGoalGoalInfo0, WrappedGoalGoalInfo),
 
-            ReturnFailsGoalInfo0 =
-                impure_unreachable_init_goal_info(ExtraVars, detism_failure),
+            impure_unreachable_init_goal_info(ExtraVars, detism_failure,
+                Context, ReturnFailsGoalInfo0),
             goal_info_set_mdprof_inst(goal_is_mdprof_inst,
                 ReturnFailsGoalInfo0, ReturnFailsGoalInfo),
 
-            FailGoalInfo0 = fail_goal_info,
+            FailGoalInfo0 = fail_goal_info(Context),
             goal_info_set_mdprof_inst(goal_is_mdprof_inst,
                 FailGoalInfo0, FailGoalInfo),
             FailGoal = hlds_goal(disj([]), FailGoalInfo),
@@ -1445,6 +1459,7 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
 
 deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
         !DeepInfo) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
     some [!VarTable] (
         !:VarTable = !.DeepInfo ^ deep_var_table,
 
@@ -1452,6 +1467,7 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
 
         globals.lookup_bool_option(Globals, use_activation_counts,
             UseActivationCounts),
+        ModuleInfo = !.DeepInfo ^ deep_module_info,
         (
             UseActivationCounts = yes,
 
@@ -1459,14 +1475,14 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
             ExtraNonLocals =
                 set_of_var.list_to_set([SavedCountVar, SavedPtrVar]),
 
-            generate_deep_det_call(!.DeepInfo ^ deep_module_info,
+            generate_deep_det_call(ModuleInfo, Context,
                 "save_and_zero_activation_info_ac", 2,
                 [SavedCountVar, SavedPtrVar],
                 [SavedCountVar, SavedPtrVar], SaveStuff),
-            generate_deep_det_call(!.DeepInfo ^ deep_module_info,
+            generate_deep_det_call(ModuleInfo, Context,
                 "reset_activation_info_ac", 2,
                 [SavedCountVar, SavedPtrVar], [], RestoreStuff),
-            generate_deep_det_call(!.DeepInfo ^ deep_module_info,
+            generate_deep_det_call(ModuleInfo, Context,
                 "rezero_activation_info_ac", 0,
                 [], [], ReZeroStuff)
         ;
@@ -1474,13 +1490,13 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
 
             ExtraNonLocals = set_of_var.make_singleton(SavedPtrVar),
 
-            generate_deep_det_call(!.DeepInfo ^ deep_module_info,
+            generate_deep_det_call(ModuleInfo, Context,
                 "save_and_zero_activation_info_sr", 1,
                 [SavedPtrVar], [SavedPtrVar], SaveStuff),
-            generate_deep_det_call(!.DeepInfo ^ deep_module_info,
+            generate_deep_det_call(ModuleInfo, Context,
                 "reset_activation_info_sr", 1,
                 [SavedPtrVar], [], RestoreStuff),
-            generate_deep_det_call(!.DeepInfo ^ deep_module_info,
+            generate_deep_det_call(ModuleInfo, Context,
                 "rezero_activation_info_sr", 0,
                 [], [], ReZeroStuff)
         ),
@@ -1488,27 +1504,27 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
         !DeepInfo ^ deep_var_table := !.VarTable
     ),
 
-    Goal0 = hlds_goal(_, GoalInfo0),
-    ExtGoalInfo0 = goal_info_add_nonlocals_make_impure(GoalInfo0,
-        ExtraNonLocals),
+    goal_info_add_nonlocals_make_impure(ExtraNonLocals,
+        GoalInfo0, ExtGoalInfo0),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst, ExtGoalInfo0, ExtGoalInfo),
 
     % XXX We should build up NoBindExtGoalInfo from scratch.
     instmap_delta_init_reachable(EmptyDelta),
     goal_info_set_instmap_delta(EmptyDelta, ExtGoalInfo, NoBindExtGoalInfo),
 
-    FailGoalInfo0 = fail_goal_info,
+    Context = goal_info_get_context(GoalInfo0),
+    FailGoalInfo0 = fail_goal_info(Context),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst,
         FailGoalInfo0, FailGoalInfo),
     FailGoal = hlds_goal(disj([]), FailGoalInfo),
 
-    RestoreFailGoalInfo0 = impure_unreachable_init_goal_info(ExtraNonLocals,
-        detism_failure),
+    impure_unreachable_init_goal_info(ExtraNonLocals,
+        detism_failure, Context, RestoreFailGoalInfo0),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst,
         RestoreFailGoalInfo0, RestoreFailGoalInfo),
 
-    RezeroFailGoalInfo0 = impure_unreachable_init_goal_info(set_of_var.init,
-        detism_failure),
+    impure_unreachable_init_goal_info(set_of_var.init,
+        detism_failure, Context, RezeroFailGoalInfo0),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst,
         RezeroFailGoalInfo0, RezeroFailGoalInfo),
 
@@ -1567,6 +1583,7 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
 
 deep_prof_wrap_foreign_code(Goal0, Goal, !DeepInfo) :-
     Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
     GoalId = goal_info_get_goal_id(GoalInfo0),
     ContainingGoalMap = !.DeepInfo ^ deep_containing_goal_map,
     GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
@@ -1575,11 +1592,11 @@ deep_prof_wrap_foreign_code(Goal0, Goal, !DeepInfo) :-
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
     generate_var_int("SiteNum", SiteNumVar,
         !.DeepInfo ^ deep_var_table, VarTable),
-    generate_deep_const_unify(some_int_const(int_const(SiteNum)),
+    generate_deep_const_unify(Context, some_int_const(int_const(SiteNum)),
         SiteNumVar, SiteNumVarGoal),
 
     ModuleInfo = !.DeepInfo ^ deep_module_info,
-    generate_deep_det_call(ModuleInfo, "prepare_for_callback", 1,
+    generate_deep_det_call(ModuleInfo, Context, "prepare_for_callback", 1,
         [SiteNumVar], [], PrepareGoal),
 
     goal_info_get_context(GoalInfo0) = context(FileName0, LineNumber),
@@ -1671,38 +1688,41 @@ compute_type_subst(_, _) = "".
 
 max_save_restore_vector_size = 9.
 
-:- pred generate_recursion_counter_saves_and_restores(list(int)::in,
-    prog_var::in, list(hlds_goal)::out, list(hlds_goal)::out,
+:- pred generate_recursion_counter_saves_and_restores(prog_context::in,
+    prog_var::in, list(int)::in,
+    list(hlds_goal)::out, list(hlds_goal)::out,
     list(hlds_goal)::out, list(prog_var)::out,
     deep_info::in, deep_info::out) is det.
 
-generate_recursion_counter_saves_and_restores(CSNs, CSDVar, CallGoals,
+generate_recursion_counter_saves_and_restores(Context, CSDVar, CSNs, CallGoals,
         ExitGoals, FailGoals, ExtraVars, !DeepInfo) :-
     list.chunk(CSNs, max_save_restore_vector_size, CSNChunks),
-    generate_recursion_counter_saves_and_restores_2(CSNChunks, CSDVar,
+    generate_recursion_counter_saves_and_restores_2(Context, CSDVar, CSNChunks,
         CallGoals, ExitGoals, FailGoals, ExtraVars, !DeepInfo).
 
-:- pred generate_recursion_counter_saves_and_restores_2(list(list(int))::in,
-    prog_var::in, list(hlds_goal)::out, list(hlds_goal)::out,
+:- pred generate_recursion_counter_saves_and_restores_2(prog_context::in,
+    prog_var::in, list(list(int))::in,
+    list(hlds_goal)::out, list(hlds_goal)::out,
     list(hlds_goal)::out, list(prog_var)::out,
     deep_info::in, deep_info::out) is det.
 
-generate_recursion_counter_saves_and_restores_2([], _, [], [], [], [],
+generate_recursion_counter_saves_and_restores_2(_, _, [], [], [], [], [],
         !DeepInfo).
-generate_recursion_counter_saves_and_restores_2([Chunk | Chunks], CSDVar,
-        CallGoals, ExitGoals, FailGoals, ExtraVars, !DeepInfo) :-
+generate_recursion_counter_saves_and_restores_2(Context, CSDVar,
+        [Chunk | Chunks], CallGoals, ExitGoals, FailGoals, ExtraVars,
+        !DeepInfo) :-
     list.map_foldl(generate_depth_var, Chunk, DepthVars, !DeepInfo),
 
     % We generate three separate variables to hold the constant CSN vector.
     % If we used only one, the code generator would have to save its value
     % on the stack when we enter the disjunction that wraps the goal.
     list.length(Chunk, Length),
-    generate_csn_vector(Length, Chunk, CSNCallVars, CSNCallGoals, CallCellVar,
-        !DeepInfo),
-    generate_csn_vector(Length, Chunk, CSNExitVars, CSNExitGoals, ExitCellVar,
-        !DeepInfo),
-    generate_csn_vector(Length, Chunk, CSNFailVars, CSNFailGoals, FailCellVar,
-        !DeepInfo),
+    generate_csn_vector(Context, Length, Chunk,
+        CSNCallVars, CSNCallGoals, CallCellVar, !DeepInfo),
+    generate_csn_vector(Context, Length, Chunk,
+        CSNExitVars, CSNExitGoals, ExitCellVar, !DeepInfo),
+    generate_csn_vector(Context, Length, Chunk,
+        CSNFailVars, CSNFailGoals, FailCellVar, !DeepInfo),
     list.condense([CSNCallVars, CSNExitVars, CSNFailVars], CSNExtraVars),
 
     CallPredName = string.format("save_recursion_depth_%d", [i(Length)]),
@@ -1711,14 +1731,14 @@ generate_recursion_counter_saves_and_restores_2([Chunk | Chunks], CSDVar,
     FailPredName = string.format("restore_recursion_depth_fail_%d",
         [i(Length)]),
     ModuleInfo = !.DeepInfo ^ deep_module_info,
-    generate_deep_det_call(ModuleInfo, CallPredName, Length + 2,
+    generate_deep_det_call(ModuleInfo, Context, CallPredName, Length + 2,
         [CSDVar, CallCellVar | DepthVars], DepthVars, CallCellGoal),
-    generate_deep_det_call(ModuleInfo, ExitPredName, Length + 2,
+    generate_deep_det_call(ModuleInfo, Context, ExitPredName, Length + 2,
         [CSDVar, ExitCellVar | DepthVars], [], ExitCellGoal),
-    generate_deep_det_call(ModuleInfo, FailPredName, Length + 2,
+    generate_deep_det_call(ModuleInfo, Context, FailPredName, Length + 2,
         [CSDVar, FailCellVar | DepthVars], [], FailCellGoal),
 
-    generate_recursion_counter_saves_and_restores_2(Chunks, CSDVar,
+    generate_recursion_counter_saves_and_restores_2(Context, CSDVar, Chunks,
         TailCallGoals, TailExitGoals, TailFailGoals, TailExtraVars, !DeepInfo),
 
     CallGoals = CSNCallGoals ++ [CallCellGoal | TailCallGoals],
@@ -1735,20 +1755,21 @@ generate_depth_var(CSN, DepthVar, !DeepInfo) :-
     generate_var_int(VarName, DepthVar, VarTable0, VarTable),
     !DeepInfo ^ deep_var_table := VarTable.
 
-:- pred generate_csn_vector(int::in, list(int)::in, list(prog_var)::out,
-    list(hlds_goal)::out, prog_var::out,
+:- pred generate_csn_vector(prog_context::in, int::in, list(int)::in,
+    list(prog_var)::out, list(hlds_goal)::out, prog_var::out,
     deep_info::in, deep_info::out) is det.
 
-generate_csn_vector(Length, CSNs, CSNVars, UnifyGoals, CellVar, !DeepInfo) :-
+generate_csn_vector(Context, Length, CSNs,
+        CSNVars, UnifyGoals, CellVar, !DeepInfo) :-
     ( if CSNs = [CSN] then
-        generate_single_csn_unify(CSN, CSNVar - UnifyGoal, !DeepInfo),
+        generate_single_csn_unify(Context, CSN, CSNVar - UnifyGoal, !DeepInfo),
         CSNVars = [CSNVar],
         UnifyGoals = [UnifyGoal],
         CellVar = CSNVar
     else
         expect(Length =< max_save_restore_vector_size, $pred, "too long"),
-        list.map_foldl(generate_single_csn_unify, CSNs, CSNVarsGoals,
-            !DeepInfo),
+        list.map_foldl(generate_single_csn_unify(Context),
+            CSNs, CSNVarsGoals, !DeepInfo),
         InnerVars = assoc_list.keys(CSNVarsGoals),
         InnerGoals = assoc_list.values(CSNVarsGoals),
         generate_csn_vector_cell(Length, InnerVars, CellVar, CellGoal,
@@ -1774,26 +1795,28 @@ generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
     ConsId = du_data_ctor(DuCtor),
     generate_deep_cell_unify(Length, ConsId, CSNVars, CellVar, CellGoal).
 
-:- pred generate_single_csn_unify(int::in,
+:- pred generate_single_csn_unify(prog_context::in, int::in,
     pair(prog_var, hlds_goal)::out, deep_info::in, deep_info::out) is det.
 
-generate_single_csn_unify(CSN, CSNVar - UnifyGoal, !DeepInfo) :-
+generate_single_csn_unify(Context, CSN, CSNVar - UnifyGoal, !DeepInfo) :-
     VarTable0 = !.DeepInfo ^ deep_var_table,
     VarName = string.format("CSN%d", [i(CSN)]),
     generate_var_int(VarName, CSNVar, VarTable0, VarTable),
     !DeepInfo ^ deep_var_table := VarTable,
-    generate_deep_const_unify(some_int_const(int_const(CSN)),
+    generate_deep_const_unify(Context, some_int_const(int_const(CSN)),
         CSNVar, UnifyGoal).
 
-:- pred generate_deep_det_call(module_info::in, string::in, int::in,
-    list(prog_var)::in, list(prog_var)::in, hlds_goal::out) is det.
+:- pred generate_deep_det_call(module_info::in, prog_context::in,
+    string::in, int::in, list(prog_var)::in, list(prog_var)::in,
+    hlds_goal::out) is det.
 
-generate_deep_det_call(ModuleInfo, Name, Arity, ArgVars, OutputVars, Goal) :-
-    generate_deep_call(ModuleInfo, Name, Arity, ArgVars, yes(OutputVars),
-        detism_det, Goal).
+generate_deep_det_call(ModuleInfo, Context, Name, Arity, ArgVars,
+        OutputVars, Goal) :-
+    generate_deep_call(ModuleInfo, Context, Name, Arity, ArgVars,
+        yes(OutputVars), detism_det, Goal).
 
-generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
-        Goal) :-
+generate_deep_call(ModuleInfo, Context, Name, Arity, ArgVars,
+        MaybeOutputVars, Detism, Goal) :-
     get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId),
     NonLocals = set_of_var.list_to_set(ArgVars),
     (
@@ -1805,11 +1828,12 @@ generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
     ),
     SymName = unqualified(Name),
     GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
-    GoalInfo1 = impure_init_goal_info(NonLocals, InstMapDelta, Detism),
+    impure_init_goal_info(NonLocals, InstMapDelta, Detism, Context,
+        GoalInfo1),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst, GoalInfo1, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-generate_deep_const_unify(ConsId, Var, Goal) :-
+generate_deep_const_unify(Context, ConsId, Var, Goal) :-
     Ground = ground(shared, none_or_default_func),
     UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
     Unification = construct(Var, ConsId, [], [],
@@ -1820,7 +1844,7 @@ generate_deep_const_unify(ConsId, Var, Goal) :-
     NonLocals = set_of_var.make_singleton(Var),
     InstMapDelta = instmap_delta_bind_var(Var),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
-        GoalInfo1),
+        Context, GoalInfo1),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst, GoalInfo1, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -1840,7 +1864,7 @@ generate_deep_cell_unify(Length, ConsId, ArgVars, Var, Goal) :-
     InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
-        GoalInfo),
+        dummy_context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred maybe_generate_activation_ptr(bool::in, prog_var::in, prog_var::in,
@@ -1932,10 +1956,10 @@ generate_var_c_ptr(Name, Var, !VarTable) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set_of_progvar)
-    = hlds_goal_info.
+:- pred goal_info_add_nonlocals_make_impure(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 
-goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
+goal_info_add_nonlocals_make_impure(NewNonLocals, !GoalInfo) :-
     NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
     NonLocals = set_of_var.union(NonLocals0, NewNonLocals),
     goal_info_set_nonlocals(NonLocals, !GoalInfo),

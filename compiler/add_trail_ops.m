@@ -184,8 +184,8 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         InnerGoal = hlds_goal(_, InnerGoalInfo),
         Determinism = goal_info_get_determinism(InnerGoalInfo),
         determinism_components(Determinism, _CanFail, NumSolns),
-        True = true_goal_with_context(Context),
-        Fail = fail_goal_with_context(Context),
+        True = true_goal(Context),
+        Fail = fail_goal(Context),
         (
             NumSolns = at_most_zero,
             % The "then" part of the if-then-else will be unreachable, but
@@ -244,7 +244,7 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal,
                 !.Info),
             gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
-            FailGoal = fail_goal_with_context(Context),
+            FailGoal = fail_goal(Context),
 
             % Put it all together.
             Goal2 = hlds_goal(scope(Reason, InnerGoal), OuterGoalInfo),

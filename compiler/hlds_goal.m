@@ -1528,10 +1528,7 @@
 % procedures access, see the definition of the hlds_goal_info type.
 %
 
-:- pred goal_info_init(hlds_goal_info::out) is det.
 :- pred goal_info_init(prog_context::in, hlds_goal_info::out) is det.
-:- pred goal_info_init(set_of_progvar::in, instmap_delta::in, determinism::in,
-    purity::in, hlds_goal_info::out) is det.
 :- pred goal_info_init(set_of_progvar::in, instmap_delta::in, determinism::in,
     purity::in, prog_context::in, hlds_goal_info::out) is det.
 
@@ -1540,12 +1537,12 @@
 
 :- func ctgc_goal_info_init = ctgc_goal_info.
 
-:- func impure_init_goal_info(set_of_progvar, instmap_delta, determinism)
-    = hlds_goal_info.
-:- func impure_reachable_init_goal_info(set_of_progvar, determinism)
-    = hlds_goal_info.
-:- func impure_unreachable_init_goal_info(set_of_progvar, determinism)
-    = hlds_goal_info.
+:- pred impure_init_goal_info(set_of_progvar::in, instmap_delta::in,
+    determinism::in, prog_context::in, hlds_goal_info::out) is det.
+:- pred impure_reachable_init_goal_info(set_of_progvar::in,
+    determinism::in, prog_context::in, hlds_goal_info::out) is det.
+:- pred impure_unreachable_init_goal_info(set_of_progvar::in,
+    determinism::in, prog_context::in, hlds_goal_info::out) is det.
 
 % Instead of recording the liveness of every variable at every part
 % of the goal, we just keep track of the initial liveness, and of the changes
@@ -1886,18 +1883,6 @@ rbmm_info_init =
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(pred(goal_info_init/1)).
-
-goal_info_init(GoalInfo) :-
-    Detism = detism_erroneous,
-    instmap_delta_init_unreachable(InstMapDelta),
-    NonLocals = set_of_var.init,
-    set.init(Features),
-    GoalId = invalid_goal_id,
-    GoalInfo = goal_info(Detism, purity_pure, InstMapDelta, NonLocals,
-        Features, GoalId, no_code_gen_info,
-        hlds_goal_extra_info_init(dummy_context)).
-
 :- pragma inline(pred(goal_info_init/2)).
 
 goal_info_init(Context, GoalInfo) :-
@@ -1909,13 +1894,6 @@ goal_info_init(Context, GoalInfo) :-
     GoalInfo = goal_info(Detism, purity_pure, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
-
-goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
-    set.init(Features),
-    GoalId = invalid_goal_id,
-    GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
-        Features, GoalId, no_code_gen_info,
-        hlds_goal_extra_info_init(dummy_context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     set.init(Features),
@@ -1944,21 +1922,22 @@ hlds_goal_extra_info_init(Context) = ExtraInfo :-
 ctgc_goal_info_init =
     ctgc_goal_info(set_of_var.init, set_of_var.init, no_reuse_info).
 
-impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
+impure_init_goal_info(NonLocals, InstMapDelta, Determinism, Context,
+        GoalInfo) :-
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
-        GoalInfo0),
+        Context, GoalInfo0),
     goal_info_add_feature(feature_not_impure_for_determinism,
         GoalInfo0, GoalInfo).
 
-impure_reachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
+impure_reachable_init_goal_info(NonLocals, Determinism, Context, GoalInfo) :-
     instmap_delta_init_reachable(InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
-        GoalInfo).
+        Context, GoalInfo).
 
-impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
+impure_unreachable_init_goal_info(NonLocals, Determinism, Context, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
-        GoalInfo0),
+        Context, GoalInfo0),
     goal_info_add_feature(feature_not_impure_for_determinism,
         GoalInfo0, GoalInfo).
 

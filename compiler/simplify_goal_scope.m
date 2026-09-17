@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -355,7 +355,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
         KeepGoal = no,
         Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
         Context = goal_info_get_context(GoalInfo0),
-        Goal = true_goal_with_context(Context),
+        Goal = true_goal(Context),
 
         simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
         SubGoalCalledProcs = goal_proc_refs(SubGoal),
@@ -425,7 +425,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
                 [], [], [], instmap_delta_bind_no_var, only_mode,
                 detism_semi, purity_semipure, EvalFeatures, EvalAttributes,
                 yes(RuntimeExpr), EvalCode, Context, CondGoal),
-            GoalExpr = if_then_else([], CondGoal, SubGoal, true_goal),
+            GoalExpr = if_then_else([], CondGoal, SubGoal, true_goal(Context)),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ).

@@ -1280,7 +1280,8 @@ simplify_build_compare_ite(CmpLtGoal, CmpGtGoal, R, X, Y, Context,
 
 simplify_make_int_ico_op(ModuleName, Op, X, IntConst, Y, GoalExpr,
         OrigGoalInfo, !Info) :-
-    simplify_make_int_const(IntConst, ConstVar, ConstGoal, !Info),
+    Context = goal_info_get_context(OrigGoalInfo),
+    simplify_make_int_const(Context, IntConst, ConstVar, ConstGoal, !Info),
     simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op, inline_builtin,
         X, ConstVar, Y, OpGoalExpr),
     % set_of_var.list_to_set([X, Y, ConstVar], NonLocals),
@@ -1326,27 +1327,30 @@ simplify_make_cmp_goal_expr(Info, ModuleSymName, Op, IsBuiltin, X, Y,
         detism_semi, purity_pure, Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred simplify_make_int_const(int::in, prog_var::out, hlds_goal::out,
-    simplify_info::in, simplify_info::out) is det.
-
-simplify_make_int_const(IntConst, ConstVar, Goal, !Info) :-
-    ConstConsId = some_int_const(int_const(IntConst)),
-    simplify_make_const(int_type, ConstConsId, ConstVar, Goal, !Info).
-
-:- pred simplify_make_string_const(string::in, prog_var::out, hlds_goal::out,
-    simplify_info::in, simplify_info::out) is det.
-
-simplify_make_string_const(StringConst, ConstVar, Goal, !Info) :-
-    ConstConsId = string_const(StringConst),
-    simplify_make_const(string_type, ConstConsId, ConstVar, Goal, !Info).
-
-%---------------------%
-
-:- pred simplify_make_const(mer_type::in, cons_id::in,
+:- pred simplify_make_int_const(prog_context::in, int::in,
     prog_var::out, hlds_goal::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_make_const(Type, ConstConsId, ConstVar, Goal, !Info) :-
+simplify_make_int_const(Context, IntConst, ConstVar, Goal, !Info) :-
+    ConstConsId = some_int_const(int_const(IntConst)),
+    simplify_make_const(Context, int_type, ConstConsId, ConstVar, Goal, !Info).
+
+:- pred simplify_make_string_const(prog_context::in, string::in,
+    prog_var::out, hlds_goal::out,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_make_string_const(Context, StringConst, ConstVar, Goal, !Info) :-
+    ConstConsId = string_const(StringConst),
+    simplify_make_const(Context, string_type, ConstConsId, ConstVar, Goal,
+        !Info).
+
+%---------------------%
+
+:- pred simplify_make_const(prog_context::in, mer_type::in, cons_id::in,
+    prog_var::out, hlds_goal::out,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_make_const(Context, Type, ConstConsId, ConstVar, Goal, !Info) :-
     simplify_make_var(Type, ConstVar, !Info),
     Unification = construct(ConstVar, ConstConsId, [], [],
         construct_dynamically, cell_is_shared, no_construct_sub_info),
@@ -1358,7 +1362,8 @@ simplify_make_const(Type, ConstConsId, ConstVar, Goal, !Info) :-
     GoalExpr = unify(ConstVar, RHS, UnifyMode, Unification, UnifyContext),
     NonLocals = set_of_var.make_singleton(ConstVar),
     InstMapDelta = instmap_delta_bind_var(ConstVar),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
+        GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred simplify_make_var(mer_type::in, prog_var::out,
@@ -1509,8 +1514,8 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
             % )
 
             Context = goal_info_get_context(GoalInfo),
-            simplify_make_int_const(NumTargetBits, NumTargetBitsConstVar,
-                NumTargetBitsConstGoal, !Info),
+            simplify_make_int_const(Context, NumTargetBits,
+                NumTargetBitsConstVar, NumTargetBitsConstGoal, !Info),
             PrivateBuiltin = mercury_private_builtin_module,
             % XXX This assumes that unsigned_lt works when Y is uint,
             % as well as when it is int. If this assumption is wrong,
@@ -1531,7 +1536,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
 
             string.format("%s.(%s): second operand is out of range",
                 [s(ModuleName), s(PredName)], NotInRangeStr),
-            simplify_make_string_const(NotInRangeStr, ErrorMsgStrVar,
+            simplify_make_string_const(Context, NotInRangeStr, ErrorMsgStrVar,
                 ErrorMsgStrGoal, !Info),
             % XXX ExceptionType should be the type of math_domain_error.
             ExceptionType = void_type,
@@ -1543,8 +1548,9 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                 du_ctor(ExceptionWrapperCtorSymName, 1, ExceptionTypeCtor),
             ExceptionWrapperCtorConsId =
                 du_data_ctor(ExceptionWrapperCtorUDC),
-            construct_functor(ExceptionVar, ExceptionWrapperCtorConsId,
-                [ErrorMsgStrVar], WrapErrorMsgGoal),
+            construct_functor(Context, ExceptionVar,
+                ExceptionWrapperCtorConsId, [ErrorMsgStrVar],
+                WrapErrorMsgGoal),
             generate_plain_call(ModuleInfo, pf_predicate,
                 mercury_exception_module, "throw",
                 [], [ExceptionVar], instmap_delta_bind_no_var, only_mode,

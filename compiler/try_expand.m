@@ -655,19 +655,20 @@ implement_try_goal(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         ExcpHandling = ExcpHandling1
     ),
 
-    goal_info_init(GoalInfo),
+    goal_info_init(GoalContext, GoalInfo),
 
     % The `succeeded' case.
     proc_info_create_var_from_type("TmpOutputTuple", OutputTupleType,
         is_not_dummy_type, TmpTupleVar, !ProcInfo),
     proc_info_create_var_from_type("OutputTuple", OutputTupleType,
         is_not_dummy_type, TupleVar, !ProcInfo),
-    deconstruct_functor(ResultVar, exception_succeeded_functor, [TmpTupleVar],
-        DeconstructSucceeded),
+    deconstruct_functor(GoalContext, ResultVar, exception_succeeded_functor,
+        [TmpTupleVar], DeconstructSucceeded),
     instmap_lookup_vars(InstMap0, GoalOutputVars, TupleArgInsts),
     make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
         CastOutputTuple),
-    deconstruct_tuple(TupleVar, GoalOutputVars, DeconstructOutputs),
+    deconstruct_tuple(GoalContext, TupleVar, GoalOutputVars,
+        DeconstructOutputs),
     conj_list_to_goal([DeconstructSucceeded, CastOutputTuple,
         DeconstructOutputs, Then], GoalInfo, DeconstructsThen),
     SucceededCase = case(exception_succeeded_functor, [], DeconstructsThen),
@@ -886,8 +887,10 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         is_not_dummy_type, LambdaVar, !ProcInfo),
 
     % Add the construction of OutputTuple to the body.
-    construct_tuple(OutputTupleVar, set_of_var.to_sorted_list(OutputVarsSet),
-        MakeOutputTuple),
+    Body0 = hlds_goal(_, BodyGoalInfo0),
+    Context = goal_info_get_context(BodyGoalInfo0),
+    construct_tuple(Context, OutputTupleVar,
+        set_of_var.to_sorted_list(OutputVarsSet), MakeOutputTuple),
     conjoin_goals(Body0, MakeOutputTuple, LambdaBody0),
 
     % Rename away output variables in the lambda body.
@@ -936,7 +939,7 @@ detism_to_try_lambda_detism(detism_failure,     detism_semi).
 
 make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
         GoalPurity, Context, OverallGoal, !PredInfo, !ProcInfo, !ModuleInfo) :-
-    polymorphism_make_type_info_var_mi(OutputTupleType, Context,
+    polymorphism_make_type_info_var_mi(Context, OutputTupleType,
         TypeInfoVar, MakeTypeInfoGoals, !ModuleInfo, !PredInfo, !ProcInfo),
 
     % The mode will be fixed up by a later analysis.

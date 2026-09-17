@@ -516,7 +516,7 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
 
     % Make the type_infos for the types that are constrained by this.
     % These are packaged in the typeclass_info.
-    polymorphism_do_make_type_info_vars(ConstrainedTypes, Context,
+    polymorphism_do_make_type_info_vars(Context, ConstrainedTypes,
         ArgTypeInfoVarsMCAs, TypeInfoGoals, !Info),
 
     % Make the typeclass_infos for the constraints from the context of the
@@ -527,7 +527,7 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
 
     % Make the type_infos for the unconstrained type variables
     % from the head of the instance declaration.
-    polymorphism_do_make_type_info_vars(ActualUnconstrainedTypes, Context,
+    polymorphism_do_make_type_info_vars(Context, ActualUnconstrainedTypes,
         ArgUnconstrainedTypeInfoVarsMCAs, UnconstrainedTypeInfoGoals, !Info),
 
     %---------------------%
@@ -563,8 +563,8 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
     else
         get_base_typeclass_info_cons_id(!.Info, InstanceTable, Constraint,
             instance_id(InstanceNum), InstanceTypes, BaseConsId),
-        materialize_base_typeclass_info_var(Constraint, BaseConsId, BaseVar,
-            BaseGoals, !Info),
+        materialize_base_typeclass_info_var(Context, Constraint, BaseConsId,
+            BaseVar, BaseGoals, !Info),
         construct_typeclass_info(Context, Constraint,
             BaseVar, BaseConsId, ArgVarsMCAs,
             InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
@@ -834,7 +834,8 @@ polymorphism_maybe_extract_type_info(OldRttiVarMaps, Context, TVar,
     then
         polymorphism_extract_type_info(TVar, TypeClassInfoVar, Index, Context,
             NewGoals, TypeInfoVar1, !Info),
-        make_complicated_unify_assign(TypeInfoVar0, TypeInfoVar1, AssignGoal),
+        make_complicated_unify_assign(Context,
+            TypeInfoVar0, TypeInfoVar1, AssignGoal),
         !:ExtraGoals = NewGoals ++ [AssignGoal | !.ExtraGoals]
     else
         true
@@ -970,10 +971,12 @@ new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred materialize_base_typeclass_info_var(prog_constraint::in, cons_id::in,
+:- pred materialize_base_typeclass_info_var(prog_context::in,
+    prog_constraint::in, cons_id::in,
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-materialize_base_typeclass_info_var(Constraint, ConsId, Var, Goals, !Info) :-
+materialize_base_typeclass_info_var(Context, Constraint, ConsId,
+        Var, Goals, !Info) :-
     % NOTE We used to search for ConsId in the const_struct_var_map, but
     % this was useless, because we never PUT base_typeclass_infos into
     % the const_struct_var_map.
@@ -1004,7 +1007,7 @@ materialize_base_typeclass_info_var(Constraint, ConsId, Var, Goals, !Info) :-
     % Create the rest of the unification goal.
     NonLocals = set_of_var.make_singleton(Var),
     InstMapDelta = instmap_delta_bind_var(Var),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
         GoalInfo),
     Goal = hlds_goal(Unify, GoalInfo),
     Goals = [Goal].

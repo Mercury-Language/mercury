@@ -1677,7 +1677,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     UnifyInstMapDelta = instmap_delta_from_assoc_list([
         LHSVar - UnifyPredVarInst]),
     goal_info_init(UnifyNonLocals, UnifyInstMapDelta, detism_det,
-        purity_pure, UnifyGoalInfo),
+        purity_pure, Context, UnifyGoalInfo),
     UnifyGoal = hlds_goal(UnifyGoalExpr, UnifyGoalInfo),
 
     lambda_info_set_recompute_nonlocals(must_recompute_nonlocals, !Info).

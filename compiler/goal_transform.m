@@ -827,8 +827,10 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct,
     instmap_delta_init_reachable(ExtraInstMapDelta0),
     instmap_delta_bind_var_to_functor(Var, VarType, ConsId, InstMap,
         ExtraInstMapDelta0, ExtraInstMapDelta, !ModuleInfo),
+    CaseGoal = hlds_goal(_, CaseGoalInfo),
+    CaseContext = goal_info_get_context(CaseGoalInfo),
     goal_info_init(NonLocals, ExtraInstMapDelta,
-        detism_semi, purity_pure, ExtraGoalInfo),
+        detism_semi, purity_pure, CaseContext, ExtraGoalInfo),
 
     % Conjoin the test and the rest of the case.
     goal_to_conj_list(CaseGoal, CaseGoalConj),
@@ -836,7 +838,6 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct,
 
     % Work out the nonlocals, instmap_delta and determinism
     % of the entire conjunction.
-    CaseGoal = hlds_goal(_, CaseGoalInfo),
     CaseNonLocals0 = goal_info_get_nonlocals(CaseGoalInfo),
     set_of_var.insert(Var, CaseNonLocals0, CaseNonLocals),
     CaseInstMapDelta = goal_info_get_instmap_delta(CaseGoalInfo),
@@ -846,7 +847,7 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct,
     det_conjunction_detism(detism_semi, CaseDetism0, Detism),
     CasePurity = goal_info_get_purity(CaseGoalInfo),
     goal_info_init(CaseNonLocals, InstMapDelta, Detism, CasePurity,
-        CombinedGoalInfo),
+        CaseContext, CombinedGoalInfo),
     Disjunct = hlds_goal(conj(plain_conj, GoalList), CombinedGoalInfo).
 
 %---------------------------------------------------------------------------%

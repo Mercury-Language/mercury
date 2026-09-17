@@ -1158,7 +1158,8 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         DestroyGoal =
             ( pred(Id::in, PTable0::in, PTable::out) is det :-
                 map.lookup(ProcTable0, Id, ProcInfo0),
-                proc_info_set_goal(true_goal, ProcInfo0, ProcInfo),
+                proc_info_get_context(ProcInfo0, Context),
+                proc_info_set_goal(true_goal(Context), ProcInfo0, ProcInfo),
                 map.det_update(Id, ProcInfo, PTable0, PTable)
             ),
         ElimWhat = elim_whole_pred(elim_deleted_goal),

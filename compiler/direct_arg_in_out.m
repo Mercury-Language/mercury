@@ -244,6 +244,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1794,7 +1795,7 @@ add_assign_of_merge_var(OrigVar, MergeVar,
         UnifyMainContext = umc_implicit("direct_arg_in_out_call"),
         UnifySubContexts = [],
         make_simple_assign(MergeVar, CurVar,
-            UnifyMainContext, UnifySubContexts, AssignGoal),
+            dummy_context, UnifyMainContext, UnifySubContexts, AssignGoal),
         append_goal(Goal0, AssignGoal, Goal)
     else
         % There is no point in adding dead code to the end of Goal0.

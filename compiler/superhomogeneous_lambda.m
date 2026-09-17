@@ -765,7 +765,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
         ArgSpecs = [_ | _],
         add_unravel_errs(ArgSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
-        Goal = true_goal_with_context(Context)
+        Goal = true_goal(Context)
     ;
         ArgSpecs = [],
         some [!SVarState] (
@@ -793,7 +793,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
             % Create the unifications that need to come before the body of the
             % lambda expression; those corresponding to args whose mode is
             % input or unused.
-            HeadBefore0 = true_goal_with_context(Context),
+            HeadBefore0 = true_goal(Context),
             insert_arg_unifications(NonOutputLambdaVarsArgs,
                 Context, ArgContext, HeadBefore0, HeadBefore,
                 !SVarState, !UrInfo),
@@ -805,7 +805,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
             % Create the unifications that need to come after the body of the
             % lambda expression; those corresponding to args whose mode is
             % output.
-            HeadAfter0 = true_goal_with_context(Context),
+            HeadAfter0 = true_goal(Context),
             insert_arg_unifications(OutputLambdaVarsArgs, Context, ArgContext,
                 HeadAfter0, HeadAfter, !SVarState, !UrInfo),
 

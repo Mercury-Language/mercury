@@ -504,7 +504,7 @@ create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
         MaybeGranularityVar = yes(GranularityVar),
         % Create the condition.
         make_simple_test(GranularityVar, Var,
-            umc_implicit("distance_granularity"), [], Test),
+            dummy_context, umc_implicit("distance_granularity"), [], Test),
         create_conj(UnifyGoal, Test, plain_conj, Cond),
 
         % Create the then.
