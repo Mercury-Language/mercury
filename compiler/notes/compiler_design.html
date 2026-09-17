@@ -1629,7 +1629,8 @@ simplify.m is a package of submodules.
     It also attempts to partially evaluate the correct calls,
     essentially interpreting the format string at compile time, not runtime.
     <li>
-    parse_string_format.m does the same job for format_call.m at compile time
+    parse_string_format.m does
+    the same job for opt_format_call.m at compile time
     as library/string.parse_runtime.m does at runtime,
     i.e. it parses the format strings in calls to predicates such as io.format,
     and checks whether they match the values passed with them.
@@ -1643,6 +1644,16 @@ simplify.m is a package of submodules.
     <li>
     simplify_proc.m handles the top-level processing of procedures
     and their bodies.
+    <li>
+    simplify_format_call.m supervises invocations of opt_format_call.m,
+    including modifying the code of the procedure to make that pass
+    more effective.
+    <li>
+    simplify_polymorphism.m handles branched control structures
+    where the different branches store information
+    about the same typeclass constraints
+    in different variables.
+    These can pose problems for the debugger.
     <li>
     simplify_info.m defines the data structure
     that is threaded through the code of the submodules above,

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2014, 2023-2025 The Mercury team.
+% Copyright (C) 2013-2014, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -44,6 +44,7 @@
 :- include_module common.
 :- include_module mark_trace_goals.
 :- include_module parse_string_format.
+:- include_module simplify_format_call.
 :- include_module simplify_goal.
 :- include_module simplify_goal_call.
 :- include_module simplify_goal_conj.
@@ -53,6 +54,7 @@
 :- include_module simplify_goal_switch.
 :- include_module simplify_goal_unify.
 :- include_module simplify_info.
+:- include_module simplify_polymorphism.
 :- include_module split_switch_arms.
 :- include_module opt_format_call_errors.
 

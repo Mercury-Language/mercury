@@ -90,12 +90,12 @@
 :- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.mark_trace_goals.
 :- import_module check_hlds.simplify.opt_format_call.
+:- import_module check_hlds.simplify.simplify_format_call.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.simplify.simplify_info.
+:- import_module check_hlds.simplify.simplify_polymorphism.
 :- import_module check_hlds.simplify.split_switch_arms.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_util.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -111,13 +111,10 @@
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
@@ -125,12 +122,8 @@
 :- import_module transform_hlds.direct_arg_in_out.
 
 :- import_module bool.
-:- import_module cord.
 :- import_module int.
 :- import_module map.
-:- import_module multi_map.
-:- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
@@ -249,7 +242,7 @@ simplify_goal_update_vars_in_proc(ProgressStream, SimplifyTasks,
 
 simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         !:Specs, !ProcInfo, !ModuleInfo) :-
-    simplify_proc_maybe_vary_parameters(!.ModuleInfo, PredId, !.ProcInfo,
+    simplify_proc_maybe_vary_tasks(!.ModuleInfo, PredId, !.ProcInfo,
         SimplifyTasks0, SimplifyTasks),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_markers(PredInfo0, Markers0),
@@ -414,10 +407,10 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         IsDefinedHere = yes
     ).
 
-:- pred simplify_proc_maybe_vary_parameters(module_info::in, pred_id::in,
+:- pred simplify_proc_maybe_vary_tasks(module_info::in, pred_id::in,
     proc_info::in, simplify_tasks::in, simplify_tasks::out) is det.
 
-simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
+simplify_proc_maybe_vary_tasks(ModuleInfo, PredId, ProcInfo,
         !SimplifyTasks) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_string_option(Globals, debug_common_struct_preds,
@@ -456,7 +449,7 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
     % If we have too many variables, common_struct used to take so long that
     % either the compiler runs out of memory, or the user runs out of patience.
     % In such cases, the fact that we would generate better code if the
-    % compilation finished is therefore of limited interest.
+    % compilation finished is of limited interest.
     %
     % However, since this limit was first imposed, we have optimized
     % the compiler's infrastructure for such things, e.g. by using much more
@@ -466,8 +459,8 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
     % appear.
     %
     % As of 2020 october 11, the code of convert_options_to_globals in
-    % handle_options.m has just shy of 9,000 variables at the time of the
-    % first simplify pass (HLDS dump stage 65). The compiler can handle that
+    % handle_options.m had just shy of 9,000 variables during the first
+    % simplify pass (HLDS dump stage 65). The compiler can handle that
     % easily, so the setting below allows for some growth.
     %
 :- func turn_off_common_struct_threshold = int.
@@ -491,967 +484,6 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
         proc_info_set_goal(Goal, !ProcInfo)
     else
         true
-    ).
-
-:- pred check_typeclass_records(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, var_table::in, rtti_varmaps::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
-
-check_typeclass_records(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
-        VarTable, RttiVarMaps, !Specs) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, body_typeinfo_liveness,
-        BodyTypeInfoLiveness),
-    (
-        BodyTypeInfoLiveness = no
-    ;
-        BodyTypeInfoLiveness = yes,
-        % If there are no constraints that have two or more typeclass_info
-        % variables, then having two branches of a branched control
-        % structure generating different typeclass_infos for the same
-        % constraint is not possible.
-        %
-        % This is a cheap test to make, because its cost is bounded
-        % by the size of the RttiVarMaps, which is just about always small.
-        % This is why we start with that, and go on to traverse the body goal
-        % (which may be MUCH bigger) only if we have to.
-        compute_duplicate_typeclass_info_vars(VarTable, RttiVarMaps,
-            DupTCIVarsToConstraintMap),
-        ( if map.is_empty(DupTCIVarsToConstraintMap) then
-            true
-        else
-            map.keys_as_set(DupTCIVarsToConstraintMap, DupTCIVarsSet),
-            DupTCIVars = set_of_var.set_to_bitset(DupTCIVarsSet),
-            proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap0),
-            proc_info_get_goal(ProcInfo, Goal),
-            look_for_typeclass_info_conflict_in_goal(DupTCIVars,
-                DupTCIVarsToConstraintMap, InstMap0, Goal,
-                multi_map.init, _, multi_map.init, ConflictConstraints),
-            ( if multi_map.is_empty(ConflictConstraints) then
-                true
-            else
-                report_typeclass_info_problem(ModuleInfo, PredId, ProcId,
-                    PredInfo, ProcInfo, ConflictConstraints, !Specs)
-            )
-        )
-    ).
-
-:- type constraint_tci_db == multi_map(prog_constraint, constraint_tci).
-:- type constraint_tci
-    --->    constraint_tci(prog_var, prog_context).
-
-:- type conflict_constraints == constraint_tci_db.
-
-    % Look for branched goals in which two different branches
-    % produce typeclass_infos for the same constraint.
-    %
-    % Because the polymorphism pass always generates code that either
-    % constructs or retrieves typeclass_infos just before goals that
-    % need them, and only ever reuses the variables that hold them
-    % in straight line code, the typeclass_infos generated in
-    % different branches are guaranteed be in different variables.
-    % This is a problem, because the current design of the rtti_varmaps
-    % structure allows us to record only one of those typeclass_info vars
-    % as the holder of the available information about that constraint.
-    % This is the cause of Mantis bug #585, whose entry discusses the issue
-    % in detail.
-    %
-:- pred look_for_typeclass_info_conflict_in_goal(set_of_progvar::in,
-    map(prog_var, prog_constraint)::in, instmap::in, hlds_goal::in,
-    constraint_tci_db::in, constraint_tci_db::out,
-    conflict_constraints::in, conflict_constraints::out) is det.
-
-look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Goal, !TCIConstraints, !ConflictConstraints) :-
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    (
-        ( GoalExpr = unify(_, _, _, _, _)
-        ; GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _, _)
-        ),
-        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-        instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-        set_of_var.intersect(DupTCIVars, ChangedVars, ChangedDupTCIVars),
-        ( if set_of_var.is_non_empty(ChangedDupTCIVars) then
-            Context = goal_info_get_context(GoalInfo),
-            set_of_var.to_sorted_list(ChangedDupTCIVars, ChangedDupTCIVarList),
-            list.foldl(
-                record_delta_typeclass_info_var(TCIVarToConstraintMap,
-                    Context),
-                ChangedDupTCIVarList, !TCIConstraints)
-        else
-            true
-        )
-    ;
-        GoalExpr = conj(_ConjKind, Conjuncts),
-        % Neither debugging nor accurate gc, the two reasons for
-        % turning on typeinfo liveness, support parallel conjunctions.
-        % Therefore we should not get here if _ConjKind = parallel_conj.
-        % However, the code intended for plain_conjs should also work
-        % for parallel_conjs as well.
-        look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
-            TCIVarToConstraintMap, InstMap0, Conjuncts,
-            !TCIConstraints, !ConflictConstraints)
-    ;
-        GoalExpr = disj(Disjuncts),
-        look_for_typeclass_info_conflict_in_disj(DupTCIVars,
-            TCIVarToConstraintMap, InstMap0, Disjuncts,
-            !TCIConstraints, !ConflictConstraints)
-    ;
-        GoalExpr = switch(_, _, Cases),
-        look_for_typeclass_info_conflict_in_switch(DupTCIVars,
-            TCIVarToConstraintMap, InstMap0, Cases,
-            !TCIConstraints, !ConflictConstraints)
-    ;
-        GoalExpr = if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
-        look_for_typeclass_info_conflict_in_goal(DupTCIVars,
-            TCIVarToConstraintMap, InstMap0, CondGoal,
-            multi_map.init, CondTCIConstraints, !ConflictConstraints),
-        apply_goal_instmap_delta(CondGoal, InstMap0, InstMapAfterCond),
-        look_for_typeclass_info_conflict_in_goal(DupTCIVars,
-            TCIVarToConstraintMap, InstMapAfterCond, ThenGoal,
-            CondTCIConstraints, ThenTCIConstraints, !ConflictConstraints),
-        look_for_typeclass_info_conflict_in_goal(DupTCIVars,
-            TCIVarToConstraintMap, InstMap0, ElseGoal,
-            multi_map.init, ElseTCIConstraints, !ConflictConstraints),
-        detect_conflicts_in_arms([ThenTCIConstraints, ElseTCIConstraints],
-            !TCIConstraints, !ConflictConstraints)
-    ;
-        GoalExpr = negation(SubGoal),
-        look_for_typeclass_info_conflict_in_goal(DupTCIVars,
-            TCIVarToConstraintMap, InstMap0, SubGoal,
-            !TCIConstraints, !ConflictConstraints)
-    ;
-        GoalExpr = scope(Reason, SubGoal),
-        ( if
-            Reason = from_ground_term(_, FGT),
-            ( FGT = from_ground_term_construct
-            ; FGT = from_ground_term_deconstruct
-            )
-        then
-            true
-        else
-            look_for_typeclass_info_conflict_in_goal(DupTCIVars,
-                TCIVarToConstraintMap, InstMap0, SubGoal,
-                !TCIConstraints, !ConflictConstraints)
-        )
-    ;
-        GoalExpr = shorthand(ShortHand),
-        (
-            ShortHand = atomic_goal(_GoalType, _Outer, _Inner,
-                _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
-            Disjuncts = [MainGoal | OrElseGoals],
-            look_for_typeclass_info_conflict_in_disj(DupTCIVars,
-                TCIVarToConstraintMap, InstMap0, Disjuncts,
-                !TCIConstraints, !ConflictConstraints)
-        ;
-            ShortHand = try_goal(_, _, _),
-            % These should have been expanded out by now.
-            unexpected($pred, "try_goal")
-        ;
-            ShortHand = bi_implication(_, _),
-            % These should have been expanded out by now.
-            unexpected($pred, "bi_implication")
-        )
-    ).
-
-:- pred record_delta_typeclass_info_var(map(prog_var, prog_constraint)::in,
-    prog_context::in, prog_var::in,
-    constraint_tci_db::in, constraint_tci_db::out) is det.
-
-record_delta_typeclass_info_var(TCIVarToConstraintMap, Context, TCIVar,
-        !TCIConstraints) :-
-    map.lookup(TCIVarToConstraintMap, TCIVar, Constraint),
-    ConstraintTCI = constraint_tci(TCIVar, Context),
-    multi_map.add(Constraint, ConstraintTCI, !TCIConstraints).
-
-%---------------------%
-
-:- pred look_for_typeclass_info_conflict_in_plain_conj(set_of_progvar::in,
-    map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
-    constraint_tci_db::in, constraint_tci_db::out,
-    conflict_constraints::in, conflict_constraints::out) is det.
-
-look_for_typeclass_info_conflict_in_plain_conj(_, _, _, [],
-        !TCIConstraints, !ConflictConstraints).
-look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
-        TCIVarToConstraintMap, InstMap0, [Conjunct | Conjuncts],
-        !TCIConstraints, !ConflictConstraints) :-
-    look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Conjunct, !TCIConstraints, !ConflictConstraints),
-    apply_goal_instmap_delta(Conjunct, InstMap0, InstMap1),
-    look_for_typeclass_info_conflict_in_plain_conj(DupTCIVars,
-        TCIVarToConstraintMap, InstMap1, Conjuncts,
-        !TCIConstraints, !ConflictConstraints).
-
-%---------------------%
-
-:- pred look_for_typeclass_info_conflict_in_disj(set_of_progvar::in,
-    map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
-    constraint_tci_db::in, constraint_tci_db::out,
-    conflict_constraints::in, conflict_constraints::out) is det.
-
-look_for_typeclass_info_conflict_in_disj(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Disjuncts, !TCIConstraints, !ConflictConstraints) :-
-    look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
-        TCIVarToConstraintMap, InstMap0, Disjuncts, ArmTCIConstraints,
-        !ConflictConstraints),
-    detect_conflicts_in_arms(ArmTCIConstraints,
-        !TCIConstraints, !ConflictConstraints).
-
-:- pred look_for_typeclass_info_conflict_in_disjuncts(set_of_progvar::in,
-    map(prog_var, prog_constraint)::in, instmap::in, list(hlds_goal)::in,
-    list(constraint_tci_db)::out,
-    conflict_constraints::in, conflict_constraints::out) is det.
-
-look_for_typeclass_info_conflict_in_disjuncts(_, _, _, [], [],
-        !ConflictConstraints).
-look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
-        TCIVarToConstraintMap, InstMap0, [HeadDisjunct | TailDisjuncts],
-        [HeadTCIConstraints | TailTCIConstraints], !ConflictConstraints) :-
-    look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, HeadDisjunct, multi_map.init, HeadTCIConstraints,
-        !ConflictConstraints),
-    look_for_typeclass_info_conflict_in_disjuncts(DupTCIVars,
-        TCIVarToConstraintMap, InstMap0,
-        TailDisjuncts, TailTCIConstraints, !ConflictConstraints).
-
-%---------------------%
-
-:- pred look_for_typeclass_info_conflict_in_switch(set_of_progvar::in,
-    map(prog_var, prog_constraint)::in, instmap::in, list(case)::in,
-    constraint_tci_db::in, constraint_tci_db::out,
-    conflict_constraints::in, conflict_constraints::out) is det.
-
-look_for_typeclass_info_conflict_in_switch(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, Disjuncts, !TCIConstraints, !ConflictConstraints) :-
-    look_for_typeclass_info_conflict_in_cases(DupTCIVars,
-        TCIVarToConstraintMap, InstMap0, Disjuncts, ArmTCIConstraints,
-        !ConflictConstraints),
-    detect_conflicts_in_arms(ArmTCIConstraints,
-        !TCIConstraints, !ConflictConstraints).
-
-:- pred look_for_typeclass_info_conflict_in_cases(set_of_progvar::in,
-    map(prog_var, prog_constraint)::in, instmap::in, list(case)::in,
-    list(constraint_tci_db)::out,
-    conflict_constraints::in, conflict_constraints::out) is det.
-
-look_for_typeclass_info_conflict_in_cases(_, _, _, [], [],
-        !ConflictConstraints).
-look_for_typeclass_info_conflict_in_cases(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, [HeadCase | TailCases],
-        [HeadTCIConstraints | TailTCIConstraints], !ConflictConstraints) :-
-    HeadCase = case(_MainConsId, _OtherConsIds, HeadGoal),
-    % We ignore the instmap changes resulting from binding the switched-on
-    % variable to MainConsId or OtherConsIds, because they cannot affect
-    % the compiler-generated code that binds typeclass infos.
-    look_for_typeclass_info_conflict_in_goal(DupTCIVars, TCIVarToConstraintMap,
-        InstMap0, HeadGoal, multi_map.init, HeadTCIConstraints,
-        !ConflictConstraints),
-    look_for_typeclass_info_conflict_in_cases(DupTCIVars,
-        TCIVarToConstraintMap, InstMap0,
-        TailCases, TailTCIConstraints, !ConflictConstraints).
-
-%---------------------%
-
-:- pred detect_conflicts_in_arms(list(constraint_tci_db)::in,
-    constraint_tci_db::in, constraint_tci_db::out,
-    conflict_constraints::in, conflict_constraints::out) is det.
-
-detect_conflicts_in_arms(ArmTCIConstraints,
-        !AllArmTCIConstraints, !ConflictConstraints) :-
-    detect_conflict_constraints_in_arms(ArmTCIConstraints,
-        set.init, set.init, DupConstraints, !AllArmTCIConstraints),
-    collect_conflict_constraints_in_arms(DupConstraints,
-        ArmTCIConstraints, multi_map.init, NewConflictConstraints),
-    multi_map.merge(NewConflictConstraints, !ConflictConstraints).
-
-:- pred detect_conflict_constraints_in_arms(list(constraint_tci_db)::in,
-    set(prog_constraint)::in,
-    set(prog_constraint)::in, set(prog_constraint)::out,
-    constraint_tci_db::in, constraint_tci_db::out) is det.
-
-detect_conflict_constraints_in_arms([], _,
-        !DupConstraints, !AllArmTCIConstraints).
-detect_conflict_constraints_in_arms(
-        [HeadArmTCIConstraints | TailArmTCIConstraints],
-        !.SeenConstraints, !DupConstraints, !AllArmTCIConstraints) :-
-    multi_map.keys_as_set(HeadArmTCIConstraints, HeadConstraints),
-    set.intersect(!.SeenConstraints, HeadConstraints, SeenHeadConstraints),
-    ( if set.is_non_empty(SeenHeadConstraints) then
-        % This arm and one (or more) of the previous arms both define
-        % typeclass_infos for the constraints in SeenHeadConstraints.
-        %
-        % We *could* record HeadArmTCIConstraints in !ConflictConstraints,
-        % but we are too late to record in !ConflictConstraints the
-        % constraint_tcis for the *earlier* branch. This is why we just
-        % record this as a duplicate constraint, and let the later
-        % collect_conflict_constraints_in_arms pass collect constraint_tcis
-        % for the DupConstraints from *all* the branches.
-        set.union(SeenHeadConstraints, !DupConstraints)
-    else
-        true
-    ),
-    set.union(HeadConstraints, !SeenConstraints),
-    multi_map.merge(HeadArmTCIConstraints, !AllArmTCIConstraints),
-    detect_conflict_constraints_in_arms(TailArmTCIConstraints,
-        !.SeenConstraints, !DupConstraints, !AllArmTCIConstraints).
-
-:- pred collect_conflict_constraints_in_arms(set(prog_constraint)::in,
-    list(constraint_tci_db)::in,
-    conflict_constraints::in, conflict_constraints::out) is det.
-
-collect_conflict_constraints_in_arms(_, [], !ConflictConstraints).
-collect_conflict_constraints_in_arms(DupConstraints,
-        [HeadArmTCIConstraints | TailArmTCIConstraints],
-        !ConflictConstraints) :-
-    multi_map.select(HeadArmTCIConstraints, DupConstraints,
-        HeadDupTCIConstraints),
-    multi_map.merge(HeadDupTCIConstraints, !ConflictConstraints),
-    collect_conflict_constraints_in_arms(DupConstraints,
-        TailArmTCIConstraints, !ConflictConstraints).
-
-%---------------------%
-
-:- pred report_typeclass_info_problem(module_info::in,
-    pred_id::in, proc_id::in, pred_info::in, proc_info::in,
-    conflict_constraints::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
-
-report_typeclass_info_problem(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
-        ConflictConstraintSet, !Specs) :-
-    ProcPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
-        output_debug, yes(color_subject), should_not_module_qualify, [],
-        proc(PredId, ProcId)),
-    pred_info_get_typevarset(PredInfo, TVarSet),
-    multi_map.to_sorted_assoc_list(ConflictConstraintSet, ConflictConstraints),
-    list.map(conflict_constraint_to_piece(TVarSet),
-        ConflictConstraints, ConflictConstraintPieceLists0),
-    list.intersperse([nl],
-        ConflictConstraintPieceLists0, ConflictConstraintPieceLists),
-    list.condense(ConflictConstraintPieceLists, ConflictConstraintPieces),
-    ( if list.length(ConflictConstraints) > 1 then
-        ConflictPieces =
-            [words("The constraints involved are:"), nl_indent_delta(1)] ++
-            ConflictConstraintPieces ++
-            [nl_indent_delta(-1)]
-    else
-        ConflictPieces =
-            [words("The constraint involved is:"), nl_indent_delta(1)] ++
-            ConflictConstraintPieces ++
-            [nl_indent_delta(-1)]
-    ),
-    proc_info_get_context(ProcInfo, Context),
-    % We say "debugging enabled", because this is by far
-    % the most common way for body_typeinfo_liveness to be set.
-    % Both alternatives, the use of .agc grades and manual setting
-    % of the option, are extremely rare.
-    MainPieces = [words("Sorry: the compiler")] ++
-        color_as_incorrect([words("cannot correctly compile")]) ++
-        ProcPieces ++ [words("with debugging enabled."),
-        words("This is due to a known limitation that concerns"),
-        words("the mapping between typeclass constraints on the one hand,"),
-        words("and the hidden, compiler-generated variables"),
-        words("storing information about them on the other hand."),
-        nl] ++
-        ConflictPieces,
-    VerbosePieces =
-        [words("The limitation occurs when the definition"),
-        words("of a predicate or function contains"),
-        words("both the deconstructions of terms"),
-        words("that contain existentially typed arguments,"),
-        words("and branched code, such as if-then-elses,"),
-        words("disjunctions and/or switches."),
-        words("You can work around the limitation"),
-        words("by moving such deconstruction unifications"),
-        words("to helper predicates that contain no branching."), nl],
-    Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Phase = phase_simplify(report_in_any_mode),
-    Spec = gen_spec($pred, severity_error, Phase, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-:- pred conflict_constraint_to_piece(tvarset::in,
-    pair(prog_constraint, list(constraint_tci))::in,
-    list(format_piece)::out) is det.
-
-conflict_constraint_to_piece(TVarSet, Constraint - ConstraintTCIs, Pieces) :-
-    strip_module_names_from_constraint(strip_all_module_names,
-        set_default_func, Constraint, StrippedConstraint),
-    ConstraintStr = mercury_constraint_to_string(TVarSet, print_name_only,
-        StrippedConstraint),
-    ContextToLineNumberPiece =
-        ( func(ConstraintTCI) = LineNumberPiece :-
-            ConstraintTCI = constraint_tci(_TCIVar, Context),
-            LineNumber = context_line(Context),
-            LineNumberPiece = int_fixed(LineNumber)
-        ),
-    LineNumberPieces0 = list.map(ContextToLineNumberPiece, ConstraintTCIs),
-    list.sort_and_remove_dups(LineNumberPieces0, LineNumberPieces),
-    ( if list.length(LineNumberPieces) > 1 then
-        OnLineS = "on lines",
-        LineSuffixPieces = []
-    else
-        OnLineS = "on line",
-        LineSuffixPieces = [words("(The code on that line"),
-            words("may have been duplicated by the compiler.)"), nl]
-    ),
-    LineNumbersPieces = piece_list_to_pieces("and", LineNumberPieces),
-    Pieces = [words(ConstraintStr), nl_indent_delta(1)] ++
-        [words(OnLineS)] ++ LineNumbersPieces ++ [nl_indent_delta(-1)] ++
-        LineSuffixPieces.
-
-%---------------------------------------------------------------------------%
-
-:- pred simplify_proc_analyze_and_format_calls(io.text_output_stream::in,
-    maybe_generate_implicit_stream_warnings::in,
-    module_info::in, module_info::out, pred_id::in, pred_info::in,
-    proc_id::in, proc_info::in, proc_info::out, list(diag_spec)::out) is det.
-
-simplify_proc_analyze_and_format_calls(ProgressStream, ImplicitStreamWarnings,
-        !ModuleInfo, PredId, PredInfo0, ProcId, !ProcInfo, FormatSpecs) :-
-    proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(!.ProcInfo, VarTable0),
-    analyze_and_optimize_format_calls(ProgressStream,
-        ImplicitStreamWarnings, !.ModuleInfo, PredInfo0, !.ProcInfo,
-        Goal0, MaybeGoal1, FormatSpecs1, VarTable0, VarTable1),
-    ( if
-        had_some_unknown_format_calls(FormatSpecs1) = yes,
-        % We found some format calls that we couldn't optimize because
-        % we don't know either the format string or the list of values
-        % to be printed. Try to fix this by moving copies of the format call
-        % into the tail ends of the immediately previous branched control
-        % structure, since this will fix the problem *if* the missing info
-        % is available in each branch. If it is not, then the transformation
-        % does not help, but it does not hurt either. (Even if we get one copy
-        % per branch of e.g. a warning about the format string being unknown,
-        % write_error_spec.m will print only one copy.)
-        %
-        % Note that we do *not* test the value of warn_unknown_format_calls.
-        % Even if the warning is not enabled, knowing the format string
-        % allows us to generate better code.
-        push_format_calls_into_branches_in_goal(!.ModuleInfo, Goal0, Goal1),
-        % Don't call analyze_and_optimize_format_calls again with the same
-        % input goal; the results won't change.
-        not Goal0 = Goal1
-    then
-        % Repeat the call to analyze_and_optimize_format_calls on the
-        % transformed procedure body, once we have fixed up the goal_infos.
-        % The code here does most of the same things as the
-        % "MaybeGoal = yes(Goal)" case below, though the reasons for
-        % e.g. the nonlocals fields needing recomputation are different.
-        proc_info_set_goal(Goal1, !ProcInfo),
-        proc_info_set_var_table(VarTable1, !ProcInfo),
-        requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo),
-        recompute_instmap_delta_proc(no_recomp_atomics,
-            !ProcInfo, !ModuleInfo),
-        pred_info_set_proc_info(ProcId, !.ProcInfo, PredInfo0, PredInfo1),
-        analyze_and_optimize_format_calls(ProgressStream,
-            ImplicitStreamWarnings, !.ModuleInfo, PredInfo1, !.ProcInfo,
-            Goal1, MaybeGoal, FormatSpecs, VarTable0, VarTable)
-    else
-        MaybeGoal = MaybeGoal1,
-        FormatSpecs = FormatSpecs1,
-        VarTable = VarTable1,
-        PredInfo1 = PredInfo0
-    ),
-    (
-        MaybeGoal = yes(Goal),
-        proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_var_table(VarTable, !ProcInfo),
-
-        % The goals we replace format calls with are created with the
-        % correct nonlocals, but analyze_and_optimize_format_calls can
-        % take code for building a list of string.poly_types out of one
-        % scope (e.g. the condition of an if-then-else) and replace it
-        % with code to build the string directly in another scope
-        % (such as the then part of that if-then-else, if that is where
-        % the format call is). This can leave variables missing from
-        % the nonlocal fields of the original scopes. And since
-        % instmap_deltas are restricted to the goal's nonlocals,
-        % they need to be recomputed as well.
-        requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo),
-        recompute_instmap_delta_proc(no_recomp_atomics,
-            !ProcInfo, !ModuleInfo),
-
-        % Put the new proc_info back into !ModuleInfo, since some of the
-        % following code could otherwise find obsolete information in there.
-        pred_info_set_proc_info(ProcId, !.ProcInfo, PredInfo1, PredInfo2),
-
-        % Remove the has_format_call marker from the pred_info before
-        % putting it back, since any optimizable format calls will already
-        % have been optimized. Since currently there is no program
-        % transformation that inserts calls to these predicates,
-        % there is no point in trying to optimize format_calls again later.
-        pred_info_get_markers(PredInfo2, Markers2),
-        remove_marker(marker_has_format_call, Markers2, Markers),
-        pred_info_set_markers(Markers, PredInfo2, PredInfo),
-        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
-    ;
-        MaybeGoal = no
-        % There should not be any updates to the var_table,
-        % but even if there are, throw them away, since they apply to a version
-        % of the goal that we will not be using.
-    ).
-
-:- func had_some_unknown_format_calls(list(diag_spec)) = bool.
-
-had_some_unknown_format_calls([]) = no.
-had_some_unknown_format_calls([Spec | Specs]) = SomeUnknown :-
-    extract_spec_severity(Spec, Severity),
-    ( if Severity = severity_warning(warn_unknown_format_calls) then
-        SomeUnknown = yes
-    else
-        SomeUnknown = had_some_unknown_format_calls(Specs)
-    ).
-
-:- pred push_format_calls_into_branches_in_goal(module_info::in,
-    hlds_goal::in, hlds_goal::out) is det.
-
-push_format_calls_into_branches_in_goal(ModuleInfo, Goal0, Goal) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    (
-        ( GoalExpr0 = unify(_, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _, _)
-        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-        ),
-        Goal = Goal0
-    ;
-        GoalExpr0 = conj(ConjType0, Conjuncts0),
-        list.map(push_format_calls_into_branches_in_goal(ModuleInfo),
-            Conjuncts0, Conjuncts1),
-        (
-            ConjType0 = plain_conj,
-            % It is simpler to have the list.map above process
-            % each conjunct, before this call does the pushing,
-            % Separation-of-concerns works.
-            push_format_calls_into_branches_in_conjunction(ModuleInfo,
-                Conjuncts1, Conjuncts)
-        ;
-            ConjType0 = parallel_conj,
-            Conjuncts = Conjuncts1
-        ),
-        GoalExpr = conj(ConjType0, Conjuncts),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
-        GoalExpr0 = disj(Disjuncts0),
-        list.map(push_format_calls_into_branches_in_goal(ModuleInfo),
-            Disjuncts0, Disjuncts),
-        GoalExpr = disj(Disjuncts),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
-        GoalExpr0 = switch(Var0, CanFail0, Cases0),
-        list.map(push_format_calls_into_branches_in_case(ModuleInfo),
-            Cases0, Cases),
-        GoalExpr = switch(Var0, CanFail0, Cases),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
-        GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
-        push_format_calls_into_branches_in_goal(ModuleInfo, Cond0, Cond),
-        push_format_calls_into_branches_in_goal(ModuleInfo, Then0, Then),
-        push_format_calls_into_branches_in_goal(ModuleInfo, Else0, Else),
-        GoalExpr = if_then_else(Vars0, Cond, Then, Else),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
-        GoalExpr0 = negation(SubGoal0),
-        push_format_calls_into_branches_in_goal(ModuleInfo, SubGoal0, SubGoal),
-        GoalExpr = negation(SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
-        GoalExpr0 = scope(Reason0, SubGoal0),
-        (
-            Reason0 = from_ground_term(_, _),
-            Goal = Goal0
-        ;
-            ( Reason0 = exist_quant(_, _)
-            ; Reason0 = disable_warnings(_, _)
-            ; Reason0 = promise_solutions(_, _)
-            ; Reason0 = promise_purity(_)
-            ; Reason0 = require_detism(_)
-            ; Reason0 = commit(_)
-            ; Reason0 = barrier(_)
-            ; Reason0 = trace_goal(_, _, _, _, _)
-            ; Reason0 = loop_control(_, _, _)
-            ; Reason0 = require_complete_switch(_)
-            ; Reason0 = require_switch_arms_detism(_, _)
-            ),
-            push_format_calls_into_branches_in_goal(ModuleInfo,
-                SubGoal0, SubGoal),
-            GoalExpr = scope(Reason0, SubGoal),
-            Goal = hlds_goal(GoalExpr, GoalInfo0)
-        )
-    ;
-        GoalExpr0 = shorthand(ShortHand0),
-        (
-            ShortHand0 = atomic_goal(GoalType0, Outer0, Inner0,
-                MaybeOutputVars0, MainGoal0, OrElseGoals0, OrElseInners0),
-            push_format_calls_into_branches_in_goal(ModuleInfo,
-                MainGoal0, MainGoal),
-            list.map(push_format_calls_into_branches_in_goal(ModuleInfo),
-                OrElseGoals0, OrElseGoals),
-            ShortHand = atomic_goal(GoalType0, Outer0, Inner0,
-                MaybeOutputVars0, MainGoal, OrElseGoals, OrElseInners0)
-        ;
-            ShortHand0 = try_goal(MaybeIO0, ResultVar0, SubGoal0),
-            push_format_calls_into_branches_in_goal(ModuleInfo,
-                SubGoal0, SubGoal),
-            ShortHand = try_goal(MaybeIO0, ResultVar0, SubGoal)
-        ;
-            ShortHand0 = bi_implication(_, _),
-            % These should have been expanded out by now.
-            unexpected($pred, "bi_implication")
-        ),
-        GoalExpr = shorthand(ShortHand),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ).
-
-:- pred push_format_calls_into_branches_in_case(module_info::in,
-    case::in, case::out) is det.
-
-push_format_calls_into_branches_in_case(ModuleInfo, Case0, Case) :-
-    Case0 = case(MainConsId0, OtherConsIds0, Goal0),
-    push_format_calls_into_branches_in_goal(ModuleInfo, Goal0, Goal),
-    Case = case(MainConsId0, OtherConsIds0, Goal).
-
-%---------------------%
-
-    % This predicate pushes format calls into the tail ends
-    % of the last branched goal that preceded it in a conjunction.
-    %
-    % The algorithm has two stages.
-    %
-    % The first stage partitions the conjuncts into segments, where
-    %
-    % - each segment consists of a contiguous sequence of the conjuncts
-    %   of the original conjunctions,
-    %
-    % - concatenating the contents of the segments together would yield back
-    %   the original conjunction, and
-    %
-    % - conjuncts that are either branched goals or format calls can occur
-    %   only as the distinguished last conjunct in a segment.
-    %
-    % The result is a sequence of segments that each either in a branched goal
-    % or in a format call, with the last segment ending with the end of
-    % the original conjunction.
-    %
-    % The second stage then looks for situations where a segment that ends with
-    % a branched goal is followed by a segment that ends with a format call.
-    % When it finds one, it copies the latter segment into each branch
-    % of the branched goal in the former segment, calls the result an updated
-    % segment that ends with a branched goal, and then keeps looking for
-    % more such situations.
-    %
-:- pred push_format_calls_into_branches_in_conjunction(module_info::in,
-    list(hlds_goal)::in, list(hlds_goal)::out) is det.
-
-push_format_calls_into_branches_in_conjunction(ModuleInfo,
-        Conjuncts0, Conjuncts) :-
-    segment_conjunction(ModuleInfo, Conjuncts0, cord.init, SegmentsCord,
-        cord.init, LeftOverCord),
-    Segments = cord.list(SegmentsCord),
-    (
-        Segments = [],
-        Conjuncts = Conjuncts0
-    ;
-        Segments = [HeadSegment | TailSegments],
-        push_format_segments_into_branched_goals(cord.init,
-            HeadSegment, TailSegments, SegmentGoalsCord),
-        Conjuncts = cord.list(SegmentGoalsCord ++ LeftOverCord)
-    ).
-
-%---------------------%
-
-    % The data structure that the first stage computes and
-    % the second stage processes. Its semantics are explained by
-    % the big comment on push_format_calls_into_branches_in_conjunction.
-
-:- type conjunction_segment
-    --->    segment_branched(segment_ends_with_branched)
-    ;       segment_format(segment_ends_with_format).
-
-:- type segment_ends_with_branched
-    --->    segment_ends_with_branched(cord(hlds_goal), branched_goal).
-:- type segment_ends_with_format
-    --->    segment_ends_with_format(cord(hlds_goal), hlds_goal).
-
-:- type branched_goal_expr =< hlds_goal_expr
-    --->    disj(list(hlds_goal))
-    ;       switch(prog_var, can_fail, list(case))
-    ;       if_then_else(list(prog_var), hlds_goal, hlds_goal, hlds_goal).
-:- type branched_goal =< hlds_goal
-    --->    hlds_goal(branched_goal_expr, hlds_goal_info).
-
-%---------------------%
-
-    % Partition the given list of conjuncts into a cord of segments,
-    % followed by a cord of leftover goals.
-    %
-:- pred segment_conjunction(module_info::in, list(hlds_goal)::in,
-    cord(conjunction_segment)::in, cord(conjunction_segment)::out,
-    cord(hlds_goal)::in, cord(hlds_goal)::out) is det.
-
-segment_conjunction(_, [], !SegmentsCord,
-        !.AfterLastSegmentCord, LeftOverCord) :-
-    LeftOverCord = !.AfterLastSegmentCord.
-segment_conjunction(ModuleInfo, [HeadConjunct | TailConjuncts], !SegmentsCord,
-        !.AfterLastSegmentCord, LeftOverCord) :-
-    HeadConjunct = hlds_goal(GoalExpr, GoalInfo),
-    (
-        ( GoalExpr = unify(_, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _, _)
-        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
-        ; GoalExpr = negation(_)
-        ; GoalExpr = scope(_, _)
-        ; GoalExpr = shorthand(_)
-        ),
-        cord.snoc(HeadConjunct, !AfterLastSegmentCord),
-        NextConjuncts = TailConjuncts
-    ;
-        GoalExpr = plain_call(CalleePredId, _, ArgVars, _, _, _),
-        module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-        ( if is_format_call(CalleePredInfo, ArgVars) then
-            SegmentFormat = segment_ends_with_format(!.AfterLastSegmentCord,
-                HeadConjunct),
-            cord.snoc(segment_format(SegmentFormat), !SegmentsCord),
-            !:AfterLastSegmentCord = cord.init
-        else
-            cord.snoc(HeadConjunct, !AfterLastSegmentCord)
-        ),
-        NextConjuncts = TailConjuncts
-    ;
-        GoalExpr = conj(ConjType, SubConjuncts),
-        (
-            ConjType = plain_conj,
-            NextConjuncts = SubConjuncts ++ TailConjuncts
-        ;
-            ConjType = parallel_conj,
-            cord.snoc(HeadConjunct, !AfterLastSegmentCord),
-            NextConjuncts = TailConjuncts
-        )
-    ;
-        ( GoalExpr = disj(_)
-        ; GoalExpr = switch(_, _, _)
-        ; GoalExpr = if_then_else(_, _, _, _)
-        ),
-        SegmentBranched = segment_ends_with_branched(!.AfterLastSegmentCord,
-            coerce(hlds_goal(GoalExpr, GoalInfo))),
-        cord.snoc(segment_branched(SegmentBranched), !SegmentsCord),
-        !:AfterLastSegmentCord = cord.init,
-        NextConjuncts = TailConjuncts
-    ),
-    segment_conjunction(ModuleInfo, NextConjuncts, !SegmentsCord,
-        !.AfterLastSegmentCord, LeftOverCord).
-
-    % Look for a segment ending in a branched goal followed immediately
-    % by a segment ending in a format call, and then push the latter segment
-    % into each branch of the branched goal ending the former segment.
-    % Keep doing this until there are no such segment pairs are left.
-    %
-:- pred push_format_segments_into_branched_goals(cord(hlds_goal)::in,
-    conjunction_segment::in, list(conjunction_segment)::in,
-    cord(hlds_goal)::out) is det.
-
-push_format_segments_into_branched_goals(!.DoneCord, HeadSegment, TailSegments,
-        AllCord) :-
-    (
-        HeadSegment = segment_format(SegmentFormat),
-        SegmentFormat = segment_ends_with_format(FormatStartCord, FormatGoal),
-        !:DoneCord = !.DoneCord ++ FormatStartCord,
-        cord.snoc(FormatGoal, !DoneCord),
-        (
-            TailSegments = [],
-            AllCord = !.DoneCord
-        ;
-            TailSegments = [HeadTailSegment | TailTailSegments],
-            push_format_segments_into_branched_goals(!.DoneCord,
-                HeadTailSegment, TailTailSegments, AllCord)
-        )
-    ;
-        HeadSegment = segment_branched(SegmentBranched0),
-        SegmentBranched0 =
-            segment_ends_with_branched(BranchedStartCord, BranchedGoal0),
-        (
-            TailSegments = [],
-            !:DoneCord = !.DoneCord ++ BranchedStartCord,
-            cord.snoc(coerce(BranchedGoal0), !DoneCord),
-            AllCord = !.DoneCord
-        ;
-            TailSegments = [HeadTailSegment | TailTailSegments],
-            (
-                HeadTailSegment = segment_branched(_),
-                % HeadSegment and HeadTailSegment both end in branched goals.
-                % We only ever push format calls segments into the last
-                % branched goal, so we now consider HeadSegment to be all done.
-                !:DoneCord = !.DoneCord ++ BranchedStartCord,
-                cord.snoc(coerce(BranchedGoal0), !DoneCord),
-                push_format_segments_into_branched_goals(!.DoneCord,
-                    HeadTailSegment, TailTailSegments, AllCord)
-            ;
-                HeadTailSegment = segment_format(SegmentFormat),
-                SegmentFormat =
-                    segment_ends_with_format(FormatStartCord, FormatGoal),
-                % XXX Consider doing the following merge only if
-                % the nonlocals sets of BranchedGoal0 and FormatGoal overlap.
-                cord.snoc(FormatGoal, FormatStartCord, GoalsToAppendCord),
-                GoalsToAppend = cord.list(GoalsToAppendCord),
-                BranchedGoal0 = hlds_goal(BranchedGoalExpr0, BranchedGoalInfo),
-                (
-                    BranchedGoalExpr0 = disj(Disjuncts0),
-                    list.map(append_goals_to_goal(GoalsToAppend),
-                        Disjuncts0, Disjuncts),
-                    BranchedGoalExpr = disj(Disjuncts)
-                ;
-                    BranchedGoalExpr0 = switch(Var, CanFail, Cases0),
-                    list.map(append_goals_to_case(GoalsToAppend),
-                        Cases0, Cases),
-                    BranchedGoalExpr = switch(Var, CanFail, Cases)
-                ;
-                    BranchedGoalExpr0 =
-                        if_then_else(Vars0, Cond0, Then0, Else0),
-                    append_goals_to_goal(GoalsToAppend, Then0, Then),
-                    append_goals_to_goal(GoalsToAppend, Else0, Else),
-                    BranchedGoalExpr =
-                        if_then_else(Vars0, Cond0, Then, Else)
-                ),
-                BranchedGoal = hlds_goal(BranchedGoalExpr, BranchedGoalInfo),
-                SegmentBranched = segment_ends_with_branched(BranchedStartCord,
-                    BranchedGoal),
-                UpdatedHeadSegment = segment_branched(SegmentBranched),
-                push_format_segments_into_branched_goals(!.DoneCord,
-                    UpdatedHeadSegment, TailTailSegments, AllCord)
-            )
-        )
-    ).
-
-:- pred append_goals_to_goal(list(hlds_goal)::in,
-    hlds_goal::in, hlds_goal::out) is det.
-
-append_goals_to_goal(GoalsToAppend, Goal0, Goal) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    ( if GoalExpr0 = conj(plain_conj, Conjuncts0) then
-        GoalExpr = conj(plain_conj, Conjuncts0 ++ GoalsToAppend)
-    else
-        GoalExpr = conj(plain_conj, [Goal0 | GoalsToAppend])
-    ),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-:- pred append_goals_to_case(list(hlds_goal)::in, case::in, case::out) is det.
-
-append_goals_to_case(GoalsToAppend, Case0, Case) :-
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    append_goals_to_goal(GoalsToAppend, Goal0, Goal),
-    Case = case(MainConsId, OtherConsIds, Goal).
-
-%---------------------------------------------------------------------------%
-
-:- pred simplify_proc_maybe_warn_attribute_conflict(module_info::in,
-    pred_id::in, proc_info::in, list(diag_spec)::in, list(diag_spec)::out)
-    is det.
-
-simplify_proc_maybe_warn_attribute_conflict(ModuleInfo, PredId, ProcInfo,
-        !Specs) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_markers(PredInfo, Markers),
-
-    % The alternate goal by definition cannot be a call_foreign_proc.
-    proc_info_get_goal(ProcInfo, Goal),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    ( if GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _) then
-        Context = goal_info_get_context(GoalInfo),
-        MaybeMayDuplicate = get_may_duplicate(Attributes),
-        (
-            MaybeMayDuplicate = yes(MayDuplicate),
-            maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers,
-                Context, !Specs)
-        ;
-            MaybeMayDuplicate = no
-        ),
-        MaybeMayExportBody = get_may_export_body(Attributes),
-        (
-            MaybeMayExportBody = yes(MayExportBody),
-            maybe_warn_about_may_export_body_attribute(MayExportBody, Markers,
-                Context, !Specs)
-        ;
-            MaybeMayExportBody = no
-        )
-    else
-        true
-    ).
-
-:- pred maybe_warn_about_may_duplicate_attributes(proc_may_duplicate::in,
-    pred_markers::in, prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
-
-maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
-        !Specs) :-
-    (
-        MayDuplicate = proc_may_duplicate,
-        ( if marker_is_present(Markers, marker_user_marked_no_inline) then
-            AttrPieces = [quote("may_duplicate"), words("attribute")],
-            PragmaPieces = [pragma_decl("no_inline"), words("declaration")],
-            Pieces = [words("Error: the")] ++
-                color_as_inconsistent(AttrPieces) ++
-                [words("on the foreign_proc is")] ++
-                color_as_incorrect([words("not compatible")]) ++
-                [words("with the")] ++
-                color_as_inconsistent(PragmaPieces) ++
-                [words("on the predicate."), nl],
-            Spec = spec($pred, severity_error,
-                phase_simplify(report_in_any_mode), Context, Pieces),
-            !:Specs = [Spec | !.Specs]
-        else
-            true
-        )
-    ;
-        MayDuplicate = proc_may_not_duplicate,
-        ( if marker_is_present(Markers, marker_user_marked_inline) then
-            AttrPieces = [quote("may_not_duplicate"), words("attribute")],
-            PragmaPieces = [pragma_decl("inline"), words("declaration")],
-            Pieces = [words("Error: the")] ++
-                color_as_inconsistent(AttrPieces) ++
-                [words("on the foreign_proc is")] ++
-                color_as_incorrect([words("not compatible")]) ++
-                [words("with the")] ++
-                color_as_inconsistent(PragmaPieces) ++
-                [words("on the predicate."), nl],
-            Spec = spec($pred, severity_error,
-                phase_simplify(report_in_any_mode), Context, Pieces),
-            !:Specs = [Spec | !.Specs]
-        else
-            true
-        )
-    ).
-
-:- pred maybe_warn_about_may_export_body_attribute(proc_may_export_body::in,
-    pred_markers::in, prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
-
-maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
-        !Specs) :-
-    (
-        MayExportBody = proc_may_export_body,
-        ( if marker_is_present(Markers, marker_user_marked_no_inline) then
-            AttrPieces = [quote("may_export_body"), words("attribute")],
-            PragmaPieces = [pragma_decl("inline"), words("declaration")],
-            Pieces = [words("Error: the")] ++
-                color_as_inconsistent(AttrPieces) ++
-                [words("on the foreign_proc is")] ++
-                color_as_incorrect([words("not compatible")]) ++
-                [words("with the")] ++
-                color_as_inconsistent(PragmaPieces) ++
-                [words("on the predicate."), nl],
-            Spec = spec($pred, severity_error,
-                phase_simplify(report_in_any_mode), Context, Pieces),
-            !:Specs = [Spec | !.Specs]
-        else
-            true
-        )
-    ;
-        MayExportBody = proc_may_not_export_body
-        % Inlining is allowed within the same target file.
     ).
 
 %---------------------------------------------------------------------------%
@@ -1705,6 +737,115 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
     % The call to simplify_info_reinit in our caller will reset !:Info
     % to do_not_rerun_quant_instmap_deltas and do_not_rerun_det before
     % the next pass, if there is a next pass.
+
+%---------------------------------------------------------------------------%
+
+:- pred simplify_proc_maybe_warn_attribute_conflict(module_info::in,
+    pred_id::in, proc_info::in, list(diag_spec)::in, list(diag_spec)::out)
+    is det.
+
+simplify_proc_maybe_warn_attribute_conflict(ModuleInfo, PredId, ProcInfo,
+        !Specs) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_markers(PredInfo, Markers),
+
+    % The alternate goal by definition cannot be a call_foreign_proc.
+    proc_info_get_goal(ProcInfo, Goal),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    ( if GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _) then
+        Context = goal_info_get_context(GoalInfo),
+        MaybeMayDuplicate = get_may_duplicate(Attributes),
+        (
+            MaybeMayDuplicate = yes(MayDuplicate),
+            maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers,
+                Context, !Specs)
+        ;
+            MaybeMayDuplicate = no
+        ),
+        MaybeMayExportBody = get_may_export_body(Attributes),
+        (
+            MaybeMayExportBody = yes(MayExportBody),
+            maybe_warn_about_may_export_body_attribute(MayExportBody, Markers,
+                Context, !Specs)
+        ;
+            MaybeMayExportBody = no
+        )
+    else
+        true
+    ).
+
+:- pred maybe_warn_about_may_duplicate_attributes(proc_may_duplicate::in,
+    pred_markers::in, prog_context::in,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
+
+maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
+        !Specs) :-
+    (
+        MayDuplicate = proc_may_duplicate,
+        ( if marker_is_present(Markers, marker_user_marked_no_inline) then
+            AttrPieces = [quote("may_duplicate"), words("attribute")],
+            PragmaPieces = [pragma_decl("no_inline"), words("declaration")],
+            Pieces = [words("Error: the")] ++
+                color_as_inconsistent(AttrPieces) ++
+                [words("on the foreign_proc is")] ++
+                color_as_incorrect([words("not compatible")]) ++
+                [words("with the")] ++
+                color_as_inconsistent(PragmaPieces) ++
+                [words("on the predicate."), nl],
+            Spec = spec($pred, severity_error,
+                phase_simplify(report_in_any_mode), Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ;
+        MayDuplicate = proc_may_not_duplicate,
+        ( if marker_is_present(Markers, marker_user_marked_inline) then
+            AttrPieces = [quote("may_not_duplicate"), words("attribute")],
+            PragmaPieces = [pragma_decl("inline"), words("declaration")],
+            Pieces = [words("Error: the")] ++
+                color_as_inconsistent(AttrPieces) ++
+                [words("on the foreign_proc is")] ++
+                color_as_incorrect([words("not compatible")]) ++
+                [words("with the")] ++
+                color_as_inconsistent(PragmaPieces) ++
+                [words("on the predicate."), nl],
+            Spec = spec($pred, severity_error,
+                phase_simplify(report_in_any_mode), Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ).
+
+:- pred maybe_warn_about_may_export_body_attribute(proc_may_export_body::in,
+    pred_markers::in, prog_context::in,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
+
+maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
+        !Specs) :-
+    (
+        MayExportBody = proc_may_export_body,
+        ( if marker_is_present(Markers, marker_user_marked_no_inline) then
+            AttrPieces = [quote("may_export_body"), words("attribute")],
+            PragmaPieces = [pragma_decl("inline"), words("declaration")],
+            Pieces = [words("Error: the")] ++
+                color_as_inconsistent(AttrPieces) ++
+                [words("on the foreign_proc is")] ++
+                color_as_incorrect([words("not compatible")]) ++
+                [words("with the")] ++
+                color_as_inconsistent(PragmaPieces) ++
+                [words("on the predicate."), nl],
+            Spec = spec($pred, severity_error,
+                phase_simplify(report_in_any_mode), Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ;
+        MayExportBody = proc_may_not_export_body
+        % Inlining is allowed within the same target file.
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.simplify_proc.
