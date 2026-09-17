@@ -77,7 +77,8 @@
     %
 :- pred pred_info_is_builtin(pred_info::in) is semidet.
 
-    % pred_builtin_state(ModuleInfo, CallerPredId, PredId, ProcId, BuiltinState)
+    % pred_builtin_state(ModuleInfo, CallerPredId, PredId, ProcId,
+    %   BuiltinState)
     %
     % Is the given procedure a builtin that should be generated inline
     % in the given caller?
