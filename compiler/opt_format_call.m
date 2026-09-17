@@ -2141,8 +2141,8 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         set_of_var.insert(ValueVar, !ValueVars),
         make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
         build_flags_arg(Context, Flags, FlagsVar, FlagsGoals, !VarTable),
-        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarTable),
+        maybe_build_width_arg(Context, MaybeWidth, WidthSuffix,
+            WidthVars, WidthGoals, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             "format_char_component" ++ WidthSuffix,
@@ -2175,10 +2175,10 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         else
             make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
             build_flags_arg(Context, Flags, FlagsVar, FlagsGoals, !VarTable),
-            maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars,
+            maybe_build_width_arg(Context, MaybeWidth, WidthSuffix, WidthVars,
                 WidthGoals, !VarTable),
-            maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-                !VarTable),
+            maybe_build_prec_arg(Context, MaybePrec, PrecSuffix,
+                PrecVars, PrecGoals, !VarTable),
             generate_plain_call(ModuleInfo, pf_predicate,
                 mercury_string_format_module,
                 "format_string_component" ++ WidthSuffix ++ PrecSuffix, [],
@@ -2201,7 +2201,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             Spec = compiler_spec_unsigned_int(Context, Flags,
                 MaybeWidth, MaybePrec, Base, IntSize, OrigValueVar),
             % Format a signed int as unsigned int.
-            build_int_base_arg(Base, BaseVars, BaseGoals, !VarTable),
+            build_int_base_arg(Context, Base, BaseVars, BaseGoals, !VarTable),
             cast_int_value_var_to_uint_if_needed(ModuleInfo, Context, IntSize,
                 OrigValueVar, FormatPredBase, ValueVar, ValueCastGoals,
                 !VarTable)
@@ -2209,7 +2209,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             Spec = compiler_spec_uint(Context, Flags,
                 MaybeWidth, MaybePrec, Base, UIntSize, OrigValueVar),
             % Format an unsigned int as unsigned int.
-            build_int_base_arg(Base, BaseVars, BaseGoals, !VarTable),
+            build_int_base_arg(Context, Base, BaseVars, BaseGoals, !VarTable),
             cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
                 OrigValueVar, FormatPredBase, ValueVar, ValueCastGoals,
                 !VarTable)
@@ -2217,10 +2217,10 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         set_of_var.insert(OrigValueVar, !ValueVars),
         make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
         build_flags_arg(Context, Flags, FlagsVar, FlagsGoals, !VarTable),
-        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarTable),
-        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-            !VarTable),
+        maybe_build_width_arg(Context, MaybeWidth, WidthSuffix,
+            WidthVars, WidthGoals, !VarTable),
+        maybe_build_prec_arg(Context, MaybePrec, PrecSuffix,
+            PrecVars, PrecGoals, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             FormatPredBase ++ WidthSuffix ++ PrecSuffix,
@@ -2236,11 +2236,11 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         set_of_var.insert(ValueVar, !ValueVars),
         make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
         build_flags_arg(Context, Flags, FlagsVar, FlagsGoals, !VarTable),
-        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarTable),
-        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-            !VarTable),
-        build_float_kind_arg(Kind, KindVar, KindGoal, !VarTable),
+        maybe_build_width_arg(Context, MaybeWidth, WidthSuffix,
+            WidthVars, WidthGoals, !VarTable),
+        maybe_build_prec_arg(Context, MaybePrec, PrecSuffix,
+            PrecVars, PrecGoals, !VarTable),
+        build_float_kind_arg(Context, Kind, KindVar, KindGoal, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             "format_float_component" ++ WidthSuffix ++ PrecSuffix,
@@ -2465,11 +2465,12 @@ build_flags_arg(Context, Flags, Var, Goals, !VarTable) :-
     % If yes, return both the variable that represents the specified width
     % and the goals that construct it.
     %
-:- pred maybe_build_width_arg(compiler_format_maybe_width::in,
+:- pred maybe_build_width_arg(prog_context::in,
+    compiler_format_maybe_width::in,
     string::out, list(prog_var)::out, list(hlds_goal)::out,
     var_table::in, var_table::out) is det.
 
-maybe_build_width_arg(MaybeWidth, PredNameSuffix, MaybeWidthVar,
+maybe_build_width_arg(Context, MaybeWidth, PredNameSuffix, MaybeWidthVar,
         MaybeWidthGoals, !VarTable) :-
     (
         MaybeWidth = compiler_no_specified_width,
@@ -2479,8 +2480,8 @@ maybe_build_width_arg(MaybeWidth, PredNameSuffix, MaybeWidthVar,
     ;
         MaybeWidth = compiler_manifest_width(WidthInt),
         PredNameSuffix = "_width",
-        make_int_const_construction_alloc(WidthInt, "", WidthGoal, WidthVar,
-            !VarTable),
+        make_int_const_construction_alloc(Context, WidthInt, "",
+            WidthGoal, WidthVar, !VarTable),
         MaybeWidthVar = [WidthVar],
         MaybeWidthGoals = [WidthGoal]
     ;
@@ -2495,11 +2496,11 @@ maybe_build_width_arg(MaybeWidth, PredNameSuffix, MaybeWidthVar,
     % If yes, return both the variable that represents the specified precision
     % and the goals that construct it.
     %
-:- pred maybe_build_prec_arg(compiler_format_maybe_prec::in,
+:- pred maybe_build_prec_arg(prog_context::in, compiler_format_maybe_prec::in,
     string::out, list(prog_var)::out, list(hlds_goal)::out,
     var_table::in, var_table::out) is det.
 
-maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
+maybe_build_prec_arg(Context, MaybePrec, PredNameSuffix, MaybePrecVar,
         MaybePrecGoals, !VarTable) :-
     (
         MaybePrec = compiler_no_specified_prec,
@@ -2509,8 +2510,8 @@ maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
     ;
         MaybePrec = compiler_manifest_prec(PrecInt),
         PredNameSuffix = "_prec",
-        make_int_const_construction_alloc(PrecInt, "", PrecGoal, PrecVar,
-            !VarTable),
+        make_int_const_construction_alloc(Context, PrecInt, "",
+            PrecGoal, PrecVar, !VarTable),
         MaybePrecVar = [PrecVar],
         MaybePrecGoals = [PrecGoal]
     ;
@@ -2520,11 +2521,11 @@ maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
         MaybePrecGoals = []
     ).
 
-:- pred build_int_base_arg(string_format_int_base::in,
+:- pred build_int_base_arg(prog_context::in, string_format_int_base::in,
     list(prog_var)::out, list(hlds_goal)::out,
     var_table::in, var_table::out) is det.
 
-build_int_base_arg(Base, [Var], [Goal], !VarTable) :-
+build_int_base_arg(Context, Base, [Var], [Goal], !VarTable) :-
     ParseUtil = mercury_string_parse_util_module,
     TypeName = qualified(ParseUtil, "string_format_int_base"),
     TypeCtor = type_ctor(TypeName, 0),
@@ -2547,13 +2548,13 @@ build_int_base_arg(Base, [Var], [Goal], !VarTable) :-
     ),
     ConsId = du_data_ctor(du_ctor(qualified(ParseUtil, ConsName),
         0, TypeCtor)),
-    make_const_construction_alloc(ConsId, Type, is_not_dummy_type, "",
+    make_const_construction_alloc(Context, ConsId, Type, is_not_dummy_type, "",
         Goal, Var, !VarTable).
 
-:- pred build_float_kind_arg(string_format_float_kind::in,
+:- pred build_float_kind_arg(prog_context::in, string_format_float_kind::in,
     prog_var::out, hlds_goal::out, var_table::in, var_table::out) is det.
 
-build_float_kind_arg(Kind, Var, Goal, !VarTable) :-
+build_float_kind_arg(Context, Kind, Var, Goal, !VarTable) :-
     ParseUtil = mercury_string_parse_util_module,
     TypeName = qualified(ParseUtil, "string_format_float_kind"),
     TypeCtor = type_ctor(TypeName, 0),
@@ -2579,7 +2580,7 @@ build_float_kind_arg(Kind, Var, Goal, !VarTable) :-
     ),
     ConsId = du_data_ctor(du_ctor(qualified(ParseUtil, ConsName),
         0, TypeCtor)),
-    make_const_construction_alloc(ConsId, Type, is_not_dummy_type, "",
+    make_const_construction_alloc(Context, ConsId, Type, is_not_dummy_type, "",
         Goal, Var, !VarTable).
 
 :- pred make_result_var_if_needed(maybe(prog_var)::in, prog_var::out,

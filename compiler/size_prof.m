@@ -843,7 +843,7 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
         Goals = []
     else
         VarTable0 = !.Info ^ spi_var_table,
-        make_int_const_construction_alloc(KnownSize, "KnownSize",
+        make_int_const_construction_alloc(Context, KnownSize, "KnownSize",
             KnownSizeGoal, KnownSizeVar, VarTable0, VarTable1),
         !Info ^ spi_var_table := VarTable1,
         get_new_var("FinalSizeVar", int_type, is_not_dummy_type, SizeVar,
@@ -904,8 +904,8 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
                     VarTable0, VarTable1, RttiVarMaps0, RttiVarMaps),
                 !Info ^ spi_rtti_varmaps := RttiVarMaps
             ),
-            make_int_const_construction_alloc(Slot, "TypeClassInfoSlot",
-                SlotGoal, SlotVar, VarTable1, VarTable),
+            make_int_const_construction_alloc(Context, Slot,
+                "TypeClassInfoSlot", SlotGoal, SlotVar, VarTable1, VarTable),
             !Info ^ spi_var_table := VarTable,
             PrivateBuiltin = mercury_private_builtin_module,
             generate_plain_call(!.Info ^ spi_module_info, pf_predicate,
@@ -943,8 +943,8 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
         CtorIsVarArity = yes,
         list.length(ArgTypes, Arity),
         VarTable0 = !.Info ^ spi_var_table,
-        make_int_const_construction_alloc(Arity, "TupleArity", ArityGoal,
-            ArityVar, VarTable0, VarTable1),
+        make_int_const_construction_alloc(Context, Arity, "TupleArity",
+            ArityGoal, ArityVar, VarTable0, VarTable1),
         !Info ^ spi_var_table := VarTable1,
         FrontGoals = list.append(TypeCtorGoals, [ArityGoal]),
         ArgVars = [TypeCtorVar, ArityVar | ArgTypeInfoVars]

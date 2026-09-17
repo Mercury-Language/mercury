@@ -199,8 +199,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred get_poly_const(int::in, prog_var::out, list(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
+:- pred get_poly_const(prog_context::in, int::in,
+    prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 :- pred all_are_const_struct_args(
     assoc_list(prog_var, maybe(const_struct_arg))::in,
@@ -763,7 +763,7 @@ set_var_maps_snapshot(Name, VarMaps, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-get_poly_const(IntConst, IntVar, Goals, !Info) :-
+get_poly_const(Context, IntConst, IntVar, Goals, !Info) :-
     poly_info_get_int_const_map(!.Info, IntConstMap0),
     ( if map.search(IntConstMap0, IntConst, IntVarPrime) then
         poly_info_get_num_reuses(!.Info, NumReuses),
@@ -773,8 +773,8 @@ get_poly_const(IntConst, IntVar, Goals, !Info) :-
     else
         Name = "PolyConst" ++ string.int_to_string(IntConst),
         poly_info_get_var_table(!.Info, VarTable0),
-        make_int_const_construction_alloc(IntConst, Name, Goal, IntVar,
-            VarTable0, VarTable),
+        make_int_const_construction_alloc(Context, IntConst, Name,
+            Goal, IntVar, VarTable0, VarTable),
         poly_info_set_var_table(VarTable, !Info),
         map.det_insert(IntConst, IntVar, IntConstMap0, IntConstMap),
         poly_info_set_int_const_map(IntConstMap, !Info),

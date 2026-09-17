@@ -498,9 +498,9 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !VarTable) :-
     Context = goal_info_get_context(GoalInfo),
     Context = context(FileName, LineNumber),
 
-    make_string_const_construction_alloc(FileName, "FileName",
+    make_string_const_construction_alloc(Context, FileName, "FileName",
         MakeFileName, FileNameVar, !VarTable),
-    make_int_const_construction_alloc(LineNumber, "LineNumber",
+    make_int_const_construction_alloc(Context, LineNumber, "LineNumber",
         MakeLineNumber, LineNumberVar, !VarTable),
 
     ArgVars = [FileNameVar, LineNumberVar],
@@ -1240,10 +1240,11 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar, !VarTable) :-
     ModuleName = sym_name_to_string(SymModuleName),
     PredName = pred_info_name(OrigPredInfo),
 
-    make_string_const_construction_alloc(ModuleName, "ModuleName",
+    Context = dummy_context,
+    make_string_const_construction_alloc(Context, ModuleName, "ModuleName",
         ConstructModuleName, ModuleNameVar, !VarTable),
 
-    make_string_const_construction_alloc(PredName, "PredName",
+    make_string_const_construction_alloc(Context, PredName, "PredName",
         ConstructPredName, PredNameVar, !VarTable),
 
     SSDBModule = mercury_ssdb_builtin_module,
@@ -1273,8 +1274,9 @@ make_level_construction(SSTraceLevel, Goal, LevelVar, !VarTable) :-
         SSTraceLevel = ssdb_deep,
         ConsId = deep_cons_id
     ),
-    make_const_construction_alloc(ConsId, ssdb_tracing_level_type,
-        is_not_dummy_type,"Level", Goal, LevelVar, !VarTable).
+    make_const_construction_alloc(dummy_context, ConsId,
+        ssdb_tracing_level_type, is_not_dummy_type,"Level",
+        Goal, LevelVar, !VarTable).
 
     % Succeed if all the given argument modes are fully input or fully output.
     % XXX At the moment, we don't handle arguments modes other than
@@ -1402,15 +1404,15 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
     VarValueTypeCtor = type_ctor(qualified(SSDBModule, "var_value"), 0),
     construct_type(VarValueTypeCtor, [], VarValueType),
     VarName = var_table_entry_name(!.VarTable, VarToInspect),
-    make_string_const_construction_alloc(VarName, "VarName",
+    Context = dummy_context,
+    make_string_const_construction_alloc(Context, VarName, "VarName",
         ConstructVarName, VarNameVar, !VarTable),
-    make_int_const_construction_alloc(VarPos, "VarPos",
+    make_int_const_construction_alloc(Context, VarPos, "VarPos",
         ConstructVarPos, VarPosVar, !VarTable),
 
     VarValueTypeIsDummy = is_type_a_dummy(!.ModuleInfo, VarValueType),
     VarDescEntry = vte("VarDesc", VarValueType, VarValueTypeIsDummy),
     add_var_entry(VarDescEntry, VarDesc, !VarTable),
-    Context = dummy_context,
     ( if
         var_is_ground_in_instmap(!.ModuleInfo, !.VarTable, InstMap,
             VarToInspect)

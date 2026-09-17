@@ -666,7 +666,7 @@ polymorphism_construct_second_type_info_cell(Context, Type, TypeCtor,
         (
             NeedTypeCtorArity = need_arity_in_second_ti_cell,
             list.length(ArgTypeInfoVars, ActualArity),
-            get_poly_const(ActualArity, ArityVar, ArityGoals, !Info),
+            get_poly_const(Context, ActualArity, ArityVar, ArityGoals, !Info),
             % The call get_poly_const may (and probably will) allocate
             % a variable, though it shouldn't affect the rtti_varmaps.
             poly_info_get_rtti_varmaps(!.Info, RttiVarMaps1),
@@ -880,7 +880,7 @@ gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
     (
         IndexIntOrVar = iov_int(Index),
         % We cannot call get_poly_const since we don't have a poly_info.
-        make_int_const_construction_alloc(Index, "TypeInfoIndex",
+        make_int_const_construction_alloc(Context, Index, "TypeInfoIndex",
             IndexGoal, IndexVar, !VarTable),
         IndexGoals = [IndexGoal]
     ;
@@ -899,7 +899,7 @@ gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
 
 polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Context,
         Goals, TypeInfoVar, !Info) :-
-    get_poly_const(Index, IndexVar, IndexGoals, !Info),
+    get_poly_const(Context, Index, IndexVar, IndexGoals, !Info),
     poly_info_get_var_table(!.Info, VarTable0),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     poly_info_get_module_info(!.Info, ModuleInfo),

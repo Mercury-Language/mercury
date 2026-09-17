@@ -326,7 +326,7 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
         new_typeclass_info_var(Constraint, typeclass_info_kind,
             TypeClassInfoVar, _TypeClassInfoVarType, !Info),
         TypeClassInfoVarMCA = TypeClassInfoVar - no,
-        get_poly_const(SuperClassIndex, IndexVar, IndexGoals, !Info),
+        get_poly_const(Context, SuperClassIndex, IndexVar, IndexGoals, !Info),
 
         % We extract the superclass typeclass_info by inserting a call
         % to superclass_from_typeclass_info in private_builtin.

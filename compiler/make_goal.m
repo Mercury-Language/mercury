@@ -94,32 +94,36 @@
 :- pred make_const_construction(prog_context::in,
     prog_var::in, cons_id::in, hlds_goal::out) is det.
 
-:- pred make_int_const_construction_alloc_in_proc(int::in,
-    string::in, hlds_goal::out, prog_var::out,
+:- pred make_int_const_construction_alloc_in_proc(prog_context::in,
+    int::in, string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
-:- pred make_string_const_construction_alloc_in_proc(string::in,
-    string::in, hlds_goal::out, prog_var::out,
+:- pred make_string_const_construction_alloc_in_proc(prog_context::in,
+    string::in, string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
-:- pred make_float_const_construction_alloc_in_proc(float::in,
-    string::in, hlds_goal::out, prog_var::out,
+:- pred make_float_const_construction_alloc_in_proc(prog_context::in,
+    float::in, string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
-:- pred make_char_const_construction_alloc_in_proc(char::in,
-    string::in, hlds_goal::out, prog_var::out,
+:- pred make_char_const_construction_alloc_in_proc(prog_context::in,
+    char::in, string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
-:- pred make_const_construction_alloc_in_proc(cons_id::in, mer_type::in,
-    is_dummy_type::in, string::in, hlds_goal::out, prog_var::out,
-    proc_info::in, proc_info::out) is det.
+:- pred make_const_construction_alloc_in_proc(prog_context::in,
+    cons_id::in, mer_type::in, is_dummy_type::in, string::in,
+    hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
 
-:- pred make_int_const_construction_alloc(int::in, string::in,
-    hlds_goal::out, prog_var::out, var_table::in, var_table::out) is det.
-:- pred make_string_const_construction_alloc(string::in, string::in,
-    hlds_goal::out, prog_var::out, var_table::in, var_table::out) is det.
-:- pred make_float_const_construction_alloc(float::in, string::in,
-    hlds_goal::out, prog_var::out, var_table::in, var_table::out) is det.
-:- pred make_char_const_construction_alloc(char::in, string::in,
-    hlds_goal::out, prog_var::out, var_table::in, var_table::out) is det.
-:- pred make_const_construction_alloc(cons_id::in, mer_type::in,
-    is_dummy_type::in, string::in, hlds_goal::out, prog_var::out,
+:- pred make_int_const_construction_alloc(prog_context::in, int::in,
+    string::in, hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
+:- pred make_string_const_construction_alloc(prog_context::in, string::in,
+    string::in, hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
+:- pred make_float_const_construction_alloc(prog_context::in, float::in,
+    string::in, hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
+:- pred make_char_const_construction_alloc(prog_context::in, char::in,
+    string::in, hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
+:- pred make_const_construction_alloc(prog_context::in, cons_id::in,
+    mer_type::in, is_dummy_type::in, string::in, hlds_goal::out, prog_var::out,
     var_table::in, var_table::out) is det.
 
     % Produce a goal to construct or deconstruct a unification with a functor.
@@ -211,7 +215,7 @@ make_complicated_unify_assign(Context, Var1, Var2, Goal) :-
         Goal = true_goal(Context)
     else
         create_pure_atomic_complicated_unification(Var1, rhs_var(Var2),
-            dummy_context, umc_explicit, [], Goal)
+            Context, umc_explicit, [], Goal)
     ).
 
 %---------------------------------------------------------------------------%
@@ -268,66 +272,66 @@ make_const_construction(Context, Var, ConsId, Goal) :-
 
 %---------------------------------------------------------------------------%
 
-make_int_const_construction_alloc_in_proc(Int, Name, Goal, Var,
+make_int_const_construction_alloc_in_proc(Context, Int, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, int_type, is_not_dummy_type,
         Var, !ProcInfo),
-    make_int_const_construction(dummy_context, Var, Int, Goal).
+    make_int_const_construction(Context, Var, Int, Goal).
 
-make_string_const_construction_alloc_in_proc(String, Name, Goal, Var,
+make_string_const_construction_alloc_in_proc(Context, String, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, string_type, is_not_dummy_type,
         Var, !ProcInfo),
-    make_string_const_construction(dummy_context, Var, String, Goal).
+    make_string_const_construction(Context, Var, String, Goal).
 
-make_float_const_construction_alloc_in_proc(Float, Name, Goal, Var,
+make_float_const_construction_alloc_in_proc(Context, Float, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, float_type, is_not_dummy_type,
         Var, !ProcInfo),
-    make_float_const_construction(dummy_context, Var, Float, Goal).
+    make_float_const_construction(Context, Var, Float, Goal).
 
-make_char_const_construction_alloc_in_proc(Char, Name, Goal, Var,
+make_char_const_construction_alloc_in_proc(Context, Char, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, char_type, is_not_dummy_type, Var,
         !ProcInfo),
-    make_char_const_construction(dummy_context, Var, Char, Goal).
+    make_char_const_construction(Context, Var, Char, Goal).
 
-make_const_construction_alloc_in_proc(ConsId, Type, IsDummy, Name, Goal, Var,
-        !ProcInfo) :-
+make_const_construction_alloc_in_proc(Context, ConsId, Type, IsDummy, Name,
+        Goal, Var, !ProcInfo) :-
     proc_info_create_var_from_type(Name, Type, IsDummy, Var, !ProcInfo),
-    make_const_construction(dummy_context, Var, ConsId, Goal).
+    make_const_construction(Context, Var, ConsId, Goal).
 
 %---------------------------------------------------------------------------%
 
-make_int_const_construction_alloc(Int, Name, Goal, Var,
+make_int_const_construction_alloc(Context, Int, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, int_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable),
-    make_int_const_construction(dummy_context, Var, Int, Goal).
+    make_int_const_construction(Context, Var, Int, Goal).
 
-make_string_const_construction_alloc(String, Name, Goal, Var,
+make_string_const_construction_alloc(Context, String, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, string_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable),
-    make_string_const_construction(dummy_context, Var, String, Goal).
+    make_string_const_construction(Context, Var, String, Goal).
 
-make_float_const_construction_alloc(Float, Name, Goal, Var,
+make_float_const_construction_alloc(Context, Float, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, float_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable),
-    make_float_const_construction(dummy_context, Var, Float, Goal).
+    make_float_const_construction(Context, Var, Float, Goal).
 
-make_char_const_construction_alloc(Char, Name, Goal, Var,
+make_char_const_construction_alloc(Context, Char, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, char_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable),
-    make_char_const_construction(dummy_context, Var, Char, Goal).
+    make_char_const_construction(Context, Var, Char, Goal).
 
-make_const_construction_alloc(ConsId, Type, IsDummyType, Name, Goal, Var,
-        !VarTable) :-
+make_const_construction_alloc(Context, ConsId, Type, IsDummyType, Name,
+        Goal, Var, !VarTable) :-
     Entry = vte(Name, Type, IsDummyType),
     add_var_entry(Entry, Var, !VarTable),
-    make_const_construction(dummy_context, Var, ConsId, Goal).
+    make_const_construction(Context, Var, ConsId, Goal).
 
 %---------------------------------------------------------------------------%
 
