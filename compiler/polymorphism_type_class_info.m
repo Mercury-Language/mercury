@@ -697,8 +697,8 @@ construct_typeclass_info(Context, Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
             [bound_functor(ConsId, [])]),
         TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
         InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
-        goal_info_init(NonLocals, InstMapDelta, detism_erroneous,
-            purity_pure, Context, GoalInfo),
+        goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+            Context, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         % XXX reset varset and vartypes
         AllGoals = [Goal]
