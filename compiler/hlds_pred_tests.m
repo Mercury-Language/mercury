@@ -77,12 +77,13 @@
     %
 :- pred pred_info_is_builtin(pred_info::in) is semidet.
 
-    % builtin_state(ModuleInfo, CallerPredId, PredId, ProcId, BuiltinState)
+    % pred_builtin_state(ModuleInfo, CallerPredId, PredId, ProcId, BuiltinState)
     %
     % Is the given procedure a builtin that should be generated inline
     % in the given caller?
     %
-:- func builtin_state(module_info, pred_id, pred_id, proc_id) = builtin_state.
+:- func pred_builtin_state(module_info, pred_id, pred_id, proc_id)
+    = builtin_state.
 
     % Succeeds iff PredInfo represents a promise of the given type.
     %
@@ -153,7 +154,7 @@ pred_info_is_builtin(PredInfo) :-
     PredFormArity = pred_info_pred_form_arity(PredInfo),
     is_inline_builtin(ModuleName, PredName, PredFormArity).
 
-builtin_state(ModuleInfo, CallerPredId, PredId, _ProcId) = BuiltinState :-
+pred_builtin_state(ModuleInfo, CallerPredId, PredId, _ProcId) = BuiltinState :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),

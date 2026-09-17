@@ -72,7 +72,6 @@
 :- implementation.
 
 :- import_module check_hlds.polymorphism_type_info.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.

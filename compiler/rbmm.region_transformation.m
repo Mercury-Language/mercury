@@ -77,11 +77,11 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_transform.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.instmap.
+:- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.type_util.

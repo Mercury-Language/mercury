@@ -1099,7 +1099,7 @@ make_recursive_call(PredInfo, ModuleInfo, PredId, ProcId, HeadVars, Goal) :-
     PredName = pred_info_name(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     SymName = qualified(ModuleName, PredName),
-    BuiltIn = builtin_state(ModuleInfo, PredId, PredId, ProcId),
+    BuiltIn = pred_builtin_state(ModuleInfo, PredId, PredId, ProcId),
     GoalExpr = plain_call(PredId, ProcId, HeadVars, BuiltIn, no, SymName),
 
     % We use the goal info of the top level goal in the proc info

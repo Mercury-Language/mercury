@@ -1007,7 +1007,7 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
     PredName = pred_info_name(PredInfo),
     SymName = qualified(ModuleName, PredName),
     proc(CallerPredId, _) = hoi_get_pred_proc_id(!.Info),
-    Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
+    Builtin = pred_builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
 
     MaybeContext = no,
     GoalExpr1 =

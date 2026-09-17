@@ -21,14 +21,8 @@
 
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_markers.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
-:- import_module hlds.pred_table.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -37,8 +31,6 @@
 :- import_module parse_tree.vartypes.
 
 :- import_module list.
-:- import_module maybe.
-:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -188,57 +180,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
-    %   TIArgVars, ArgVars, InstMapDelta, ModeNo, Detism, Purity, Features,
-    %   Context, CallGoal):
-    %
-    % Generate a call to a builtin procedure (e.g. from the private_builtin
-    % or table_builtin module). This is used by HLDS->HLDS transformation
-    % passes that introduce calls to builtin procedures.
-    %
-    % If ModeNo = only_mode, then the predicate must have exactly one
-    % procedure; an error is raised if this is not the case.
-    %
-    % If ModeNo = mode_no(N) then the Nth procedure is used, counting from 0.
-    %
-:- pred generate_plain_call(module_info::in, pred_or_func::in,
-    module_name::in, string::in, list(prog_var)::in, list(prog_var)::in,
-    instmap_delta::in, mode_no::in, determinism::in, purity::in,
-    list(goal_feature)::in, term_context::in, hlds_goal::out) is det.
-
-    % generate_call_foreign_proc(ModuleInfo, PredOrFunc, ModuleName, ProcName,
-    %   TIArgs, Args, ExtraArgs, InstMapDelta, ModeNo, Detism, Purity,
-    %   Features, Attributes, MaybeTraceRuntimeCond, Code, Context, CallGoal):
-    %
-    % generate_call_foreign_proc is similar to generate_plain_call,
-    % but also assumes that the called predicate is defined via a
-    % foreign_proc, that the foreign_proc's arguments are as given in
-    % TIArgs and Args, its attributes are Attributes, and its code is Code.
-    % As well as returning a foreign_code instead of a call, effectively
-    % inlining the call, generate_call_foreign_proc also passes ExtraArgs
-    % as well as TIArgs and Args.
-    %
-:- pred generate_call_foreign_proc(module_info::in, pred_or_func::in,
-    module_name::in, string::in, list(foreign_arg)::in, list(foreign_arg)::in,
-    list(foreign_arg)::in, instmap_delta::in, mode_no::in,
-    determinism::in, purity::in, list(goal_feature)::in,
-    foreign_proc_attributes::in, maybe(trace_expr(trace_runtime))::in,
-    string::in, term_context::in, hlds_goal::out) is det.
-
-    % Generate a cast goal. The input and output insts are just ground.
-    %
-:- pred generate_cast(cast_kind::in, prog_var::in, prog_var::in,
-    prog_context::in, hlds_goal::out) is det.
-
-    % This version takes input and output inst arguments, which may be
-    % necessary when casting, say, solver type values with inst any,
-    % or casting between enumeration types and ints.
-    %
-:- pred generate_cast_with_insts(cast_kind::in, prog_var::in, prog_var::in,
-    mer_inst::in, mer_inst::in, prog_context::in, hlds_goal::out) is det.
-
-%---------------------------------------------------------------------------%
-
 :- pred foreign_proc_uses_variable(pragma_foreign_proc_impl::in, string::in)
     is semidet.
 
@@ -263,20 +204,20 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.pred_proc_id.
-:- import_module parse_tree.prog_mode.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_scan.
-:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -672,94 +613,6 @@ goal_expr_size(GoalExpr, Size) :-
             Size = Size1 + Size2 + 1
         )
     ).
-
-%---------------------------------------------------------------------------%
-
-generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
-        TIArgVars, NonTIArgVars, InstMapDelta0, ModeNo, Detism, Purity,
-        Features, Context, Goal) :-
-    PredFormArity = arg_list_arity(NonTIArgVars),
-    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
-        PredOrFunc, UserArity, ModeNo, PredId, ProcId),
-
-    % builtin_state only uses this to work out whether
-    % this is the "recursive" clause generated for the compiler
-    % for each builtin, so an invalid pred_id won't cause problems.
-    InvalidPredId = invalid_pred_id,
-    BuiltinState = builtin_state(ModuleInfo, InvalidPredId, PredId, ProcId),
-
-    ArgVars = TIArgVars ++ NonTIArgVars,
-    GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, no,
-        qualified(ModuleName, ProcName)),
-    set_of_var.list_to_set(ArgVars, NonLocals),
-    determinism_components(Detism, _CanFail, NumSolns),
-    (
-        NumSolns = at_most_zero,
-        instmap_delta_init_unreachable(InstMapDelta)
-    ;
-        ( NumSolns = at_most_one
-        ; NumSolns = at_most_many
-        ; NumSolns = at_most_many_cc
-        ),
-        InstMapDelta = InstMapDelta0
-    ),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_purity(PredInfo, PredPurity),
-    expect(unify(Purity, PredPurity), $pred, "purity disagreement"),
-    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
-        GoalInfo0),
-    list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-generate_call_foreign_proc(ModuleInfo, PredOrFunc, ModuleName, ProcName,
-        TIArgs, NonTIArgs, ExtraArgs, InstMapDelta0, ModeNo, Detism, Purity,
-        Features, Attributes, MaybeTraceRuntimeCond, Code, Context, Goal) :-
-    PredFormArity = arg_list_arity(NonTIArgs),
-    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
-        PredOrFunc, UserArity, ModeNo, PredId, ProcId),
-
-    Args = TIArgs ++ NonTIArgs,
-    GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, fp_impl_ordinary(Code, no)),
-    ArgVars = list.map(foreign_arg_var, Args),
-    ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
-    Vars = ArgVars ++ ExtraArgVars,
-    set_of_var.list_to_set(Vars, NonLocals),
-    determinism_components(Detism, _CanFail, NumSolns),
-    (
-        NumSolns = at_most_zero,
-        instmap_delta_init_unreachable(InstMapDelta)
-    ;
-        ( NumSolns = at_most_one
-        ; NumSolns = at_most_many
-        ; NumSolns = at_most_many_cc
-        ),
-        InstMapDelta = InstMapDelta0
-    ),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_purity(PredInfo, PredPurity),
-    expect(unify(Purity, PredPurity), $pred, "purity disagreement"),
-    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
-        GoalInfo0),
-    list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-generate_cast(CastType, InArg, OutArg, Context, Goal) :-
-    Ground = ground_inst,
-    generate_cast_with_insts(CastType, InArg, OutArg, Ground, Ground, Context,
-        Goal).
-
-generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
-        Goal) :-
-    set_of_var.list_to_set([InArg, OutArg], NonLocals),
-    InstMapDelta = instmap_delta_from_assoc_list([OutArg - OutInst]),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
-        GoalInfo),
-    GoalExpr = generic_call(cast(CastType), [InArg, OutArg],
-        [in_mode(InInst), out_mode(OutInst)], arg_reg_types_unset, detism_det),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %---------------------------------------------------------------------------%
 

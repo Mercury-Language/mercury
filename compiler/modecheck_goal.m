@@ -119,7 +119,6 @@
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.goal_list_util.
 :- import_module hlds.goal_transform.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
@@ -266,7 +265,7 @@ modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
 
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_pred_id(!.ModeInfo, CallerPredId),
-    Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
+    Builtin = pred_builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
 
     GoalExpr1 = plain_call(PredId, ProcId, ArgVars, Builtin,
         MaybeCallUnifyContext, PredSymName),

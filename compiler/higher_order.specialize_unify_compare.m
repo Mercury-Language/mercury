@@ -36,7 +36,6 @@
 :- implementation.
 
 :- import_module hlds.add_special_pred.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
