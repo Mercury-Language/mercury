@@ -630,10 +630,9 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
         Doc = ( if Arity = 0 then text(Name) else Name ++ "/" ++ Arity )
     else
         deconstruct(X, canonicalize, Name, _Arity, UnivArgs),
-        Table = init_mercury_op_table,
         ( if
             UnivArgs = [UnivArg],
-            lookup_prefix_op(Table, Name, OpPri, GtOrGe)
+            mercury_op_table_search_prefix_op(Name, OpPri, GtOrGe)
         then
             Doc = maybe_parens(Priority, OpPri,
                 Name ++
@@ -642,7 +641,7 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
             )
         else if
             UnivArgs = [UnivArg],
-            lookup_postfix_op(Table, Name, OpPri, GtOrGe)
+            mercury_op_table_search_postfix_op(Name, OpPri, GtOrGe)
         then
             Doc = maybe_parens(Priority, OpPri,
                 univ_to_doc(Depth - 1, OpPri `adjusted_by` GtOrGe, UnivArg) ++
@@ -651,7 +650,7 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
             )
         else if
             UnivArgs = [UnivArgL, UnivArgR],
-            lookup_infix_op(Table, Name, OpPri, GtOrGeL, GtOrGeR)
+            mercury_op_table_search_infix_op(Name, OpPri, GtOrGeL, GtOrGeR)
         then
             Doc = maybe_parens(Priority, OpPri,
                 univ_to_doc(Depth - 1, OpPri `adjusted_by` GtOrGeL,
@@ -668,7 +667,8 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
             )
         else if
             UnivArgs = [UnivArgR1, UnivArgR2],
-            lookup_binary_prefix_op(Table, Name, OpPri, GtOrGeR1, GtOrGeR2)
+            mercury_op_table_search_binary_prefix_op(Name, OpPri,
+                GtOrGeR1, GtOrGeR2)
         then
             Doc = maybe_parens(Priority, OpPri,
                 Name ++
