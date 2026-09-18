@@ -359,8 +359,8 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
             unexpected($pred, "shorthand")
         ),
 
-        % If the goal might fail or might succeed more than once, then any
-        % recursion in it is unusable for loop control.
+        % If the goal might fail or might succeed more than once,
+        % then any recursion in it is unusable for loop control.
         (
             ( SeenUsableRecursion0 = have_not_seen_recursive_call
             ; SeenUsableRecursion0 = seen_unusable_recursion
@@ -393,9 +393,9 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
 
     % Analyze the parallel conjunction for a usable recursive call.
     %
-    % If any but the last conjunct contains a recursive call, then that
-    % recursive call is unusable. If only the last conjunct contains
-    % a recursive call, then that recursion is usable.
+    % If any but the last conjunct contains a recursive call,
+    % then that recursive call is unusable. If only the last conjunct
+    % contains a recursive call, then that recursion is usable.
     %
 :- pred par_conj_get_loop_control_par_conjs(list(hlds_goal)::in,
     pred_proc_id::in, goal_id::in, seen_usable_recursion::out) is det.
@@ -431,8 +431,8 @@ par_conj_get_loop_control_par_conjs_lag(Conj, Conjs, SelfPredProcId,
     goal_get_loop_control_par_conjs(Conj, SelfPredProcId,
         SeenUsableRecursion0),
     (
-        % This is the last conjunct. Therefore, if it contains a recursive
-        % call it is a the recursion we're looking for.
+        % This is the last conjunct. Therefore, if it contains
+        % a recursive call, it is a the recursion we are looking for.
         Conjs = [],
         SeenUsableRecursion = SeenUsableRecursion0
     ;
@@ -1085,9 +1085,9 @@ combine_use_parent_stack(lc_create_frame_on_child_stack,
     % 1 It inserts a loop control barrier into the base case(s) of the
     %   predicate.
     %
-    % 2 It rewrites the recursive calls that aren't part of parallel
-    %   conjunctions so that they call the inner procedure and pass the loop
-    %   control variable.
+    % 2 It rewrites the recursive calls that are NOT part of parallel
+    %   conjunctions, so that they call the inner procedure and
+    %   pass the loop control variable.
     %
 :- pred goal_update_non_loop_control_paths(loop_control_info::in,
     list(goal_id)::in, fixup_goal_info::out,
@@ -1108,18 +1108,18 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
     then
         FixupGoalInfo = do_not_fixup_goal_info
     else if
-        % This goal is a base case, insert the barrier.
+        % Is this goal a base case?
         not (
             some [Callee] (
+                % XXX This test looks expensive.
                 goal_calls(!.Goal, Callee),
-                (
-                    Callee = Info ^ lci_rec_pred_proc_id
-                ;
-                    Callee = Info ^ lci_inner_pred_proc_id
+                ( Callee = Info ^ lci_rec_pred_proc_id
+                ; Callee = Info ^ lci_inner_pred_proc_id
                 )
             )
         )
     then
+        % Yes, so insert the barrier.
         goal_to_conj_list(!.Goal, Conjs0),
         Context = goal_info_get_context(GoalInfo0),
         create_finish_loop_control_goal(Info, Context, FinishLCGoal),
@@ -1140,7 +1140,7 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
         ;
             GoalExpr0 = plain_call(PredId, ProcId, Args0, Builtin,
                 MaybeContext, _SymName0),
-            % This can only be a recursive call, it must be rewritten
+            % This can only be a recursive call, so it must be rewritten.
             RecPredProcId = Info ^ lci_rec_pred_proc_id,
             expect(unify(RecPredProcId, proc(PredId, ProcId)), $pred,
                 "Expected recursive call"),
@@ -1192,13 +1192,14 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
         !Goal ^ hg_expr := GoalExpr,
         (
             FixupGoalInfo = fixup_goal_info,
-            some [!NonLocals, !GoalInfo] (
-                !:GoalInfo = !.Goal ^ hg_info,
+            % XXX Why not call fixup_goal_info?
+            some [!GoalExpr, !GoalInfo, !NonLocals] (
+                !.Goal = hlds_goal(!:GoalExpr, !:GoalInfo),
                 !:NonLocals = goal_info_get_nonlocals(!.GoalInfo),
                 set_of_var.insert(Info ^ lci_lc_var, !NonLocals),
                 goal_info_set_nonlocals(!.NonLocals, !GoalInfo),
                 goal_info_set_purity(purity_impure, !GoalInfo),
-                !Goal ^ hg_info := !.GoalInfo
+                !:Goal = hlds_goal(!.GoalExpr, !.GoalInfo)
             )
         ;
             FixupGoalInfo = do_not_fixup_goal_info
@@ -1258,83 +1259,14 @@ case_update_non_loop_control_paths(Info, RecParConjIds, !Case,
 
 %---------------------------------------------------------------------------%
 
-:- pred create_get_free_slot_goal(loop_control_info::in, prog_context::in,
-    prog_var::out, hlds_goal::out, var_table::in, var_table::out) is det.
-
-create_get_free_slot_goal(Info, Context, LCSVar, Goal, !VarTable) :-
-    LCSVarEntry = vte("LCS", loop_control_slot_var_type, is_not_dummy_type),
-    add_var_entry(LCSVarEntry, LCSVar, !VarTable),
-    LCVar = Info ^ lci_lc_var,
-    proc(PredId, ProcId) = Info ^ lci_wait_free_slot_proc,
-    SymName = Info ^ lci_wait_free_slot_proc_name,
-
-    GoalExpr = plain_call(PredId, ProcId, [LCVar, LCSVar], not_builtin,
-        maybe.no, SymName),
-    NonLocals = set_of_var.list_to_set([LCVar, LCSVar]),
-    InstmapDelta = instmap_delta_bind_var(LCSVar),
-    impure_init_goal_info(NonLocals, InstmapDelta, detism_det, Context,
-        GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-%---------------------------------------------------------------------------%
-
-:- pred create_create_loop_control_goal(module_info::in, prog_context::in,
-    prog_var::in, prog_var::out, hlds_goal::out,
-    var_table::in, var_table::out) is det.
-
-create_create_loop_control_goal(ModuleInfo, Context, NumContextsVar,
-        LCVar, Goal, !VarTable) :-
-    LCVarEntry = vte("LC", loop_control_var_type, is_not_dummy_type),
-    add_var_entry(LCVarEntry, LCVar, !VarTable),
-    get_lc_create_proc(ModuleInfo, LCCreatePredId, LCCreateProcId),
-    GoalExpr = plain_call(LCCreatePredId, LCCreateProcId,
-        [NumContextsVar, LCVar], not_builtin, no, lc_create_sym_name),
-    goal_info_init(set_of_var.list_to_set([NumContextsVar, LCVar]),
-        instmap_delta_bind_var(LCVar), detism_det, purity_pure, Context,
-        GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-%---------------------------------------------------------------------------%
-
-:- pred create_join_and_terminate_goal(loop_control_info::in, prog_context::in,
-    prog_var::in, prog_var::in, hlds_goal::out) is det.
-
-create_join_and_terminate_goal(Info, Context, LCVar, LCSVar, Goal) :-
-    proc(PredId, ProcId) = Info ^ lci_join_and_terminate_proc,
-    SymName = Info ^ lci_join_and_terminate_proc_name,
-
-    GoalExpr = plain_call(PredId, ProcId, [LCVar, LCSVar], not_builtin,
-        maybe.no, SymName),
-    NonLocals = set_of_var.list_to_set([LCVar, LCSVar]),
-    instmap_delta_init_reachable(InstmapDelta),
-    impure_init_goal_info(NonLocals, InstmapDelta, detism_det, Context,
-        GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-%---------------------------------------------------------------------------%
-
-:- pred create_finish_loop_control_goal(loop_control_info::in,
-    prog_context::in, hlds_goal::out) is det.
-
-create_finish_loop_control_goal(Info, Context, Goal) :-
-    get_lc_finish_loop_control_proc(Info ^ lci_module_info, PredId, ProcId),
-    LCVar = Info ^ lci_lc_var,
-
-    GoalExpr = plain_call(PredId, ProcId, [LCVar], not_builtin, maybe.no,
-        lc_finish_loop_control_sym_name),
-    NonLocals = set_of_var.list_to_set([LCVar]),
-    instmap_delta_init_reachable(InstmapDelta),
-    impure_init_goal_info(NonLocals, InstmapDelta, detism_det, Context,
-        GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-%---------------------------------------------------------------------------%
-
+    % Why is this type here? It is not USED here.
 :- type fixup_goal_info
     --->    fixup_goal_info
     ;       do_not_fixup_goal_info.
 
     % Fixup goalinfo after performing the loop control transformation.
+    %
+    % XXX This predicate needs a much more descriptive name.
     %
 :- pred fixup_goal_info(loop_control_info::in, hlds_goal::in, hlds_goal::out)
     is det.
@@ -1347,7 +1279,6 @@ fixup_goal_info(Info, Goal0, Goal) :-
         !:NonLocals = goal_info_get_nonlocals(!.GoalInfo),
         set_of_var.insert(LCVar, !NonLocals),
         goal_info_set_nonlocals(!.NonLocals, !GoalInfo),
-
         goal_info_set_purity(purity_impure, !GoalInfo),
 
         Goal = hlds_goal(GoalExpr, !.GoalInfo)
@@ -1468,6 +1399,78 @@ remap_instmap(Remap, OldInstmapDelta, !:InstmapDelta) :-
             map.lookup(Remap, OldVar, Var),
             instmap_delta_set_var(Var, Inst, IMD0, IMD)
         ), VarInsts, !InstmapDelta).
+
+%---------------------------------------------------------------------------%
+
+:- pred create_get_free_slot_goal(loop_control_info::in, prog_context::in,
+    prog_var::out, hlds_goal::out, var_table::in, var_table::out) is det.
+
+create_get_free_slot_goal(Info, Context, LCSVar, Goal, !VarTable) :-
+    LCSVarEntry = vte("LCS", loop_control_slot_var_type, is_not_dummy_type),
+    add_var_entry(LCSVarEntry, LCSVar, !VarTable),
+    LCVar = Info ^ lci_lc_var,
+    proc(PredId, ProcId) = Info ^ lci_wait_free_slot_proc,
+    SymName = Info ^ lci_wait_free_slot_proc_name,
+
+    GoalExpr = plain_call(PredId, ProcId, [LCVar, LCSVar], not_builtin,
+        maybe.no, SymName),
+    NonLocals = set_of_var.list_to_set([LCVar, LCSVar]),
+    InstmapDelta = instmap_delta_bind_var(LCSVar),
+    impure_init_goal_info(NonLocals, InstmapDelta, detism_det, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred create_create_loop_control_goal(module_info::in, prog_context::in,
+    prog_var::in, prog_var::out, hlds_goal::out,
+    var_table::in, var_table::out) is det.
+
+create_create_loop_control_goal(ModuleInfo, Context, NumContextsVar,
+        LCVar, Goal, !VarTable) :-
+    LCVarEntry = vte("LC", loop_control_var_type, is_not_dummy_type),
+    add_var_entry(LCVarEntry, LCVar, !VarTable),
+    get_lc_create_proc(ModuleInfo, LCCreatePredId, LCCreateProcId),
+    GoalExpr = plain_call(LCCreatePredId, LCCreateProcId,
+        [NumContextsVar, LCVar], not_builtin, no, lc_create_sym_name),
+    goal_info_init(set_of_var.list_to_set([NumContextsVar, LCVar]),
+        instmap_delta_bind_var(LCVar), detism_det, purity_pure, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred create_join_and_terminate_goal(loop_control_info::in, prog_context::in,
+    prog_var::in, prog_var::in, hlds_goal::out) is det.
+
+create_join_and_terminate_goal(Info, Context, LCVar, LCSVar, Goal) :-
+    proc(PredId, ProcId) = Info ^ lci_join_and_terminate_proc,
+    SymName = Info ^ lci_join_and_terminate_proc_name,
+
+    GoalExpr = plain_call(PredId, ProcId, [LCVar, LCSVar], not_builtin,
+        maybe.no, SymName),
+    NonLocals = set_of_var.list_to_set([LCVar, LCSVar]),
+    instmap_delta_init_reachable(InstmapDelta),
+    impure_init_goal_info(NonLocals, InstmapDelta, detism_det, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred create_finish_loop_control_goal(loop_control_info::in,
+    prog_context::in, hlds_goal::out) is det.
+
+create_finish_loop_control_goal(Info, Context, Goal) :-
+    get_lc_finish_loop_control_proc(Info ^ lci_module_info, PredId, ProcId),
+    LCVar = Info ^ lci_lc_var,
+
+    GoalExpr = plain_call(PredId, ProcId, [LCVar], not_builtin, maybe.no,
+        lc_finish_loop_control_sym_name),
+    NonLocals = set_of_var.list_to_set([LCVar]),
+    instmap_delta_init_reachable(InstmapDelta),
+    impure_init_goal_info(NonLocals, InstmapDelta, detism_det, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %---------------------------------------------------------------------------%
 
