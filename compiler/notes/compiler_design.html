@@ -29,7 +29,7 @@ a (smaller or larger) subset of Mercury to Aditi, to Erlang, to .NET's IL,
 and to bytecode for a once-planned but never implemented bytecode interpreter.
 <p>
 The main module of the compiler is in the file mercury_compile.m.
-This forwards all of the work to the file mercury_compiler_main.m,
+This forwards all of the work to the file mercury_compile_main.m,
 which is a submodule of the top_level.m package.
 The basic design is that compilation is broken into the following steps:
 
@@ -93,8 +93,8 @@ is managed by mercury_compile_middle_passes.m.
 Steps 4, 5 and 6, code generation, optimization and output,
 are all managed by
     <ul>
-    <li> mercury_compile_llds_backend.m for the LLDS backend, and
-    <li> mercury_compile_mlds_backend.m for the MLDS backend.
+    <li> mercury_compile_llds_back_end.m for the LLDS backend, and
+    <li> mercury_compile_mlds_back_end.m for the MLDS backend.
     </ul>
 </ul>
 <p>
@@ -563,7 +563,7 @@ check_import_accessibility.m checks whether imported (and used) modules
 are actually accessible (by having imports of all their ancestor modules),
 and generates error messages if the answer is "no".
 <li>
-read_module.m has code to read in source, interface and optimization files.
+read_modules.m has code to read in source, interface and optimization files.
 <li>
 split_parse_tree_src.m splits up
 the parse tree of a source file (parse_tree_src)
@@ -1065,7 +1065,7 @@ with support from the mode_robdd.m package for constraint based mode analysis.
 Any pass which can report errors or warnings must be part of this stage,
 so that the compiler does the right thing
 for options such as `--halt-at-warn' (which turns warnings into errors)
-and `--error-check-only'
+and `--errorcheck-only'
 (which makes the compiler exit at the end of semantic analysis).
 
 <ul>
@@ -1697,8 +1697,8 @@ This is the transform_hlds.m package.
 <ul>
 <li>
 The first pass of this stage does tabling transformations (table_gen.m).
-This involves the insertion of several calls to tabling predicates
-defined in mercury_builtin.m and the addition of some scaffolding structure.
+This involves the insertion of several calls to tabling predicates defined
+in library/table_builtin.m and the addition of some scaffolding structure.
 Note that this pass
 can change the evaluation methods of some procedures to eval_table_io,
 so it should come before any passes
@@ -1766,7 +1766,7 @@ which are in the termination.term_osi package, are
     term_osi_main.m is the control module.
     It sets the argument size and termination properties
     of builtin and compiler generated procedures,
-    invokes term_pass1.m and term_pass2.m,
+    invokes term_osi_pass1.m and term_osi_pass2.m,
     and writes .trans_opt files and error messages as appropriate.
     <li>
     term_osi_pass1.m analyzes the argument size properties
@@ -1785,7 +1785,7 @@ which are in the termination.term_osi package, are
     </ul>
 <p>
 The second system is based on the polyhedra that result
-from the conjunction of several linear constraints,
+from the conjunction of several linear constraints.
 The modules of this system,
 which are in the termination.term_constr package, are
 <p>
@@ -1828,7 +1828,7 @@ The termination package also contains three other modules:
     that depend upon the information obtained by termination analysis.
     </ul>
 <li>
-Trailing analysis (trailing_analysis.mi) annotates each module with information
+Trailing analysis (trailing_analysis.m) annotates each module with information
 about whether the procedures in the module modify the trail or not.
 This information can be used to avoid redundant trailing operations.
 <li>
@@ -1890,10 +1890,10 @@ higher-order, type_info, and/or typeclass_info arguments are known.
     higher_order.higher_order_info.m
     defines the data structure that the two modules above share.
     <li>
-    higher_order.make_specialized_pred.m constructs
+    higher_order.make_specialized_preds.m constructs
     the specialized versions of predicates for the specialized calls to call.
     <li>
-    higher_order.higher_order_globals_info.m
+    higher_order.higher_order_global_info.m
     defines the data structures they all share,
     and some utility operations that are needed
     by more than one module in the package.
@@ -2077,9 +2077,6 @@ smm_common.m contains facilities
 that are useful to both the rbmm and ctgc subpackages.
 </ul>
 
-<p>
-The module transform.m contains stuff that is supposed to be useful
-for high-level optimizations (but which is not yet used).
 <p>
 
 The last three HLDS-to-HLDS transformations implement
@@ -2550,14 +2547,14 @@ ml_target_util.m and ml_util.m provide some general utility predicates.
 
 <ul>
 <li>
-ml_optimize.m and ml_unused_assigns.m do MLDS to MLDS optimizations.
+ml_optimize.m and ml_unused_assign.m do MLDS to MLDS optimizations.
 <li>
 ml_elim_nested.m does two MLDS transformations
 that happen to have a lot in common:
 (1) eliminating nested functions and
 (2) adding code to handle accurate garbage collection.
 <li>
-ml_rename_class.m does what its name suggests: renames classes in the MLDS.
+ml_rename_classes.m does what its name suggests: renames classes in the MLDS.
 It is used by mlds_to_java_file.m
 to replace long class names with shorter ones.
 </ul>
@@ -2657,7 +2654,7 @@ which program items were used during a compilation.
 recompilation.used_file.m writes out that information
 to a modulename.used file.
 <li>
-recompilation_check.m is called before recompiling a module.
+recompilation.check.m is called before recompiling a module.
 It uses the information written
 by recompilation.version.m and recompilation.used_file.m
 to work out whether the recompilation is actually needed.
@@ -2732,7 +2729,7 @@ process_util.m contains predicates
 that deal with process creation and signal handling.
 This module is mainly used by make.m and its submodules.
 <li>
-create_launcher.m contains code to help create launcher scripts
+create_launchers.m contains code to help create launcher scripts
 for the Java and C# backends.
 <li>
 shell_util.m contains a utility function
@@ -2750,7 +2747,7 @@ lp.m implements the linear programming algorithm
 for optimizing a set of linear constraints on floats
 with respect to a linear cost function.
 This is used by the first termination analyser,
-whose top level is in termination.m.
+whose top level is in term_osi_main.m.
 <li>
 lp_rational.m implements the linear programming algorithm
 for optimizing a set of linear constraints on rational numbers
@@ -2788,7 +2785,7 @@ system_cmds.m contains predicates for invoking commands via the shell.
 <li>
 copy_util.m contains predicates for copying files.
 <li>
-line_builder.m contains a version of library/string.builder.m
+lines_builder.m contains a version of library/string.builder.m
 that can be useful in constructing strings
 that are intended to become the contents of C source files.
 </ul>
