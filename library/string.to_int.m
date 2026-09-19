@@ -209,7 +209,7 @@ do_base_string_to_negative_int_loop(Base, CutOff, CutLimit, String,
 
 %---------------------%
 
-    % A version of do_base_string_to_positive_int_loop that omits the the
+    % A version of do_base_string_to_positive_int_loop that omits the
     % overflow check. This is faster, but can only be used safely when the
     % number of digits in the string is below that which potentially overflow.
     %
@@ -293,7 +293,7 @@ do_base_string_to_uint_loop(UBase, Base, CutOff, CutLimit, String,
     % do_unsafe_base_string_to_uint_loop(UBase, Base, String, CurOffset,
     %   EndOffset, !UInt):
     %
-    % A version of do_base_string_to_uint_loop that omits the the overflow
+    % A version of do_base_string_to_uint_loop that omits the overflow
     % check. This is faster, but can only be used safely when the number of
     % digits in the string is below that which potentially overflow.
     %
