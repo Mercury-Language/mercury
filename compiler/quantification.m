@@ -96,8 +96,8 @@
     % CVS branches used for experimental work on structure reuse that
     % may have used this capability.)
     %
-    % Since there is no near-term prospect of this capability being useful
-    % in the near term, we have deleted this capability on 2 Sep 2026.
+    % Since there is no near-term prospect of this capability being useful,
+    % we have deleted this capability on 2 Sep 2026.
     % Anyone interested in reviving this capability can look at versions
     % of this module from just before that date.
     %
@@ -1356,7 +1356,7 @@ get_following_vars_no_lambda(NonLocalsToRecompute, [Goal | Goals],
     %
     % Return in GWLVs a version of the list of [HeadGoal | TailGoals]
     % in which each goal is accompanied by the list of goals that occur
-    % later in the that goal list, both outside and inside lambdas.
+    % later in the goal list, both outside and inside lambdas.
     % Return in Set and LambdaSet the set of goals that occur in the
     % whole list, i.e. [HeadGoal | TailGoals], again in those two categories.
     %
@@ -1731,7 +1731,7 @@ goal_vars_both_maybe_lambda(NonLocalsToRecompute, Goal, Set, LambdaSet) :-
     %   NonLambdaSet, LambdaSet):
     %
     % As goal_vars_both_maybe_lambda, but include all the variables from
-    % from_groun_term scopes, not just the term variable.
+    % from_ground_term scopes, not just the term variable.
     %
 :- pred goal_vars_both_maybe_lambda_and_bi_impl(hlds_goal::in,
     set_of_progvar::out, set_of_progvar::out) is det.
@@ -1908,7 +1908,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
                 ( Kind = from_ground_term_deconstruct
                 ; Kind = from_ground_term_other
                 ),
-                % Unfortunately, while there will never by any lambda goals
+                % Unfortunately, while there will never be any lambda goals
                 % inside such a SubGoal when the scope is built, there may be
                 % lambda goals inside SubGoal after typechecking.
                 goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
