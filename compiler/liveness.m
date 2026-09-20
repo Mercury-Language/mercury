@@ -135,7 +135,7 @@
 % (b) the variable is local to this goal and hence does not occur in parallel
 %     goals.
 %
-% If a variable occurs in the nonlocal set of the goal, the code of this
+% If a variable occurs in the nonlocal set of the goal, the code of this module
 % assumes that (b) is not true, and will therefore require (a) to be true.
 % If some of the parallel goals cannot succeed, the first pass will include
 % the variable in their post-birth sets.
@@ -151,7 +151,7 @@
 % information about nonlocals, it must recompute the nonlocal sets before
 % starting.
 %
-% As written this module expects goals to be simplified, otherwise there may be
+% As written this module expects goals to be simplified; otherwise there may be
 % assertion failures.
 %
 %---------------------------------------------------------------------------%
@@ -1325,7 +1325,7 @@ find_reachable_case([case(_, _, Goal) | Cases], ReachableGoal) :-
 % This is why cse_detection.m, when it duplicates a deconstruction unification
 % and finds that an argument variable contains a typeinfo or typeclass info
 % (which can happen with existential types), it will preserve the name of
-% that argument variable. Specifically, will copy the name of the argument
+% that argument variable. Specifically, it will copy the name of the argument
 % variable in the deconstruction in ONE of the branches of the branched control
 % structure it processes, but since such variables should be named in ALL
 % branches, and we don't care about the actual name itself, this should be ok.
