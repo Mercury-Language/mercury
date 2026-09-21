@@ -74,10 +74,10 @@ string                           E   A   AN  A_  AN_ D   M   N
 "\u00df\u03be\u5555\U00010000"   F   F   F   F   F   F   F   T  
 "abc\u00e9"                      F   F   F   F   F   F   F   F  
 "\u00e9abc"                      F   F   F   F   F   F   F   F  
-"\xf0\"                          F   F   F   F   F   F   F   F  
-"\x9f\\x98\\x80\"                F   F   F   F   F   F   F   F  
-"abc\xf0\"                       F   F   F   F   F   F   F   F  
-"\xf0\abc"                       F   F   F   F   F   F   F   F  
-"ab\xf0\cd"                      F   F   F   F   F   F   F   F  
-"123\x9f\\x98\\x80\"             F   F   F   F   F   F   F   F  
+"\ud83d"                         F   F   F   F   F   F   F   T  
+"\ude00"                         F   F   F   F   F   F   F   T  
+"abc\ud83d"                      F   F   F   F   F   F   F   F  
+"\ud83dabc"                      F   F   F   F   F   F   F   F  
+"ab\ud83dcd"                     F   F   F   F   F   F   F   F  
+"123\ude00"                      F   F   F   F   F   F   F   F  
 "\U0001f600"                     F   F   F   F   F   F   F   T  
