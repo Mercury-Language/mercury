@@ -333,7 +333,7 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
             mercury_private_builtin_module, "superclass_from_typeclass_info",
             [], [SubClassVar, IndexVar, TypeClassInfoVar],
             instmap_delta_bind_no_var, only_mode, detism_det, purity_pure, [],
-            term_context.dummy_context, SuperClassGoal),
+            Context, SuperClassGoal),
         Goals = SubClassVarGoals ++ IndexGoals ++ [SuperClassGoal],
         record_constructed_typeclass_info_var("subclass computed",
             do_not_dump_all_tables, -1, Constraint,
@@ -534,7 +534,7 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
     map.lookup(ClassTable, ClassId, ClassDefn),
 
     get_arg_superclass_vars(ClassDefn, ConstrainedTypes, ProofMap,
-        ExistQVars, ArgSuperClassVarsMCAs, SuperClassGoals, !Info),
+        ExistQVars, Context, ArgSuperClassVarsMCAs, SuperClassGoals, !Info),
 
     PrevGoals = UnconstrainedTypeInfoGoals ++ TypeInfoGoals ++
         InstanceConstraintGoals ++ SuperClassGoals,
@@ -750,12 +750,13 @@ construct_typeclass_info(Context, Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
 %---------------------------------------------------------------------------%
 
 :- pred get_arg_superclass_vars(hlds_class_defn::in, list(mer_type)::in,
-    constraint_proof_map::in, existq_tvars::in,
+    constraint_proof_map::in, existq_tvars::in, prog_context::in,
     assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
-        ExistQVars, SuperClassTypeClassInfoVarsMCAs, SuperClassGoals, !Info) :-
+        ExistQVars, Context, SuperClassTypeClassInfoVarsMCAs, SuperClassGoals,
+        !Info) :-
     poly_info_get_proof_map(!.Info, ProofMap),
 
     poly_info_get_typevarset(!.Info, TVarSet0),
@@ -774,22 +775,22 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
         SuperClasses1, SuperClasses),
 
     poly_info_set_proof_map(SuperClassProofMap, !Info),
-    make_typeclass_infos_for_superclasses(ExistQVars, SuperClasses,
+    make_typeclass_infos_for_superclasses(ExistQVars, Context, SuperClasses,
         SuperClassTypeClassInfoVarsMCAs, SuperClassGoals, !Info),
     poly_info_set_proof_map(ProofMap, !Info).
 
 :- pred make_typeclass_infos_for_superclasses(existq_tvars::in,
-    list(prog_constraint)::in,
+    prog_context::in, list(prog_constraint)::in,
     assoc_list(prog_var, maybe(const_struct_arg))::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-make_typeclass_infos_for_superclasses(_, [], [], [], !Info).
-make_typeclass_infos_for_superclasses(ExistQVars, [Constraint | Constraints],
+make_typeclass_infos_for_superclasses(_, _, [], [], [], !Info).
+make_typeclass_infos_for_superclasses(ExistQVars, Context,
+        [Constraint | Constraints],
         [TypeClassInfoVarMCA | TypeClassInfoVarsMCAs], Goals, !Info) :-
-    Context = term_context.dummy_context,
     make_typeclass_info_var(ExistQVars, Context, [],
         Constraint, TypeClassInfoVarMCA, HeadGoals, !Info),
-    make_typeclass_infos_for_superclasses(ExistQVars,
+    make_typeclass_infos_for_superclasses(ExistQVars, Context,
         Constraints, TypeClassInfoVarsMCAs, TailGoals, !Info),
     Goals = HeadGoals ++ TailGoals.
 
