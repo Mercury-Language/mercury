@@ -388,7 +388,7 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals,
 %---------------------%
 
 :- pred add_missing_int_module(module_name::in,
-import_and_or_use_map::in, import_and_or_use_map::out) is det.
+    import_and_or_use_map::in, import_and_or_use_map::out) is det.
 
 add_missing_int_module(ModuleName, !ImportAndOrUseMap) :-
     ( if map.search(!.ImportAndOrUseMap, ModuleName, MaybeImplicit0) then
