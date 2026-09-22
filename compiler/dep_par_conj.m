@@ -958,8 +958,11 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
 
 insert_wait_before_goal(ModuleInfo, VarTable, FutureMap, ConsumedVar,
         Goal0, Goal) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
     map.lookup(FutureMap, ConsumedVar, FutureVar),
-    make_wait_goal(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitGoal),
+    make_wait_goal(ModuleInfo, VarTable, Context, FutureVar, ConsumedVar,
+        WaitGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hg_info, WaitGoal, Goal0, Goal).
 
 :- pred insert_wait_after_goal(module_info::in, var_table::in, future_map::in,
@@ -967,8 +970,11 @@ insert_wait_before_goal(ModuleInfo, VarTable, FutureMap, ConsumedVar,
 
 insert_wait_after_goal(ModuleInfo, VarTable, FutureMap, ConsumedVar,
         Goal0, Goal) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
     map.lookup(FutureMap, ConsumedVar, FutureVar),
-    make_wait_goal(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitGoal),
+    make_wait_goal(ModuleInfo, VarTable, Context, FutureVar, ConsumedVar,
+        WaitGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hg_info, Goal0, WaitGoal, Goal).
 
     % Insert a wait for ConsumedVar in the first goal in the conjunction
@@ -1174,6 +1180,7 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                 unexpected($pred, "negation binds shared variable")
             ;
                 GoalExpr0 = scope(Reason, SubGoal0),
+                Context = goal_info_get_context(GoalInfo0),
                 ( if
                     Reason = from_ground_term(_, from_ground_term_construct)
                 then
@@ -1183,8 +1190,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                     % pointless, since the code generator will turn the entire
                     % scope into a single assignment statement. We therefore
                     % put he signal *after* the scope.
-                    insert_signal_after_goal(ModuleInfo, !.VarTable, FutureMap,
-                        ProducedVar, Goal0, Goal)
+                    insert_signal_after_goal(ModuleInfo, !.VarTable, Context,
+                        FutureMap, ProducedVar, Goal0, Goal)
                 else
                     SubGoal0 = hlds_goal(_, SubGoalInfo0),
                     Detism0 = goal_info_get_determinism(GoalInfo0),
@@ -1203,6 +1210,7 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                         % stable, which is when the scope has cut away any
                         % possibility of further backtracking inside SubGoal0.
                         insert_signal_after_goal(ModuleInfo, !.VarTable,
+                            Context,
                             FutureMap, ProducedVar, Goal0, Goal)
                     else
                         insert_signal_in_goal(ModuleInfo, FutureMap,
@@ -1217,8 +1225,9 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                 ; GoalExpr0 = generic_call(_, _, _, _, _)
                 ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
                 ),
-                insert_signal_after_goal(ModuleInfo, !.VarTable, FutureMap,
-                    ProducedVar, Goal0, Goal)
+                Context = goal_info_get_context(GoalInfo0),
+                insert_signal_after_goal(ModuleInfo, !.VarTable, Context,
+                    FutureMap, ProducedVar, Goal0, Goal)
             ;
                 GoalExpr0 = shorthand(_),
                 unexpected($pred, "shorthand")
@@ -1238,11 +1247,12 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
     ).
 
 :- pred insert_signal_after_goal(module_info::in, var_table::in,
-    future_map::in, prog_var::in, hlds_goal::in, hlds_goal::out) is det.
+    prog_context::in, future_map::in, prog_var::in,
+    hlds_goal::in, hlds_goal::out) is det.
 
-insert_signal_after_goal(ModuleInfo, VarTable, FutureMap, ProducedVar,
+insert_signal_after_goal(ModuleInfo, VarTable, Context, FutureMap, ProducedVar,
         Goal0, Goal) :-
-    make_signal_goal(ModuleInfo, VarTable, FutureMap, ProducedVar,
+    make_signal_goal(ModuleInfo, VarTable, Context, FutureMap, ProducedVar,
         SignalGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hg_info, Goal0, SignalGoal, Goal).
 
@@ -1842,9 +1852,8 @@ specialize_sequences_in_conj_2(RevGoals0, [Goal0 | Goals0], Goals,
         NonLocals, !SpecInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( if
-        GoalExpr0 = plain_call(_, _, _, _, _, _),
-        not is_wait_goal(Goal0),
-        not is_signal_goal(Goal0)
+        GoalExpr0 = plain_call(_, _, _, _, _, CalleeSymName),
+        not is_wait_or_signal_goal(CalleeSymName)
     then
         CallGoal0 = hlds_goal(GoalExpr0, GoalInfo0),  % dumb mode system
         maybe_specialize_call_and_goals(RevGoals0, CallGoal0, Goals0,
@@ -1884,12 +1893,11 @@ specialize_sequences_in_cases([Case0 | Cases0], [Case | Cases], !SpecInfo) :-
 
 maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
         RevGoals, FwdGoals, NonLocals, !SpecInfo) :-
-    Goal0 = hlds_goal(GoalExpr0, _),
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     GoalExpr0 = plain_call(PredId, ProcId, CallVars, _, _, _),
 
     ModuleInfo = !.SpecInfo ^ spec_module_info,
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     PredProcId = proc(PredId, ProcId),
     CallerPredProcId = !.SpecInfo ^ spec_ppid,
     ( if
@@ -1964,9 +1972,10 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
                 PushedPairs = PushedSignalPairs ++ PushedWaitPairs,
                 list.filter(should_add_get_goal(NonLocals, FwdGoals1),
                     PushedPairs, PushedPairsNeedGets),
+                ModuleInfo0 = !.SpecInfo ^ spec_module_info,
                 VarTable = !.SpecInfo ^ spec_var_table,
-                list.map(
-                    make_get_goal(!.SpecInfo ^ spec_module_info, VarTable),
+                Context = goal_info_get_context(GoalInfo0),
+                list.map( make_get_goal(ModuleInfo0, VarTable, Context),
                     PushedPairsNeedGets, GetGoals),
 
                 RevGoals = GetGoals ++ [Goal] ++ UnPushedWaitGoals
@@ -3218,30 +3227,30 @@ make_future_name_var_and_goal(Context, Name, FutureNameVar, Goal,
         detism_det, purity_pure, Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred make_wait_goal(module_info::in, var_table::in,
+:- pred make_wait_goal(module_info::in, var_table::in, prog_context::in,
     prog_var::in, prog_var::in, hlds_goal::out) is det.
 
-make_wait_goal(ModuleInfo, VarTable, FutureVar, WaitVar, WaitGoal) :-
-    make_wait_or_get(ModuleInfo, VarTable, FutureVar, WaitVar, wait_pred,
-        WaitGoal).
+make_wait_goal(ModuleInfo, VarTable, Context, FutureVar, WaitVar, WaitGoal) :-
+    make_wait_or_get(ModuleInfo, VarTable, Context, FutureVar, WaitVar,
+        wait_pred, WaitGoal).
 
-:- pred make_get_goal(module_info::in, var_table::in, future_var_pair::in,
-    hlds_goal::out) is det.
+:- pred make_get_goal(module_info::in, var_table::in, prog_context::in,
+    future_var_pair::in, hlds_goal::out) is det.
 
-make_get_goal(ModuleInfo, VarTable, future_var_pair(FutureVar, WaitVar),
-        WaitGoal) :-
-    make_wait_or_get(ModuleInfo, VarTable, FutureVar, WaitVar, get_pred,
-        WaitGoal).
+make_get_goal(ModuleInfo, VarTable, Context,
+        future_var_pair(FutureVar, WaitVar), WaitGoal) :-
+    make_wait_or_get(ModuleInfo, VarTable, Context, FutureVar, WaitVar,
+        get_pred, WaitGoal).
 
 :- type wait_or_get_pred
     --->    wait_pred
     ;       get_pred.
 
-:- pred make_wait_or_get(module_info::in, var_table::in,
+:- pred make_wait_or_get(module_info::in, var_table::in, prog_context::in,
     prog_var::in, prog_var::in, wait_or_get_pred::in, hlds_goal::out) is det.
 
-make_wait_or_get(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitOrGetPred,
-        WaitGoal) :-
+make_wait_or_get(ModuleInfo, VarTable, Context, FutureVar, ConsumedVar,
+        WaitOrGetPred, WaitGoal) :-
     ModuleName = mercury_par_builtin_module,
     (
         WaitOrGetPred = wait_pred,
@@ -3256,7 +3265,6 @@ make_wait_or_get(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitOrGetPred,
     ),
     Features = [],
     InstMapDelta = instmap_delta_bind_var(ConsumedVar),
-    Context = dummy_context,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
         ShouldInline = do_not_inline_par_builtins,
@@ -3284,16 +3292,16 @@ make_wait_or_get(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitOrGetPred,
             no, Code, Context, WaitGoal)
     ).
 
-:- pred make_signal_goal(module_info::in, var_table::in, future_map::in,
-    prog_var::in, hlds_goal::out) is det.
+:- pred make_signal_goal(module_info::in, var_table::in, prog_context::in,
+    future_map::in, prog_var::in, hlds_goal::out) is det.
 
-make_signal_goal(ModuleInfo, VarTable, FutureMap, ProducedVar, SignalGoal) :-
+make_signal_goal(ModuleInfo, VarTable, Context, FutureMap, ProducedVar,
+        SignalGoal) :-
     FutureVar = map.lookup(FutureMap, ProducedVar),
     ModuleName = mercury_par_builtin_module,
     PredName = signal_future_pred_name,
     Features = [],
     InstMapDelta = instmap_delta_bind_no_var,
-    Context = dummy_context,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
         ShouldInline = do_not_inline_par_builtins,
@@ -3322,15 +3330,13 @@ make_signal_goal(ModuleInfo, VarTable, FutureMap, ProducedVar, SignalGoal) :-
             no, Code, Context, SignalGoal)
     ).
 
-:- pred is_wait_goal(hlds_goal::in) is semidet.
+:- pred is_wait_or_signal_goal(sym_name::in) is semidet.
 
-is_wait_goal(hlds_goal(plain_call(_, _, _, _, _, SymName), _GoalInfo)) :-
-    SymName = qualified(mercury_par_builtin_module, wait_future_pred_name).
-
-:- pred is_signal_goal(hlds_goal::in) is semidet.
-
-is_signal_goal(hlds_goal(plain_call(_, _, _, _, _, SymName), _GoalInfo)) :-
-    SymName = qualified(mercury_par_builtin_module, signal_future_pred_name).
+is_wait_or_signal_goal(CalleeSymName) :-
+    CalleeSymName = qualified(mercury_par_builtin_module, PredName),
+    ( PredName = wait_future_pred_name
+    ; PredName = signal_future_pred_name
+    ).
 
 :- func new_future_pred_name = string.
 :- func wait_future_pred_name = string.
