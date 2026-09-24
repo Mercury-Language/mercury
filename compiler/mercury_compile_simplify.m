@@ -17,13 +17,19 @@
 :- module top_level.mercury_compile_simplify.
 :- interface.
 
+:- import_module check_hlds.
+:- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
@@ -66,6 +72,8 @@
             % The first pass of the MLDS backend. As of 2025 sep 13,
             % this is stage 405.
 
+:- func decide_ll_backend_simplify_tasks(globals) = list(simplify_task).
+
     % This predicate sets up and maybe runs the simplification pass.
     %
 :- pred maybe_simplify_pass(io.text_output_stream::in,
@@ -78,118 +86,123 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
-:- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_pred_tests.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_proc_id.
-:- import_module libs.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.write_error_spec.
 
-:- import_module list.
 :- import_module map.
 :- import_module require.
+
+%---------------------------------------------------------------------------%
+
+decide_ll_backend_simplify_tasks(Globals) = !:SimpList :-
+    find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks0),
+    !:SimpList = simplify_tasks_to_list(SimplifyTasks0),
+    % Perform constant propagation only if *none* of the
+    % profiling transformations has been applied.
+    globals.get_opt_tuple(Globals, OptTuple),
+    ConstProp = OptTuple ^ ot_prop_constants,
+    globals.lookup_bool_option(Globals, profile_deep, DeepProf),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_words,
+        TSWProf),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
+        TSCProf),
+    ( if
+        ConstProp = prop_constants,
+        DeepProf = no,
+        TSWProf = no,
+        TSCProf = no
+    then
+        list.cons(simptask_constant_prop, !SimpList)
+    else
+        list.delete_all(!.SimpList, simptask_constant_prop, !:SimpList)
+    ),
+    list.cons(simptask_mark_code_model_changes, !SimpList),
+    list.cons(simptask_elim_removable_scopes, !SimpList).
+
+:- func decide_given_pass_simplify_tasks(globals, bool, simplify_pass)
+    = list(simplify_task).
+
+decide_given_pass_simplify_tasks(Globals, Warn, SimplifyPass) = !:SimpList :-
+    ( Warn = no,  WarnGen = do_not_generate_warnings
+    ; Warn = yes, WarnGen = generate_warnings
+    ),
+    find_simplify_tasks(Globals, WarnGen, SimplifyTasks0),
+    !:SimpList = simplify_tasks_to_list(SimplifyTasks0),
+    (
+        SimplifyPass = simplify_pass_frontend,
+        list.cons(simptask_after_front_end, !SimpList),
+        list.cons(simptask_try_opt_const_structs, !SimpList),
+        globals.lookup_accumulating_option(Globals, dump_hlds,
+            DumpHLDSStages),
+        (
+            DumpHLDSStages = []
+        ;
+            DumpHLDSStages = [_ | _],
+            % This makes HLDS dumps both smaller and more readable
+            % (by reducing clutter).
+            list.cons(simptask_delete_dead_vars, !SimpList)
+        )
+    ;
+        SimplifyPass = simplify_pass_post_untuple,
+        list.cons(simptask_mark_code_model_changes, !SimpList)
+    ;
+        SimplifyPass = simplify_pass_pre_prof_transforms,
+
+        % We run the simplify pass before the profiling transformations
+        % only if those transformations are being applied; otherwise we
+        % just leave things to the backend simplification passes.
+
+        globals.lookup_bool_option(Globals, pre_prof_transforms_simplify,
+            PreProfSimplify),
+        (
+            PreProfSimplify = yes,
+            list.cons(simptask_mark_code_model_changes, !SimpList)
+        ;
+            PreProfSimplify = no,
+            !:SimpList = []
+        )
+    ;
+        SimplifyPass = simplify_pass_pre_implicit_parallelism,
+
+        % We run the simplify pass before the implicit parallelism pass if
+        % implicit parallelism is enabled.
+
+        globals.lookup_bool_option(Globals,
+            pre_implicit_parallelism_simplify, PreParSimplify),
+        (
+            PreParSimplify = yes,
+            list.cons(simptask_mark_code_model_changes, !SimpList)
+        ;
+            PreParSimplify = no,
+            !:SimpList = []
+        )
+    ;
+        SimplifyPass = simplify_pass_ml_backend,
+        list.cons(simptask_mark_code_model_changes, !SimpList)
+    ;
+        SimplifyPass = simplify_pass_ll_backend,
+        % This calls find_simplify_tasks again, but the performance
+        % impact is negligible.
+        !:SimpList = decide_ll_backend_simplify_tasks(Globals)
+    ).
 
 %---------------------------------------------------------------------------%
 
 maybe_simplify_pass(ProgressStream, MaybeErrorStream, Warn, SimplifyPass,
         Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    some [!SimpList] (
-        ( Warn = no,  WarnGen = do_not_generate_warnings
-        ; Warn = yes, WarnGen = generate_warnings
-        ),
-        find_simplify_tasks(Globals, WarnGen, SimplifyTasks0),
-        !:SimpList = simplify_tasks_to_list(SimplifyTasks0),
-        (
-            SimplifyPass = simplify_pass_frontend,
-            list.cons(simptask_after_front_end, !SimpList),
-            list.cons(simptask_try_opt_const_structs, !SimpList),
-            globals.lookup_accumulating_option(Globals, dump_hlds,
-                DumpHLDSStages),
-            (
-                DumpHLDSStages = []
-            ;
-                DumpHLDSStages = [_ | _],
-                % This makes HLDS dumps both smaller and more readable
-                % (by reducing clutter).
-                list.cons(simptask_delete_dead_vars, !SimpList)
-            )
-        ;
-            SimplifyPass = simplify_pass_post_untuple,
-            list.cons(simptask_mark_code_model_changes, !SimpList)
-        ;
-            SimplifyPass = simplify_pass_pre_prof_transforms,
-
-            % We run the simplify pass before the profiling transformations
-            % only if those transformations are being applied; otherwise we
-            % just leave things to the backend simplification passes.
-
-            globals.lookup_bool_option(Globals, pre_prof_transforms_simplify,
-                PreProfSimplify),
-            (
-                PreProfSimplify = yes,
-                list.cons(simptask_mark_code_model_changes, !SimpList)
-            ;
-                PreProfSimplify = no,
-                !:SimpList = []
-            )
-        ;
-            SimplifyPass = simplify_pass_pre_implicit_parallelism,
-
-            % We run the simplify pass before the implicit parallelism pass if
-            % implicit parallelism is enabled.
-
-            globals.lookup_bool_option(Globals,
-                pre_implicit_parallelism_simplify, PreParSimplify),
-            (
-                PreParSimplify = yes,
-                list.cons(simptask_mark_code_model_changes, !SimpList)
-            ;
-                PreParSimplify = no,
-                !:SimpList = []
-            )
-        ;
-            SimplifyPass = simplify_pass_ml_backend,
-            list.cons(simptask_mark_code_model_changes, !SimpList)
-        ;
-            SimplifyPass = simplify_pass_ll_backend,
-            % Don't perform constant propagation if one of the
-            % profiling transformations has been applied.
-            %
-            % NOTE: Any changes made here may also need to be made
-            % to the relevant parts of backend_pass_by_preds_4/12.
-            globals.get_opt_tuple(Globals, OptTuple),
-            ConstProp = OptTuple ^ ot_prop_constants,
-            globals.lookup_bool_option(Globals, profile_deep, DeepProf),
-            globals.lookup_bool_option(Globals, record_term_sizes_as_words,
-                TSWProf),
-            globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
-                TSCProf),
-            ( if
-                ConstProp = prop_constants,
-                DeepProf = no,
-                TSWProf = no,
-                TSCProf = no
-            then
-                list.cons(simptask_constant_prop, !SimpList)
-            else
-                list.delete_all(!.SimpList, simptask_constant_prop, !:SimpList)
-            ),
-            list.cons(simptask_mark_code_model_changes, !SimpList),
-            list.cons(simptask_elim_removable_scopes, !SimpList)
-        ),
-        SimpList = !.SimpList
-    ),
+    SimpList = decide_given_pass_simplify_tasks(Globals, Warn, SimplifyPass),
     (
+        SimpList = []
+    ;
         SimpList = [_ | _],
         (
             MaybeErrorStream = yes(ErrorStreamA),
@@ -226,8 +239,6 @@ maybe_simplify_pass(ProgressStream, MaybeErrorStream, Warn, SimplifyPass,
         ),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
-    ;
-        SimpList = []
     ).
 
 :- pred simplify_pred(io.text_output_stream::in,

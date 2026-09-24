@@ -239,6 +239,17 @@ llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData,
 llds_backend_pass_by_preds(ProgressStream, !HLDS, LLDS, !GlobalData, !Specs) :-
     module_info_get_valid_pred_ids(!.HLDS, PredIds),
     module_info_get_globals(!.HLDS, Globals),
+
+    generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),
+    % The dependency information used to warn about mutual tail recursion
+    % cannot be shared with the information used to remove duplicate
+    % procedures, they use different nodes in the dependency graph
+    % (predicates versus procedures).
+    module_info_rebuild_dependency_info(!HLDS, ProcDepInfo),
+    SCCMap = dependency_info_make_scc_map(ProcDepInfo),
+    SimpList = decide_ll_backend_simplify_tasks(Globals),
+    SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
+
     globals.get_opt_tuple(Globals, OptTuple),
     ProcDups = OptTuple ^ ot_opt_dup_procs_llds,
     (
@@ -253,51 +264,46 @@ llds_backend_pass_by_preds(ProgressStream, !HLDS, LLDS, !GlobalData, !Specs) :-
             PredDepInfo),
         MaybeDupProcMap = yes(map.init)
     ),
-    % The dependency information used to warn about mutual tail recursion
-    % cannot be shared with the information used to remove duplicate
-    % procedures, they use different nodes in the dependency graph
-    % (predicates versus procedures).
-    module_info_rebuild_dependency_info(!HLDS, ProcDepInfo),
-    SCCMap = dependency_info_make_scc_map(ProcDepInfo),
-    generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),
-    llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
-        ConstStructMap, SCCMap, OrderedPredIds, MaybeDupProcMap,
-        cord.init, CProcsCord, !GlobalData, !Specs),
+
+    llds_backend_pass_by_preds_loop_over_preds(ProgressStream,
+        ConstStructMap, SCCMap, SimplifyTasks, OrderedPredIds, MaybeDupProcMap,
+        cord.init, CProcsCord, !HLDS, !GlobalData, !Specs),
     LLDS = cord.list(CProcsCord).
 
 :- type dup_proc_label_map ==
     map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label).
 
 :- pred llds_backend_pass_by_preds_loop_over_preds(io.text_output_stream::in,
-    module_info::in, module_info::out, const_struct_map::in,
-    scc_map(pred_proc_id)::in, list(pred_id)::in,
-    maybe(dup_proc_label_map)::in,
+    const_struct_map::in, scc_map(pred_proc_id)::in, simplify_tasks::in,
+    list(pred_id)::in, maybe(dup_proc_label_map)::in,
     cord(c_procedure)::in, cord(c_procedure)::out,
-    global_data::in, global_data::out,
+    module_info::in, module_info::out, global_data::in, global_data::out,
     maybe_written_specs::in, maybe_written_specs::out) is det.
 
-llds_backend_pass_by_preds_loop_over_preds(_, !HLDS, _, _,
-        [], _, !CProcsCord, !GlobalData, !Specs).
-llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
-        ConstStructMap, SCCMap, [PredId | PredIds], !.MaybeDupProcMap,
-        !CProcsCord, !GlobalData, !Specs) :-
-    llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS,
-        ConstStructMap, SCCMap, PredId, !MaybeDupProcMap,
-        !CProcsCord, !GlobalData, !Specs),
-    llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
-        ConstStructMap, SCCMap, PredIds, !.MaybeDupProcMap,
-        !CProcsCord, !GlobalData, !Specs).
+llds_backend_pass_by_preds_loop_over_preds(_, _, _, _,
+        [], _, !CProcsCord, !HLDS, !GlobalData, !Specs).
+llds_backend_pass_by_preds_loop_over_preds(ProgressStream,
+        ConstStructMap, SCCMap, SimplifyTasks,
+        [PredId | PredIds], !.MaybeDupProcMap,
+        !CProcsCord,  !HLDS,!GlobalData, !Specs) :-
+    llds_backend_pass_by_preds_do_one_pred(ProgressStream,
+        ConstStructMap, SCCMap, SimplifyTasks, PredId, !MaybeDupProcMap,
+        !CProcsCord, !HLDS, !GlobalData, !Specs),
+    llds_backend_pass_by_preds_loop_over_preds(ProgressStream,
+        ConstStructMap, SCCMap, SimplifyTasks, PredIds, !.MaybeDupProcMap,
+        !CProcsCord, !HLDS, !GlobalData, !Specs).
 
 :- pred llds_backend_pass_by_preds_do_one_pred(io.text_output_stream::in,
-    module_info::in, module_info::out, const_struct_map::in,
-    scc_map(pred_proc_id)::in, pred_id::in,
+    const_struct_map::in,
+    scc_map(pred_proc_id)::in, simplify_tasks::in, pred_id::in,
     maybe(dup_proc_label_map)::in, maybe(dup_proc_label_map)::out,
     cord(c_procedure)::in, cord(c_procedure)::out,
-    global_data::in, global_data::out,
+    module_info::in, module_info::out, global_data::in, global_data::out,
     maybe_written_specs::in, maybe_written_specs::out) is det.
 
-llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
-        SCCMap, PredId, !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
+llds_backend_pass_by_preds_do_one_pred(ProgressStream, ConstStructMap,
+        SCCMap, SimplifyTasks, PredId,
+        !MaybeDupProcMap, !CProcsCord, !HLDS, !GlobalData, !Specs) :-
     module_info_pred_info(!.HLDS, PredId, PredInfo),
     ProcIds = pred_info_will_codegen_proc_ids(PredInfo),
     (
@@ -332,14 +338,14 @@ llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
             globals.set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
             llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
-                PredId, PredInfo, ProcIds, IdCProcs,
+                SimplifyTasks, PredId, PredInfo, ProcIds, IdCProcs,
                 !GlobalData, !HLDS, !Specs),
             module_info_get_globals(!.HLDS, Globals2),
             globals.set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS)
         else
             llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
-                PredId, PredInfo, ProcIds, IdCProcs,
+                SimplifyTasks, PredId, PredInfo, ProcIds, IdCProcs,
                 !GlobalData, !HLDS, !Specs)
         ),
         (
@@ -360,32 +366,35 @@ llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
     ).
 
 :- pred llds_backend_pass_for_pred(io.text_output_stream::in,
-    const_struct_map::in, scc_map(pred_proc_id)::in, pred_id::in,
-    pred_info::in, list(proc_id)::in,
+    const_struct_map::in, scc_map(pred_proc_id)::in, simplify_tasks::in,
+    pred_id::in, pred_info::in, list(proc_id)::in,
     assoc_list(mdbcomp.prim_data.proc_label, c_procedure)::out,
     global_data::in, global_data::out, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out) is det.
 
-llds_backend_pass_for_pred(_, _, _, _, _, [], [], !GlobalData, !HLDS, !Specs).
+llds_backend_pass_for_pred(_, _, _, _, _, _, [], [],
+        !GlobalData, !HLDS, !Specs).
 llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
-        PredId, PredInfo, [ProcId | ProcIds],
+        SimplifyTasks, PredId, PredInfo, [ProcId | ProcIds],
         [ProcLabel - CProc | ProcLabelsCProcs], !GlobalData, !HLDS, !Specs) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
-        PredId, ProcId, PredInfo, ProcInfo, CProc, !GlobalData, !HLDS, !Specs),
-    llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap, PredId,
-        PredInfo, ProcIds, ProcLabelsCProcs, !GlobalData, !HLDS, !Specs).
+        SimplifyTasks, PredId, ProcId, PredInfo, ProcInfo, CProc,
+        !GlobalData, !HLDS, !Specs),
+    llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
+        SimplifyTasks, PredId, PredInfo, ProcIds, ProcLabelsCProcs,
+        !GlobalData, !HLDS, !Specs).
 
 :- pred llds_backend_pass_for_proc(io.text_output_stream::in,
-    const_struct_map::in, scc_map(pred_proc_id)::in,
+    const_struct_map::in, scc_map(pred_proc_id)::in, simplify_tasks::in,
     pred_id::in, proc_id::in, pred_info::in, proc_info::in, c_procedure::out,
     global_data::in, global_data::out, module_info::in, module_info::out,
     maybe_written_specs::in, maybe_written_specs::out) is det.
 
 llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
-        PredId, ProcId, PredInfo, !.ProcInfo, CProc,
+        SimplifyTasks, PredId, ProcId, PredInfo, !.ProcInfo, CProc,
         !GlobalData, !HLDS, !MaybeWrittenSpecs) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -411,32 +420,6 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
     ;
         FollowCode = do_not_opt_follow_code
     ),
-    find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks0),
-    SimpList0 = simplify_tasks_to_list(SimplifyTasks0),
-
-    % NOTE: Any changes here may also need to be made to the maybe_simplify
-    % predicate in mercury_compile_front_end.m.
-
-    % Perform constant propagation only if *none* of the
-    % profiling transformations has been applied.
-    ConstProp = OptTuple ^ ot_prop_constants,
-    globals.lookup_bool_option(Globals, profile_deep, DeepProf),
-    globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
-    globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
-    ( if
-        ConstProp = prop_constants,
-        DeepProf = no,
-        TSWProf = no,
-        TSCProf = no
-    then
-        list.cons(simptask_constant_prop, SimpList0, SimpList1)
-    else
-        SimpList1 = list.delete_all(SimpList0, simptask_constant_prop)
-    ),
-
-    SimpList = [simptask_mark_code_model_changes,
-        simptask_elim_removable_scopes | SimpList1],
-    SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
     trace [io(!IO)] (
         maybe_write_proc_progress_message(ProgressStream, !.HLDS,
             "Simplifying", PredProcId, !IO)

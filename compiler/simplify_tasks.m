@@ -379,18 +379,21 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
     MergeCodeAfterSwitch = OptTuple ^ ot_merge_code_after_switch,
     OptDuplicateCalls = OptTuple ^ ot_opt_dup_calls,
     ConstantProp = OptTuple ^ ot_prop_constants,
-    MarkCodeModelChanges = do_not_mark_code_model_changes,
-    AfterFrontEnd = not_after_front_end,
-    ElimRemovableScopes = do_not_elim_removable_scopes,
     CommonStructs = OptTuple ^ ot_opt_common_structs,
-    ExtraCommonStructs = do_not_opt_extra_structs,
-    TryOptConstStructs = do_not_try_opt_const_structs,
-    OptConstStructs = do_not_opt_const_structs,
     globals.lookup_bool_option(Globals, ignore_par_conjunctions,
         RemoveParConjunctions),
     globals.lookup_bool_option(Globals, warn_suspicious_recursion,
         WarnSuspiciousRecursion),
     SplitSwitchArms = OptTuple ^ ot_split_switch_arms,
+
+    % The fields that we do not turn on by default. These have to be
+    % turned on explicitly when invoking simplification.
+    MarkCodeModelChanges = do_not_mark_code_model_changes,
+    AfterFrontEnd = not_after_front_end,
+    ElimRemovableScopes = do_not_elim_removable_scopes,
+    ExtraCommonStructs = do_not_opt_extra_structs,
+    TryOptConstStructs = do_not_try_opt_const_structs,
+    OptConstStructs = do_not_opt_const_structs,
     DeleteDeadVars = do_not_delete_dead_vars,
 
     SimplifyTasks = simplify_tasks(
