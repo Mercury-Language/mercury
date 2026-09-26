@@ -409,7 +409,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Standard higher-order functions on range endpoint pairs in set.
+% Standard higher-order functions on range endpoint pairs in a set.
 %
 
     % For each range, call the predicate, passing it the lower and
