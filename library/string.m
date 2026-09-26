@@ -1094,11 +1094,29 @@
     %
 :- func split_at_string(string, string) = list(string).
 
-    % split_into_lines(String) breaks String into a sequence of lines,
-    % with each line consisting of a possibly empty sequence of non-newline
-    % characters, followed either by a newline character, or by the end
-    % of the string. The string returned for a line will not contain
-    % the newline character.
+    % split_into_lines(String) breaks String into a list of lines,
+    % returning the text of each line without its terminating newline
+    % character, if it has one. A line is
+    %
+    % - a possibly empty sequence of non-newline characters terminated by
+    %   a newline character, or
+    % - a non-empty sequence of non-newline characters terminated by the
+    %   end of String.
+    %
+    % Only the newline character terminates a line; carriage returns and
+    % the other characters that Unicode treats as line breaks are ordinary
+    % text, and will appear in the returned strings.
+    %
+    % The empty string contains no lines, and a final newline character does
+    % not add an empty line at the end of the list.
+    %
+    % For example,
+    %
+    % split_into_lines("")       = []
+    % split_into_lines("a")      = ["a"]
+    % split_into_lines("a\n")    = ["a"]
+    % split_into_lines("\n")     = [""]
+    % split_into_lines("a\n\nb") = ["a", "", "b"]
     %
 :- func split_into_lines(string) = list(string).
 
