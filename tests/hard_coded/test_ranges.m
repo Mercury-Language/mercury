@@ -783,7 +783,7 @@ do_test_negate(Ranges, !IO) :-
 
 test_constant_op(Func, FuncName, !IO) :-
     io.format("*** Test %s/2 ***\n\n", [s(FuncName)], !IO),
-    Constants = [-2, -1, 0, -1, 2],
+    Constants = [-2, -1, 0, 1, 2],
     list.foldl(test_constant_op_1(Func, FuncName, test_ranges),
         Constants, !IO),
     io.nl(!IO).
