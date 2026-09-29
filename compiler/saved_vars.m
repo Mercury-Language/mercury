@@ -489,15 +489,36 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
         ;
-            Goal0Expr = switch(SwitchVar, CF, Cases0),
+            Goal0Expr = switch(SwitchVar, CanFail, Cases0),
             ( if SwitchVar = Var then
-                saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
-                    IsNonLocal, !SlotInfo),
+                (
+                    IsNonLocal = yes,
+                    % If this is a switch on Var, and Var is a non-local
+                    % variable, then insert the goal that constructs Var here,
+                    % and do not duplicate the construction at the end of the
+                    % conjunction.
+                    %
+                    % Otherwise, the following sequence of events could occur:
+                    % 1. The Construct goal is duplicated after the switch.
+                    % 2. The follow_code pass duplicates the Construct goal
+                    % into each of the switch arms.
+                    % 3. In one or more switch arms, the duplicated goal is
+                    % simplified to a fail goal, as it unifies Var with a
+                    % functor that cannot occur in that switch arm.
+                    % 4. The switch becomes semidet, which leads to an abort in
+                    % the code generator if the switch occurs in a det context.
+                    Goals1 = Goals0
+                ;
+                    IsNonLocal = no,
+                    saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
+                        IsNonLocal, !SlotInfo)
+                ),
                 Goals = [Construct, Goal0 | Goals1]
             else
                 push_into_cases_rename(Cases0, Cases, Construct, Var,
                     !SlotInfo),
-                Goal1 = hlds_goal(switch(SwitchVar, CF, Cases), Goal0Info),
+                Goal1 = hlds_goal(switch(SwitchVar, CanFail, Cases),
+                    Goal0Info),
                 saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                     IsNonLocal, !SlotInfo),
                 Goals = [Goal1 | Goals1]

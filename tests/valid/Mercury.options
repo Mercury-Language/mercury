@@ -56,6 +56,7 @@ MCFLAGS-bug493                      += --loop-invariants
 MCFLAGS-bug512                      += -O5 --intermodule-optimization
 MCFLAGS-bug539                      += --optimize-constructor-last-call
 MCFLAGS-bug544                      += -O5
+MCFLAGS-bug586                      += --optimize-saved-vars-const --follow-code
 MCFLAGS-compl_unify_bug             += -O3
 MCFLAGS-constraint_prop_bug         += -O0 --common-struct
 MCFLAGS-constraint_prop_bug         += --local-constraint-propagation
