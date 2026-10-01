@@ -171,6 +171,7 @@ ORDINARY_PROGS = \
 	foreign_enum_switch \
 	foreign_import_module \
 	foreign_name_mutable \
+	foreign_proc_min_int \
 	foreign_type_1 \
 	foreign_type_2 \
 	foreign_type_3 \

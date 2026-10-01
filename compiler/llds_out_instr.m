@@ -2010,23 +2010,36 @@ output_foreign_proc_input(Info, Stream, Input, !IO) :-
                     BuiltinType = builtin_type_float,
                     output_rval_as_type(Info, Rval, lt_float, Stream, !IO)
                 ;
-                    BuiltinType = builtin_type_int(int_type_int64),
-                    output_rval_as_type(Info, Rval,
-                        lt_int(int_type_int64), Stream, !IO)
-                ;
-                    BuiltinType = builtin_type_int(int_type_uint64),
-                    output_rval_as_type(Info, Rval,
-                        lt_int(int_type_uint64), Stream, !IO)
+                    (
+                        BuiltinType = builtin_type_int(int_type_int8),
+                        DesiredType = lt_int(int_type_int8)
+                    ;
+                        BuiltinType = builtin_type_int(int_type_uint8),
+                        DesiredType = lt_int(int_type_uint8)
+                    ;
+                        BuiltinType = builtin_type_int(int_type_int16),
+                        DesiredType = lt_int(int_type_int16)
+                    ;
+                        BuiltinType = builtin_type_int(int_type_uint16),
+                        DesiredType = lt_int(int_type_uint16)
+                    ;
+                        BuiltinType = builtin_type_int(int_type_int32),
+                        DesiredType = lt_int(int_type_int32)
+                    ;
+                        BuiltinType = builtin_type_int(int_type_uint32),
+                        DesiredType = lt_int(int_type_uint32)
+                    ;
+                        BuiltinType = builtin_type_int(int_type_int64),
+                        DesiredType = lt_int(int_type_int64)
+                    ;
+                        BuiltinType = builtin_type_int(int_type_uint64),
+                        DesiredType = lt_int(int_type_uint64)
+                    ),
+                    output_rval_as_type(Info, Rval, DesiredType, Stream, !IO)
                 ;
                     ( BuiltinType = builtin_type_char
                     ; BuiltinType = builtin_type_int(int_type_int)
                     ; BuiltinType = builtin_type_int(int_type_uint)
-                    ; BuiltinType = builtin_type_int(int_type_int8)
-                    ; BuiltinType = builtin_type_int(int_type_uint8)
-                    ; BuiltinType = builtin_type_int(int_type_int16)
-                    ; BuiltinType = builtin_type_int(int_type_uint16)
-                    ; BuiltinType = builtin_type_int(int_type_int32)
-                    ; BuiltinType = builtin_type_int(int_type_uint32)
                     ),
                     output_rval_as_type(Info, Rval, lt_word, Stream, !IO)
                 )
