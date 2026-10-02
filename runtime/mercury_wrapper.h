@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2022 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2022, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_wrapper.h - defines the interface to mercury_wrapper.c.
@@ -34,6 +34,19 @@ extern void             mercury_runtime_main(void);
 
 // mercury_runtime_terminate() does any necessary cleanup,
 // and then returns mercury_exit_status.
+//
+// Specifically,
+//
+// - it runs any user-defined module finalizers;
+// - it runs standard library finalizers;
+// - it turns off debugging (if it was enabled);
+// - it writes out trace counts (if the user requested that);
+// - it turns off profiling (if it was enabled);
+// - it writes out profiling results (if some form of profiling was enabled);
+// - it writes out tabling statistics (if requested);
+// - it shuts down engines (in low-level C .par grades);
+// - it writes out memory usage reports (if requested);
+// - it returns mercury_exit_status to its caller.
 
 extern int              mercury_runtime_terminate(void);
 
