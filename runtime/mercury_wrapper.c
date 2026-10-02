@@ -636,7 +636,7 @@ mercury_runtime_init(int argc, char **argv)
 
     // Start up the Mercury engine. We don't yet know how many slots will be
     // needed for thread-local mutable values so allocate the maximum number.
-    MR_init_thread_inner(MR_use_now, MR_PRIMORIDAL_ENGINE_TYPE);
+    MR_init_thread_inner(MR_use_now, MR_PRIMORDIAL_ENGINE_TYPE);
     MR_SET_THREAD_LOCAL_MUTABLES(
         MR_create_thread_local_mutables(MR_MAX_THREAD_LOCAL_MUTABLES));
 
@@ -1255,7 +1255,7 @@ enum MR_long_option {
     MR_MAX_ENGINES,
     MR_MAX_CONTEXTS_PER_THREAD,
     MR_NUM_CONTEXTS_PER_LC_PER_THREAD,
-    MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR,
+    MR_RUNTIME_GRANULARITY_WSDEQUE_LENGTH_FACTOR,
     MR_WORKSTEAL_MAX_ATTEMPTS,
     MR_WORKSTEAL_SLEEP_MSECS,
     MR_THREAD_PINNING,
@@ -1363,7 +1363,7 @@ struct MR_option MR_long_opts[] = {
     { "num-contexts-per-lc-per-thread",
         1, 0, MR_NUM_CONTEXTS_PER_LC_PER_THREAD },
     { "runtime-granularity-wsdeque-length-factor",
-        1, 0, MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
+        1, 0, MR_RUNTIME_GRANULARITY_WSDEQUE_LENGTH_FACTOR },
     { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
     { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
     { "threadscope-use-tsc",            0, 0, MR_THREADSCOPE_USE_TSC },
@@ -1808,7 +1808,7 @@ MR_process_options(int argc, char **argv)
                 MR_num_contexts_per_loop_control_per_thread = size;
                 break;
 
-            case MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR:
+            case MR_RUNTIME_GRANULARITY_WSDEQUE_LENGTH_FACTOR:
 #if defined(MR_LL_PARALLEL_CONJ)
                 if (sscanf(MR_optarg, "%"MR_INTEGER_LENGTH_MODIFIER"u",
                         &MR_granularity_wsdeque_length_factor) != 1)

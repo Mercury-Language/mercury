@@ -307,9 +307,9 @@ typedef enum {
 } MR_EngineType;
 
 #ifdef MR_HIGHLEVEL_CODE
-  #define MR_PRIMORIDAL_ENGINE_TYPE   MR_ENGINE_TYPE_EXCLUSIVE
+  #define MR_PRIMORDIAL_ENGINE_TYPE   MR_ENGINE_TYPE_EXCLUSIVE
 #else
-  #define MR_PRIMORIDAL_ENGINE_TYPE   MR_ENGINE_TYPE_SHARED
+  #define MR_PRIMORDIAL_ENGINE_TYPE   MR_ENGINE_TYPE_SHARED
 #endif
 
 // Create and initialize a new Mercury engine running in the current
