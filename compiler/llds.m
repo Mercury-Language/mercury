@@ -1407,10 +1407,10 @@
             % As documented above.
 
     ;       lt_int(int_type)
-            % A Mercury `int', represented in C as a value of type `MR_Integer'
-            % (which is a signed integral type of the same size as a pointer).
-            % Something whose C type is `MR_Unsigned' (the unsigned equivalent
-            % of `MR_Integer').
+            % A Mercury `int' or `uint', represented in C as values of the
+            % word-sized types `MR_Integer' and `MR_Unsigned' respectively,
+            % or their 8, 16, 32 or 64 bit sized versions. ("Word sized"
+            % means that their size is the same as that of a void pointer.)
 
     ;       lt_float
             % A Mercury `float', represented in C as a value of type `MR_Float'
