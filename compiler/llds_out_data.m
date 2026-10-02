@@ -94,7 +94,7 @@
 :- pred output_rval(llds_out_info::in, rval::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
-    % Output an rval, converted to the specified type
+    % Output an rval, converted to the specified type.
     %
 :- pred output_rval_as_type(llds_out_info::in, rval::in, llds_type::in,
     io.text_output_stream::in, io::di, io::uo) is det.
