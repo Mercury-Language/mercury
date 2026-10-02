@@ -37,7 +37,7 @@
                 loi_caller_label            :: label,
 
                 % The set of labels that are continuation labels for
-                % calls, nondet disjunctions, forks or joins.
+                % calls, nondet disjunctions, forks, or joins.
                 loi_cont_labels             :: set_tree234(label),
 
                 % The set of labels at which we should start a while loop.
@@ -1938,8 +1938,8 @@ output_foreign_proc_inputs(Info, Stream, [Input | Inputs], !IO) :-
         IsDummy = is_dummy_type,
         ( if
             % Avoid outputting an assignment for builtin dummy types.
-            % For other dummy types we must output an assignment because
-            % code in the foreign_proc body may examine the value.
+            % For other dummy types, we must output an assignment,
+            % because code in the foreign_proc body may examine the value.
             type_to_ctor_and_args(VarType, VarTypeCtor, []),
             is_type_ctor_a_builtin_dummy(VarTypeCtor) =
                 is_builtin_dummy_type_ctor
@@ -1986,7 +1986,7 @@ output_foreign_proc_input(Info, Stream, Input, !IO) :-
                     asserted_can_pass_as_mercury_type(Assertions)
                 )
             then
-                % Note that for this cast to be correct the foreign
+                % Note that for this cast to be correct, the foreign
                 % type must be a word sized integer or pointer type.
                 io.format(Stream, "%s = (%s) ",
                     [s(VarName), s(ForeignType)], !IO),
@@ -2001,6 +2001,25 @@ output_foreign_proc_input(Info, Stream, Input, !IO) :-
             MaybeForeignTypeInfo = no,
             io.format(Stream, "%s = ", [s(VarName)], !IO),
             ( if OrigType = builtin_type(BuiltinType) then
+                % The DesiredType we return should generate, when given to
+                % output_rval_as_type, the same C type as the predicate
+                % exported_builtin_type_to_c_string would return for the
+                % same BuiltinType.
+                %
+                % XXX We do not actually meet this requirement, because
+                %
+                % - exported_builtin_type_to_c_string returns MR_Char
+                %   for BuiltinType = builtin_type_char, but
+                %
+                % - there is no possible value of DesiredType for which
+                %   output_rval_as_type generates that target type.
+                %
+                % runtime/mercury_types.h typedef's MR_Char as int,
+                % while we output any char inputs as having type lt_word,
+                % which corresponds to MR_Word in C. On some machines,
+                % MR_Word will be a bigger type than int, and the implicit
+                % downcast will work only because all valid char values
+                % are limited to 21 bits.
                 (
                     BuiltinType = builtin_type_string,
                     StringTypeStr = llds_type_to_string(lt_string),
@@ -2010,37 +2029,46 @@ output_foreign_proc_input(Info, Stream, Input, !IO) :-
                     BuiltinType = builtin_type_float,
                     output_rval_as_type(Info, Rval, lt_float, Stream, !IO)
                 ;
+                    BuiltinType = builtin_type_int(IntType),
+                    % This switch could be replaced with simply
+                    % DesiredType = lt_int(IntType). However, that allocates
+                    % a heap cell, while the switch arms below all return
+                    % a preallocated constant structure.
                     (
-                        BuiltinType = builtin_type_int(int_type_int8),
+                        IntType = int_type_int,
+                        DesiredType = lt_int(int_type_int)
+                    ;
+                        IntType = int_type_int8,
                         DesiredType = lt_int(int_type_int8)
                     ;
-                        BuiltinType = builtin_type_int(int_type_uint8),
-                        DesiredType = lt_int(int_type_uint8)
-                    ;
-                        BuiltinType = builtin_type_int(int_type_int16),
+                        IntType = int_type_int16,
                         DesiredType = lt_int(int_type_int16)
                     ;
-                        BuiltinType = builtin_type_int(int_type_uint16),
-                        DesiredType = lt_int(int_type_uint16)
-                    ;
-                        BuiltinType = builtin_type_int(int_type_int32),
+                        IntType = int_type_int32,
                         DesiredType = lt_int(int_type_int32)
                     ;
-                        BuiltinType = builtin_type_int(int_type_uint32),
-                        DesiredType = lt_int(int_type_uint32)
-                    ;
-                        BuiltinType = builtin_type_int(int_type_int64),
+                        IntType = int_type_int64,
                         DesiredType = lt_int(int_type_int64)
                     ;
-                        BuiltinType = builtin_type_int(int_type_uint64),
+                        IntType = int_type_uint,
+                        DesiredType = lt_int(int_type_uint)
+                    ;
+                        IntType = int_type_uint8,
+                        DesiredType = lt_int(int_type_uint8)
+                    ;
+                        IntType = int_type_uint16,
+                        DesiredType = lt_int(int_type_uint16)
+                    ;
+                        IntType = int_type_uint32,
+                        DesiredType = lt_int(int_type_uint32)
+                    ;
+                        IntType = int_type_uint64,
                         DesiredType = lt_int(int_type_uint64)
                     ),
                     output_rval_as_type(Info, Rval, DesiredType, Stream, !IO)
                 ;
-                    ( BuiltinType = builtin_type_char
-                    ; BuiltinType = builtin_type_int(int_type_int)
-                    ; BuiltinType = builtin_type_int(int_type_uint)
-                    ),
+                    BuiltinType = builtin_type_char,
+                    % There is no lt_char.
                     output_rval_as_type(Info, Rval, lt_word, Stream, !IO)
                 )
             else
