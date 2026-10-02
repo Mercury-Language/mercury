@@ -668,7 +668,7 @@ mercury_runtime_init(int argc, char **argv)
     #ifdef MR_HAVE_THREAD_PINNING
     MR_done_thread_pinning();
     #endif
-  #endif // ! MR_LL_PARALLEL_CONJ
+  #endif // MR_LL_PARALLEL_CONJ
 #endif // ! 0
 
 #ifdef MR_BOEHM_GC
@@ -769,7 +769,7 @@ mercury_runtime_init(int argc, char **argv)
 #ifdef MR_CONSERVATIVE_GC
 
 // Boehm will call this callback when it runs out of memory, We print an error
-// and abort. Our error is printed after Boehm GC's on error, so we don't need
+// and abort. Our error is printed after Boehm GC's own error, so we don't need
 // to say much.
 
 #ifdef MR_BOEHM_GC
@@ -939,7 +939,7 @@ MR_make_argv(const char *string,
             s++;
         }
 
-        // Are there any more args?.
+        // Are there any more args?
         if (*s != '\0') {
             argc++;
         } else {
@@ -1156,7 +1156,7 @@ MR_process_environment_options(void)
         }
 
 #ifdef MR_DEBUG_ARGUMENT_HANDLING
-        // Enable this is if you need to debug this code.
+        // Enable this if you need to debug this code.
         printf("progname = <%s>\n", progname);
         printf("MR_runtime_flags = <%s>\n", MR_runtime_flags);
         printf("gen_env_options = <%s>\n", gen_env_options);
@@ -2425,7 +2425,7 @@ mercury_runtime_main(void)
     //   {
     //     <various stuff>
     //   }
-    //   __except(MR_filter_win32_exception(GetExceptionInformation())
+    //   __except(MR_filter_win32_exception(GetExceptionInformation()))
     //   {
     //   }
     //
@@ -2944,7 +2944,7 @@ mercury_runtime_terminate(void)
     (*MR_library_finalizer)();
 
     // Restore the registers before calling MR_trace_final()
-    // as MR_trace_final() expect them to be valid.
+    // as MR_trace_final() expects them to be valid.
 
     MR_restore_registers();
 
