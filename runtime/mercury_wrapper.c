@@ -182,8 +182,8 @@ double      MR_heap_expansion_factor = 2.0;
 // that do not need this much stack space can allocate their stack space
 // *without* incurring the cost of a test.
 //
-// MR_stack_margin_size is never consulted directly; instead, its value is used
-// to set the MR_zone_extend_threshold field in a stack's memory zone.
+// MR_stack_margin_size_words is never consulted directly; instead, its value
+// is used to set the MR_zone_extend_threshold field in a stack's memory zone.
 //
 // The value of MR_stack_margin_size_words should always match the value of
 // max_leaf_stack_frame_size in compiler/llds_out_instr.m.
