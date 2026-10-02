@@ -2004,7 +2004,9 @@ output_foreign_proc_input(Info, Stream, Input, !IO) :-
                 % The DesiredType we return should generate, when given to
                 % output_rval_as_type, the same C type as the predicate
                 % exported_builtin_type_to_c_string would return for the
-                % same BuiltinType.
+                % same BuiltinType. This is because the type of the variable
+                % to which the value we generate here is assigned is decided
+                % by exported_builtin_type_to_c_string.
                 %
                 % XXX We do not actually meet this requirement, because
                 %
