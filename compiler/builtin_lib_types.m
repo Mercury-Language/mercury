@@ -75,9 +75,11 @@
     %
 :- pred type_is_type_info_or_ctor_type(mer_type::in) is semidet.
 
-    % Check whether a type is the `typeclass_info' type.
+    % Check whether a type is represents either a type_info or typeclass_info,
+    % or their type_ctor_info and base_typeclass_info components.
+    % These are the types of the variables that can occur in rtti_varmaps.
     %
-:- pred type_is_typeclass_info_type(mer_type::in) is semidet.
+:- pred type_is_rtti_relevant_type(mer_type::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -297,17 +299,29 @@ build_type_info_type(Type) = TypeInfoType :-
 
 %---------------------%
 
-type_is_type_info_or_ctor_type(TypeInfoType) :-
-    type_to_ctor_and_args(TypeInfoType, TypeCtor, []),
+type_is_type_info_or_ctor_type(Type) :-
+    type_to_ctor_and_args(Type, TypeCtor, []),
     TypeCtor = type_ctor(qualified(ModuleName, TypeName), 0),
-    ModuleName = mercury_private_builtin_module,
     ( TypeName = "type_info"
     ; TypeName = "type_ctor_info"
-    ).
+    ),
+    ModuleName = mercury_private_builtin_module.
 
-type_is_typeclass_info_type(TypeClassInfoType) :-
-    type_to_ctor_and_args(TypeClassInfoType, TypeCtor, []),
-    TypeCtor = type_ctor(qualified(ModuleName, "typeclass_info"), 0),
+type_is_rtti_relevant_type(Type) :-
+    type_to_ctor_and_args(Type, TypeCtor, []),
+    TypeCtor = type_ctor(qualified(ModuleName, TypeName), 0),
+    % NOTE polymorphism_type_class_info.m actually creates
+    % base_typeclass_info variables with their types being
+    % "typeclass_info", NOT "base_typeclass_info". However, other parts
+    % of the compiler do look out for them under the type name
+    % "base_typeclass_info", probably because this used to be true
+    % in the past. Including that name in the test here is preparing
+    % for a possible return to that state of affairs.
+    ( TypeName = "type_info"
+    ; TypeName = "type_ctor_info"
+    ; TypeName = "typeclass_info"
+    ; TypeName = "base_typeclass_info"
+    ),
     ModuleName = mercury_private_builtin_module.
 
 %---------------------------------------------------------------------------%

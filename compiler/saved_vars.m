@@ -222,7 +222,7 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
                 ok_to_duplicate(Feature) = yes
             )
         ),
-        not slot_info_do_not_duplicate_var(!.SlotInfo, Var),
+        slot_info_ok_to_duplicate_var(!.SlotInfo, Var) = yes,
         skip_constant_constructs(Goals0, Constants, OtherGoals),
         OtherGoals = [First | _Rest],
         can_push(Var, First) = yes
@@ -407,11 +407,11 @@ saved_vars_delay_goal([], Goals, Construct, _Var, IsNonLocal, !SlotInfo) :-
     ).
 saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         !SlotInfo) :-
-    Goal0 = hlds_goal(Goal0Expr, Goal0Info),
-    Goal0NonLocals = goal_info_get_nonlocals(Goal0Info),
-    ( if set_of_var.member(Goal0NonLocals, Var) then
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    GoalNonLocals0 = goal_info_get_nonlocals(GoalInfo0),
+    ( if set_of_var.member(GoalNonLocals0, Var) then
         (
-            Goal0Expr = unify(_, _, _, _, _),
+            GoalExpr0 = unify(_, _, _, _, _),
             saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),
@@ -419,7 +419,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = plain_call(_, _, _, _, _, _),
+            GoalExpr0 = plain_call(_, _, _, _, _, _),
             saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),
@@ -427,7 +427,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = generic_call(_, _, _, _, _),
+            GoalExpr0 = generic_call(_, _, _, _, _),
             saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),
@@ -435,7 +435,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = call_foreign_proc(_, _, _, _, _, _, _),
+            GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
             saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),
@@ -443,7 +443,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = conj(ConjType, Conj0),
+            GoalExpr0 = conj(ConjType, Conj0),
             (
                 ConjType = plain_conj,
                 list.append(Conj0, Goals0, Goals1),
@@ -453,43 +453,43 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 ConjType = parallel_conj,
                 push_into_goals_rename(Conj0, Conj, Construct, Var,
                     !SlotInfo),
-                Goal1 = hlds_goal(conj(ConjType, Conj), Goal0Info),
+                Goal1 = hlds_goal(conj(ConjType, Conj), GoalInfo0),
                 saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                     IsNonLocal, !SlotInfo),
                 Goals = [Goal1 | Goals1]
             )
         ;
-            Goal0Expr = scope(Reason, SomeGoal0),
+            GoalExpr0 = scope(Reason, SomeGoal0),
             saved_vars_rename_var(Var, NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, SomeGoal0, SomeGoal1),
             push_into_goal(SomeGoal1, SomeGoal, NewConstruct, NewVar,
                 !SlotInfo),
-            Goal1 = hlds_goal(scope(Reason, SomeGoal), Goal0Info),
+            Goal1 = hlds_goal(scope(Reason, SomeGoal), GoalInfo0),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
         ;
-            Goal0Expr = negation(NegGoal0),
+            GoalExpr0 = negation(NegGoal0),
             saved_vars_rename_var(Var, NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, NegGoal0, NegGoal1),
             push_into_goal(NegGoal1, NegGoal, NewConstruct, NewVar,
                 !SlotInfo),
-            Goal1 = hlds_goal(negation(NegGoal), Goal0Info),
+            Goal1 = hlds_goal(negation(NegGoal), GoalInfo0),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
         ;
-            Goal0Expr = disj(Disjuncts0),
+            GoalExpr0 = disj(Disjuncts0),
             push_into_goals_rename(Disjuncts0, Disjuncts, Construct, Var,
                 !SlotInfo),
-            Goal1 = hlds_goal(disj(Disjuncts), Goal0Info),
+            Goal1 = hlds_goal(disj(Disjuncts), GoalInfo0),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
         ;
-            Goal0Expr = switch(SwitchVar, CanFail, Cases0),
+            GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
             ( if SwitchVar = Var then
                 (
                     IsNonLocal = yes,
@@ -518,22 +518,22 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 push_into_cases_rename(Cases0, Cases, Construct, Var,
                     !SlotInfo),
                 Goal1 = hlds_goal(switch(SwitchVar, CanFail, Cases),
-                    Goal0Info),
+                    GoalInfo0),
                 saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                     IsNonLocal, !SlotInfo),
                 Goals = [Goal1 | Goals1]
             )
         ;
-            Goal0Expr = if_then_else(V, Cond0, Then0, Else0),
+            GoalExpr0 = if_then_else(V, Cond0, Then0, Else0),
             push_into_goal_rename(Cond0, Cond, Construct, Var, !SlotInfo),
             push_into_goal_rename(Then0, Then, Construct, Var, !SlotInfo),
             push_into_goal_rename(Else0, Else, Construct, Var, !SlotInfo),
-            Goal1 = hlds_goal(if_then_else(V, Cond, Then, Else), Goal0Info),
+            Goal1 = hlds_goal(if_then_else(V, Cond, Then, Else), GoalInfo0),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
         ;
-            Goal0Expr = shorthand(_),
+            GoalExpr0 = shorthand(_),
             % These should have been expanded out by now.
             unexpected($pred, "shorthand")
         )
@@ -654,7 +654,7 @@ final_slot_info(SlotInfo, VarTable, RttiVarMaps) :-
 saved_vars_rename_var(Var, NewVar, Substitution, !SlotInfo) :-
     !.SlotInfo = slot_info(VarTable0, RttiVarMaps0, TypeInfoLiveness),
     lookup_var_entry(VarTable0, Var, Entry0),
-    Entry0 = vte(_N, Type, IsDummy),
+    Entry0 = vte(_Name, Type, IsDummy),
     Entry = vte("", Type, IsDummy),
     add_var_entry(Entry, NewVar, VarTable0, VarTable),
     map.from_assoc_list([Var - NewVar], Substitution),
@@ -666,17 +666,24 @@ saved_vars_rename_var(Var, NewVar, Substitution, !SlotInfo) :-
     % it is possible that liveness.m will want to refer to the rtti_varmaps
     % to calculate which type_infos are live (see the comments at the top
     % of liveness.m). If we duplicated any type_info variables here,
-    % then this could cause problems because the rtti_varmaps would not
+    % then this could cause problems, because the rtti_varmaps would not
     % be able to be kept consistent. Therefore we don't allow type_infos
-    % to be duplicated when TypeInfoLiveness is set.
+    % to be duplicated when TypeInfoLiveness is set. The same reasoning
+    % applies to typeclass_info types.
     %
-:- pred slot_info_do_not_duplicate_var(slot_info::in, prog_var::in) is semidet.
+:- func slot_info_ok_to_duplicate_var(slot_info, prog_var) = bool.
 
-slot_info_do_not_duplicate_var(SlotInfo, Var) :-
+slot_info_ok_to_duplicate_var(SlotInfo, Var) = OkToDuplicate :-
     SlotInfo = slot_info(VarTable, _, TypeInfoLiveness),
-    TypeInfoLiveness = yes,
     lookup_var_type(VarTable, Var, Type),
-    type_is_type_info_or_ctor_type(Type).
+    ( if
+        TypeInfoLiveness = yes,
+        type_is_rtti_relevant_type(Type)
+    then
+        OkToDuplicate = no
+    else
+        OkToDuplicate = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.saved_vars.

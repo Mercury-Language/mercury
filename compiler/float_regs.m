@@ -1259,11 +1259,7 @@ insert_reg_wrappers_method_call(ClassId, MethodProcNum, Vars0, Vars,
 take_non_rtti_types_from_tail([], []).
 take_non_rtti_types_from_tail([Type | Types0], Types) :-
     take_non_rtti_types_from_tail(Types0, TypesTail),
-    ( if
-        ( type_is_typeclass_info_type(Type)
-        ; type_is_type_info_or_ctor_type(Type)
-        )
-    then
+    ( if type_is_rtti_relevant_type(Type) then
         Types = TypesTail
     else
         Types = [Type | TypesTail]
