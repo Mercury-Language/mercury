@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2000, 2002-2004, 2006 The University of Melbourne.
-// Copyright (C) 2016, 2018, 2025 The Mercury team.
+// Copyright (C) 2016, 2018, 2023, 2025-2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_library_types.h - definitions of some basic types used by the
@@ -154,19 +154,19 @@ typedef MercuryFile *MercuryFilePtr;
 // This macro should be used to wrap arguments of type MercuryFilePtr
 // that are being passed to exported Mercury procedures where the type
 // of the corresponding argument in the Mercury procedure is
-// io.input_stream or io.binary_input_stream.
+// io.output_stream or io.binary_output_stream.
 
 #define MR_wrap_output_stream(mf) ((MR_Word)(mf))
 
 // This macro should be used to wrap arguments of type MercuryFilePtr
 // that are being passed to exported Mercury procedures where the type
 // of the corresponding argument in the Mercury procedure is
-// io.output_stream or io.binary_output_stream.
+// io.input_stream or io.binary_input_stream.
 
 #define MR_wrap_input_stream(mf) ((MR_Word)(mf))
 
 // Do the reverse to above.
-// The only place we use this in browser/listing.m.
+// The only place we use this is in browser/listing.m.
 
 #define MR_unwrap_input_stream(mf)  ((MercuryFilePtr)(mf))
 #define MR_unwrap_output_stream(mf) ((MercuryFilePtr)(mf))
