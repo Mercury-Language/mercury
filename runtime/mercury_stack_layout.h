@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2012 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018-2020, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #ifndef MERCURY_STACK_LAYOUT_H
@@ -43,7 +43,7 @@
 // The can_fail component of the determinism is encoded in the 4 bit.
 // The first_solution component of the determinism is encoded in the 8 bit.
 //
-// MR_DETISM_AT_MOST_MANY could also be defined as ((d) & 3) == 3),
+// MR_DETISM_AT_MOST_MANY could also be defined as (((d) & 3) == 3),
 // but this would be less efficient, since the C compiler does not know
 // that we do not set the 1 bit unless we also set the 2 bit.
 //
@@ -245,7 +245,7 @@ typedef enum {
 // linked to by the module layout structure. The MR_user_event_spec macro
 // follows this link.
 //
-// The next two fields all point to arrays whose length is the number of
+// The next two fields both point to arrays whose length is the number of
 // attributes (which is available in the MR_UserEventSpec structure).
 //
 // attr_locns[i] gives the location where we can find the value of the
@@ -359,7 +359,7 @@ struct MR_UserEventSpec_Struct {
 // A possible alternative would be to represent goal paths using statically
 // allocated terms of the reverse_goal_path type. An almost-complete diff
 // making that change was posted to the mercury-reviews mailing list on
-// 30 Sep 2011, but it was not committed, since it lead to a 4% *increase*
+// 30 Sep 2011, but it was not committed, since it led to a 4% *increase*
 // in the size of asm_fast.gc.debug executables. Even though different goal
 // paths share a tail (the part of the path near the root) with the
 // static reverse_goal_path term representation but not with the string
@@ -886,13 +886,6 @@ typedef struct MR_StackTraversal_Struct {
 // The flags field encodes boolean properties of the procedure. For now,
 // the only property is whether the procedure has a pair of I/O state
 // arguments.
-//
-// If the procedure lives on the nondet stack, or if it cannot create any
-// temporary nondet stack frames, the maybe_maxfr field will contain a negative
-// number. If it lives on the det stack, and can create temporary nondet stack
-// frames, it will contain the number of the stack slot that contains the
-// value of maxfr on entry, for use in executing the retry debugger command
-// from the middle of the procedure.
 
 #define MR_EVAL_METHOD_MEMO_STRICT  MR_EVAL_METHOD_MEMO
 #define MR_EVAL_METHOD_MEMO_FAST_LOOSE  MR_EVAL_METHOD_MEMO
@@ -1032,7 +1025,7 @@ typedef struct MR_ExecTrace_Struct {
 //
 // The reason why some substructures may be missing is to save space.
 // If the options with which a module is compiled do not require execution
-// tracing, then the MR_ExecTrace substructure will not present, and if the
+// tracing, then the MR_ExecTrace substructure will not be present, and if the
 // options do not require procedure identification, then the MR_ProcId
 // substructure will not be present either. The body_bytes and module_layout
 // fields cannot be non-NULL unless at least one of exec trace and proc static
@@ -1174,7 +1167,7 @@ extern  MR_ConstString  MR_name_in_string_table(const char *string_table,
                             MR_Integer string_table_size,
                             MR_uint_least32_t name_code, int *should_copy);
 
-// Given a string, see whether its end consists a sequence of digits.
+// Given a string, see whether its end consists of a sequence of digits.
 // If yes, return the offset of the first digit in this sequence relative
 // to the start of the string. Otherwise, return a negative number.
 
@@ -1347,7 +1340,7 @@ extern  int             MR_find_start_of_num_suffix(const char *str);
 // The following macros will access these slots. They should be used only from
 // within the code that calls MR_trace for the REDO event.
 //
-// This macros have to be kept in sync with compiler/trace.m.
+// These macros have to be kept in sync with compiler/trace.m.
 
 #define MR_redo_layout_framevar(base_curfr)   MR_based_framevar(base_curfr, 4)
 #define MR_redo_fromfull_framevar(base_curfr) MR_based_framevar(base_curfr, 5)
@@ -1361,7 +1354,7 @@ extern  int             MR_find_start_of_num_suffix(const char *str);
 //
 // The MR_ml_string_table field contains the module's string table, which
 // contains strings referred to by other layout structures in the module
-// (initially only the tables containing variables names, referred to from
+// (initially only the tables containing variable names, referred to from
 // label layout structures). The MR_ml_string_table_size field gives the size
 // of the table in bytes.
 //

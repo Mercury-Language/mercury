@@ -215,10 +215,10 @@
   extern MercuryThread      MR_primordial_thread;
 
   // MR_global_lock is a mutex for ensuring that only one non-threadsafe
-  // piece of pragma c code executes at a time. If `not_threadsafe' is
-  // given or `threadsafe' is not given in the attributes of a pragma
-  // c code definition of a predicate, then the generated code will
-  // obtain this lock before executing the C code fragment, and then
+  // C foreign_proc executes at a time. If `not_thread_safe' is
+  // given or `thread_safe' is not given in the attributes of a C
+  // foreign_proc definition of a predicate, then the generated code will
+  // obtain this lock before executing the foreign_proc body, and then
   // release it afterwards.
   // XXX we should emit a warning if may_call_mercury and not_threadsafe
   // (the defaults) are specified since if you obtain the lock then
@@ -317,11 +317,11 @@ typedef enum {
 //
 // See the comments above for the meaning of the argument.
 // If there is already a Mercury engine running in the current POSIX thread
-// then init_thread is just a no-op.
+// then MR_init_thread is just a no-op.
 //
 // Returns MR_TRUE if a Mercury engine was created as a result of this call
 // *and* it is the caller's responsibility to finalize it (it is intended that
-// the caller can store the return value and call finalize_thread_engine
+// the caller can store the return value and call MR_finalize_thread_engine
 // if it is true).
 
 extern MR_bool  MR_init_thread(MR_when_to_use);
@@ -330,7 +330,7 @@ extern MR_bool  MR_init_thread_inner(MR_when_to_use, MR_EngineType);
 // Finalize the thread engine running in the current POSIX thread.
 // This will release the resources used by this thread -- this is very
 // important because the memory used for the det stack for each thread
-// can be re-used by the next init_thread.
+// can be re-used by the next MR_init_thread.
 
 extern void     MR_finalize_thread_engine(void);
 
@@ -338,7 +338,7 @@ extern void     MR_finalize_thread_engine(void);
 // thread. This makes it easy for a newly spawned thread to inherit (copy)
 // all the thread-local mutables of its parent thread.
 // Accesses to the array are protected by a mutex, in case a parallel
-// conjunctions tries to read a thread-local value while another parallel
+// conjunction tries to read a thread-local value while another parallel
 // conjunction (in the same Mercury thread) is writing to it.
 //
 // Each thread-local mutable has an associated index into the array, which is

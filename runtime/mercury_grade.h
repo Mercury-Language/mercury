@@ -238,7 +238,7 @@
   #else
     #define MR_GRADE_PART_7     MR_PASTE3(MR_GRADE_PART_6, _trseg, MR_GRADE_TRAIL_VERSION_NO)
   #endif
-    #define MR_GRADE_OPT_PART_7 MR_GRADE_OPT_PART_6 ".tr"
+  #define MR_GRADE_OPT_PART_7   MR_GRADE_OPT_PART_6 ".tr"
 #else
   #define MR_GRADE_PART_7       MR_GRADE_PART_6
   #define MR_GRADE_OPT_PART_7   MR_GRADE_OPT_PART_6
@@ -300,7 +300,7 @@
   // as ancestor and descendant; they could be independent calls in different
   // threads. This invalidates the basic assumption on top of which
   // tabling is built.
-  // 
+  //
   // There are other reasons as well. The data structures used by tabling
   // are not protected by critical sections, so simultaneous access by more
   // than one thread at the same time can cause data corruption, and
@@ -312,7 +312,7 @@
     #error "parallel execution and minimal model tabling are not compatible"
   #endif
 
-  // Neither form of the minimal model tabling works if the system recovers
+  // Neither form of minimal model tabling works if the system recovers
   // memory allocated after a choice point when backtracking to that choice
   // point. This rules out the use of the native Mercury collector, as well as
   // the absence of a collector. (This may change for the own stack model,
@@ -372,7 +372,7 @@
   #endif
 #elif defined(MR_USE_SINGLE_PREC_FLOAT)
   #if defined(MR_BOXED_FLOAT)
-    #error "single-precision floats implies unboxed floats"
+    #error "single-precision floats imply unboxed floats"
   #endif
   #define MR_GRADE_PART_11      MR_PASTE2(MR_GRADE_PART_10, _spf)
   #define MR_GRADE_OPT_PART_11  MR_GRADE_OPT_PART_10 ".spf"
@@ -425,15 +425,15 @@
   #if defined(MR_EXEC_TRACE)
     #define MR_GRADE_PART_14            MR_PASTE3(MR_GRADE_PART_13, _debug, MR_GRADE_EXEC_TRACE_VERSION_NO)
     #define MR_GRADE_OPT_PART_14        MR_GRADE_OPT_PART_13 ".debug"
+  #else
+    #if defined(MR_SS_DEBUG)
+      #define MR_GRADE_PART_14        MR_PASTE3(MR_GRADE_PART_13, _ssdebug, MR_GRADE_EXEC_TRACE_VERSION_NO)
+      #define MR_GRADE_OPT_PART_14    MR_GRADE_OPT_PART_13 ".ssdebug"
     #else
-      #if defined(MR_SS_DEBUG)
-        #define MR_GRADE_PART_14        MR_PASTE3(MR_GRADE_PART_13, _ssdebug, MR_GRADE_EXEC_TRACE_VERSION_NO)
-        #define MR_GRADE_OPT_PART_14    MR_GRADE_OPT_PART_13 ".ssdebug"
-      #else
-        #define MR_GRADE_PART_14        MR_GRADE_PART_13
-        #define MR_GRADE_OPT_PART_14    MR_GRADE_OPT_PART_13
-      #endif
+      #define MR_GRADE_PART_14        MR_GRADE_PART_13
+      #define MR_GRADE_OPT_PART_14    MR_GRADE_OPT_PART_13
     #endif
+  #endif
 #endif
 
 #if defined(MR_TARGET_DEBUG_GRADE)

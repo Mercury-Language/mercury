@@ -181,8 +181,8 @@ extern void                 MR_do_init_modules_debugger(void);
 #ifdef  MR_RECORD_TERM_SIZES
 extern  void                MR_do_init_modules_complexity(void);
 
-// MR_complexity_preds_size gives the number of elements in the
-// MR_complexity_preds array.
+// MR_num_complexity_procs gives the number of elements in the
+// MR_complexity_procs array.
 
 extern  MR_ComplexityProc   *MR_complexity_procs;
 extern  int                 MR_num_complexity_procs;

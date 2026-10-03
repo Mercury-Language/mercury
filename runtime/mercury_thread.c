@@ -495,9 +495,9 @@ void
 MR_sem_destroy(MercurySem *sem)
 {
 #if defined(MR_USE_LIBDISPATCH)
-   dispatch_release(*sem);
+    dispatch_release(*sem);
 #else
-   if (sem_destroy(sem) == -1) {
+    if (sem_destroy(sem) == -1) {
         MR_perror("cannot destroy semaphore");
         exit(EXIT_FAILURE);
     }

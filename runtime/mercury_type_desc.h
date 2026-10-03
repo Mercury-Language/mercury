@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002, 2004 The University of Melbourne.
-// Copyright (C) 2016, 2018, 2022 The Mercury team.
+// Copyright (C) 2016, 2018, 2022, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #ifndef MERCURY_TYPE_DESC_H
@@ -12,28 +12,28 @@
 #include "mercury_builtin_types.h"  // for the type_ctor_infos of the
                                     // variable arity type constructors
 
-// Values of type `type_ctor.type_desc' are represented the same way as
+// Values of type `type_desc.type_desc' are represented the same way as
 // values of type `private_builtin.type_info' (this representation is
 // documented in compiler/polymorphism.m). Some parts of the library
 // (e.g. the gc initialization code) depend on this.
 // The C type corresponding to these Mercury types is `MR_TypeInfo'.
 //
-// Values of type `type_ctor.pseudo_type_desc' are represented the same way as
+// Values of type `type_desc.pseudo_type_desc' are represented the same way as
 // values of type `private_builtin.pseudo_type_info' (this representation is
 // documented in compiler/polymorphism.m).
 // The C type corresponding to these Mercury types is `MR_PseudoTypeInfo'.
 //
-// Values of type `type_ctor.type_ctor_desc' are not guaranteed to be
+// Values of type `type_desc.type_ctor_desc' are not guaranteed to be
 // represented the same way as values of type `private_builtin.type_ctor_info'.
 // The representations *are* in fact identical for fixed arity types, but they
-// differ for higher order and tuple types. Instead of a type_ctor_desc
+// differ for higher-order and tuple types. Instead of a type_ctor_desc
 // being a structure containing a pointer to the type_ctor_info for pred/0
 // or func/0 and an arity, we have a single small encoded integer. This
 // integer is four times the arity, plus zero, one or two; plus zero encodes
 // a predicate, plus one encodes a function, plus two encodes a tuple.
 // The maximum arity that can be encoded is given by MR_MAX_VARIABLE_ARITY
 // (see below).
-// The C type corresponding to type_ctor.type_ctor_desc is `MR_TypeCtorDesc'.
+// The C type corresponding to type_desc.type_ctor_desc is `MR_TypeCtorDesc'.
 
 // Declare the MR_TypeCtorDesc ADT.
 //
@@ -47,8 +47,8 @@
 typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 
 // The maximum arity that can be encoded should be set to twice the maximum
-// number of general purpose registers, since an predicate or function having
-// more arguments that this would run out of registers when passing the input
+// number of general purpose registers, since a predicate or function having
+// more arguments than this would run out of registers when passing the input
 // arguments, or the output arguments, or both.
 //
 // XXX When tuples were added this was reduced to be the maximum number
@@ -71,7 +71,7 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
     ( MR_CHECK_EXPR_TYPE(type_ctor_info, MR_TypeCtorInfo),              \
       (MR_TypeCtorDesc) type_ctor_info )
 
-// Access macros for the MR_TypeCtor ADT.
+// Access macros for the MR_TypeCtorDesc ADT.
 //
 // The MR_TYPECTOR_DESC_GET_VA_* macros should only be called if
 // MR_TYPECTOR_DESC_IS_VARIABLE_ARITY() returns true.

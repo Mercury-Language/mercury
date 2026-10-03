@@ -15,7 +15,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #if defined(MR_WIN32)
-   #include <wchar.h>
+    #include <wchar.h>
 #endif
 
 // On Windows, snprintf/vsnprintf may be synonyms for _snprintf/_vsnprintf and
@@ -358,7 +358,7 @@ MR_Integer      MR_hash_string6(MR_ConstString);
 #endif
 
 // If we are not using gcc, the actual definitions of these functions
-// are runtime/mercury_string.c; they use the macros below.
+// are in runtime/mercury_string.c; they use the macros below.
 
 #define MR_HASH_STRING_FUNC_BODY                                        \
        MR_Integer hash_string_result;                                   \
@@ -406,7 +406,7 @@ MR_Integer      MR_hash_string6(MR_ConstString);
 
 // Return an MR_String which has been created using the format string, fmt,
 // passed to sprintf. If memory profiling is turned on, record the allocation
-// as coming from proclabel. The MR_String returned has been allocated
+// as coming from alloc_id. The MR_String returned has been allocated
 // on the mercury heap using MR_allocate_aligned_string_msg.
 //
 // BEWARE: this may modify the saved copy of `MR_hp', so it must only be called
@@ -450,7 +450,7 @@ extern MR_bool MR_escape_string_quote(MR_String *ptr, const char * string);
 // XXX ILSEQ The following functions should be rethought to make dealing
 // with ill-formed code unit sequences easier.
 
-// Advance `*pos' to the beginning of the next code point in `s'.
+// Advance `*pos' to the beginning of the next code point in `s_'.
 // If `*pos' is already at the end of the string, return MR_FALSE
 // without modifying `*pos'.
 //

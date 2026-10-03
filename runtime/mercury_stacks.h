@@ -16,7 +16,6 @@
 #include "mercury_types.h"
 #include "mercury_overflow.h"
 #include "mercury_debug.h"
-#include "mercury_overflow.h"
 #include "mercury_goto.h"
 #include "mercury_tabling.h"
 #include "mercury_engine.h"
@@ -33,7 +32,7 @@
 
   // This temporary is for use in the MR_increment_dword_tmp macro only.
   // Making the temporary variable global (nonlocal to the macro) allows
-  // the macro have the form of an expression, instead of a statement,
+  // the macro to have the form of an expression, instead of a statement,
   // without relying on GNU extensions to C.
 
   extern MR_uint_least32_t MR_old_low_tmp;
@@ -266,7 +265,7 @@ MR_declare_entry(MR_pop_nondetstack_segment);
   #define MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT
 #endif
 
-// MR_Code that traverses the nondet stack depends on the relationship
+// Code that traverses the nondet stack depends on the relationship
 // MR_NONDET_TEMP_SIZE < MR_DET_TEMP_SIZE < MR_NONDET_FIXED_SIZE.
 // All three sizes are measured in words.
 
@@ -336,7 +335,7 @@ MR_declare_entry(MR_pop_nondetstack_segment);
 
   // Note: these macros don't work in the presence of stack segments,
   // which is why automatic stack extension and stack segments cannot
-  // both enabled at the same time.
+  // both be enabled at the same time.
 
   #define   MR_save_maxfr(lval)                                               \
             do {                                                              \
@@ -646,8 +645,8 @@ typedef struct MR_Exception_Handler_Frame_struct {
 // an active generator or not, and if yes, where its subgoal's tabling
 // information is stored. In Mercury, the equivalent test checks whether
 // the generator stack has an entry whose MR_gen_frame field matches the
-// address of the nondet stack frame. This approach that minimizes the
-// performance impact of minimal model evaluation on non-tabled procedures.
+// address of the nondet stack frame. This approach minimizes the performance
+// impact of minimal model evaluation on non-tabled procedures.
 
 struct MR_GenStackFrameStruct {
     MR_Word                 *MR_gen_frame;
@@ -673,7 +672,7 @@ extern  void                MR_print_any_gen_stack(FILE *fp,
 // determinism than the goal being quantified over.) We use the cut stack
 // to prevent generators in the quantified being left active but incomplete
 // when the commit goal succeeds. We need to clean up any such generators
-// because otherwise, consumers will be depend on the generator to find all
+// because otherwise, consumers will depend on the generator to find all
 // the answers to the generator's subgoal, but the generator will never
 // compute any more answers, since it will never be backtracked into.
 // The MR_cut_generators field of a cut stack entry contains the list of
@@ -726,7 +725,7 @@ extern  void                MR_print_any_cut_stack(FILE *fp,
 
 // The pneg stack has one entry for each possibly negated context currently
 // active. (Possibly negated contexts include the conditions of if-then-elses
-// as well negated goals.) The MR_pneg_consumers field of a pneg stack entry
+// as well as negated goals.) The MR_pneg_consumers field of a pneg stack entry
 // records all the consumers that are inside the corresponding possibly negated
 // context and not inside any nested possibly negated context. When the goal
 // in the possibly negated context fails, we check whether any of these

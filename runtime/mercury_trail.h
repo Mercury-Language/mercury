@@ -98,7 +98,7 @@
         MR_ticket_counter = ++MR_ticket_high_water;                         \
     } while (0)
 
-// Unwind restoration info back to `old'. `kind' indicates  whether we are
+// Unwind restoration info back to `old'. `kind' indicates whether we are
 // restoring or just discarding the info.
 //
 // Note that the commented out calls to save/restore transient registers are
@@ -147,7 +147,7 @@ typedef enum {
     // MR_solve:
     // A soft (non-pruning) commit.
     // Used for the check for floundering in solutions/2
-    // and in nondet if-the-elses.
+    // and in nondet if-then-elses.
     // Function trail entries are invoked.
 
     MR_solve,
@@ -310,7 +310,7 @@ struct MR_TrailEntry_Struct {
 // XXX the implementation for the high-level C backend is a bit of a mess.
 // It's currently all tied up with that of the low-level backend.
 // In high-level C grades each POSIX thread has a dummy engine and context
-// with associated with it. These are used to store thread local data.
+// associated with it. These are used to store thread local data.
 // We store the trail state in the relevant fields of those structures.
 // These dependencies should be removed (see the commented out code
 // in mercury_wrapper.c).
@@ -473,9 +473,9 @@ typedef MR_Unsigned MR_ChoicepointId;
 //  if (oldcp == MR_current_choicepoint_id()) {A}
 //
 // then we can be assured that if the choicepoint current at the time of the
-// first call to MR_current_choicepoint() has not been backtracked over before
-// the second call, then code A will be executed if and only if the current
-// choicepoint is the same in both calls.
+// first call to MR_current_choicepoint_id() has not been backtracked over
+// before the second call, then code A will be executed if and only if the
+// current choicepoint is the same in both calls.
 
 #define MR_current_choicepoint_id() ((const MR_ChoicepointId) MR_ticket_counter)
 

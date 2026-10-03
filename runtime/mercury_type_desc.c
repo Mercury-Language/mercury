@@ -56,19 +56,22 @@ MR_make_type_ctor_desc_pseudo(MR_PseudoTypeInfo pseudo,
         type_ctor_desc = MR_TYPECTOR_DESC_MAKE_PRED(
             MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo));
         if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
-            MR_fatal_error("MR_make_type_ctor_desc - arity out of range.");
+            MR_fatal_error(
+                "MR_make_type_ctor_desc_pseudo - arity out of range.");
         }
     } else if (MR_TYPE_CTOR_INFO_IS_HO_FUNC(type_ctor_info)) {
         type_ctor_desc = MR_TYPECTOR_DESC_MAKE_FUNC(
             MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo));
         if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
-            MR_fatal_error("MR_make_type_ctor_desc - arity out of range.");
+            MR_fatal_error(
+                "MR_make_type_ctor_desc_pseudo - arity out of range.");
         }
     } else if (MR_TYPE_CTOR_INFO_IS_TUPLE(type_ctor_info)) {
         type_ctor_desc = MR_TYPECTOR_DESC_MAKE_TUPLE(
             MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo));
         if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
-            MR_fatal_error("MR_make_type_ctor_desc - arity out of range.");
+            MR_fatal_error(
+                "MR_make_type_ctor_desc_pseudo - arity out of range.");
         }
     } else {
         type_ctor_desc = MR_TYPECTOR_DESC_MAKE_FIXED_ARITY(type_ctor_info);

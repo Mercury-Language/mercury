@@ -29,7 +29,7 @@
 #define MR_FLOAT_WORDS          ((sizeof(MR_Float) + sizeof(MR_Word) - 1) \
                                         / sizeof(MR_Word))
 
-// MR_Float_Aligned and #pragma pack are used convince the C compiler to lay
+// MR_Float_Aligned and #pragma pack are used to convince the C compiler to lay
 // out structures containing MR_Float members as expected by the Mercury
 // compiler, without additional padding or packing.
 //

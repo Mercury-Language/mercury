@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2007, 2009, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2018, 2021 The Mercury team.
+// Copyright (C) 2015-2018, 2021, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // Definitions of the types defining the type_ctor_infos, type_infos,
@@ -461,7 +461,7 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 
 // MR_typeclass_info_instance_tvar_type_info returns a typeinfo for
 // one of the type variables in the instance declaration that isn't constrained
-// by a type class constraints on the instance declaration. (Soon, this will
+// by type class constraints on the instance declaration. (Soon, this will
 // change, as above.)
 //
 // MR_typeclass_info_arg_typeclass_info returns a typeclass_info for one of the
@@ -507,7 +507,7 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 // constraints on the typeclass declaration, i.e. for one this class's
 // superclasses.
 //
-// MR_typeclass_info_param_type_info returns a typeinfo for one the types
+// MR_typeclass_info_param_type_info returns a typeinfo for one of the types
 // to which the type class constraint applies, i.e. for one of the types bound
 // to the type variables in the head of the type class declaration.
 //
@@ -931,7 +931,7 @@ typedef struct {
     // MR_arg_bits = -8 says the argument is a value of type int32.
     // MR_arg_bits = -9 says the argument is a value of type uint32.
     //
-    // The third subcategories contains just one code value. If MR_arg_bits
+    // The third subcategory contains just one code value. If MR_arg_bits
     // is -10, then the argument is a dummy and occupies no bits at all.
     //
     // MR_arg_bits may not take any negative value except the ones listed
@@ -1096,8 +1096,8 @@ typedef struct {
     // ptag holds the primary tag that this layout describes.
     // ptag_flags contains the flags listed below.
     // XXX ARG_PACK Move these fields at the same time as other fields.
-    MR_uint_least8_t		    MR_du_ptag;
-    MR_uint_least8_t		    MR_du_ptag_flags;
+    MR_uint_least8_t                MR_du_ptag;
+    MR_uint_least8_t                MR_du_ptag_flags;
 } MR_DuPtagLayout;
 
 // The flag bits here must agree with the ones in encode_du_ptag_layout_flag
@@ -1303,10 +1303,10 @@ struct MR_TypeCtorInfo_Struct {
 // mercury_dotnet.cs.in.
 //
 // We used to have a "reserve tag" flag whose representation was 0x1,
-// but we don't supported reserving tags anymore.
+// but we do not support reserving tags anymore.
 //
 // The variable arity flag is set for builtin constructors whose arity is
-// variable: at moment, this means functions, predicates and tuples.
+// variable: at the moment, this means functions, predicates and tuples.
 //
 // The kind of du flag is set for all discriminated union types, even if
 // their representation is specialized (as enumerations, notag types etc).

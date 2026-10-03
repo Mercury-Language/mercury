@@ -441,7 +441,7 @@
 
   #define   MR_in_heap_range(addr)                                          \
             ((void *) (addr) >= GC_least_plausible_heap_addr &&             \
-             (void *) (addr) < GC_greatest_plausible_heap_addr)             \
+             (void *) (addr) < GC_greatest_plausible_heap_addr)
 
 #else // ! MR_BOEHM_GC || MR_UNCONDITIONAL_STRUCTURE_REUSE
 
