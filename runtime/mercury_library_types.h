@@ -165,7 +165,7 @@ typedef MercuryFile *MercuryFilePtr;
 
 #define MR_wrap_input_stream(mf) ((MR_Word)(mf))
 
-// Do the reverse to above.
+// Do the reverse to the above.
 // The only place we use this is in browser/listing.m.
 
 #define MR_unwrap_input_stream(mf)  ((MercuryFilePtr)(mf))
