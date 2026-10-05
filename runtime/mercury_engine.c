@@ -226,7 +226,7 @@ MR_dump_prev_locations(void)
 //
 // If the called routine exits by throwing an exception, then the
 // behaviour depends on the `catch_exceptions' flag.
-// if `catch_exceptions' is true, then MR_call_engine() will return the
+// If `catch_exceptions' is true, then MR_call_engine() will return the
 // Mercury exception object thrown. If `catch_exceptions' is false,
 // then MR_call_engine() will not return; instead, the code for `throw'
 // will unwind the stacks (including the C stack) back to the nearest
@@ -239,7 +239,7 @@ MR_dump_prev_locations(void)
 // will call MR_restore_transient_registers() and will then assume that
 // all the registers have been correctly set up.
 //
-// call_engine() will call MR_save_registers() before returning.
+// MR_call_engine() will call MR_save_registers() before returning.
 // That will copy the real registers we use to the fake_reg array.
 //
 // Beware, however, that if you are planning to return to C code that did

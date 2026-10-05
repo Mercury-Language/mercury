@@ -416,9 +416,9 @@
 // options to execute the more portable code even on systems where the more
 // optimal code is safe. This is useful to make test coverage a bit more even.
 //
-// options MR_AVOID_HANDWRITTEN_ASSEMBLER and MR_AVOID_COMPILER_INTRINSICS are
+// Options MR_AVOID_HANDWRITTEN_ASSEMBLER and MR_AVOID_COMPILER_INTRINSICS are
 // not mutually exclusive. The first is relevant when we prefer handwritten
-// assembler (in some cases this is more efficient). Where as the second is
+// assembler (in some cases this is more efficient). Whereas the second is
 // relevant when we prefer compiler intrinsics (usually because there's no
 // advantage to handwritten assembler other than when the intrinsics are not
 // supported by the compiler).
@@ -560,7 +560,7 @@
 //
 // MR_TABLE_STATISTICS
 // Enable this if you want to gather statistics about the operation of the
-// tabling system. The results are reported via io__report_tabling_stats.
+// tabling system. The results are reported via io.report_tabling_stats.
 //
 // MR_STACK_FRAME_STATS
 // If you want to gather statistics about the number and size of stack frames,
@@ -641,7 +641,7 @@
   #define MR_PIC 1
 #endif
 
-// NOTE: MR_PIC_REG is currently unused and does not have any affect.
+// NOTE: MR_PIC_REG is currently unused and does not have any effect.
 // The following describes what it was previously used for:
 //
 // Should we keep the GOT register (e.g. ebx on i386) free for PIC code?
@@ -685,7 +685,7 @@
 // Enables deep profiling code coverage support. (Required for
 // auto-parallelisation).
 //
-// MR_DEEP_PROFILING_COVERAGE_STATIC.
+// MR_DEEP_PROFILING_COVERAGE_STATIC
 // Enables the outmoded static coverage profiling code. This disables the new
 // dynamic coverage profiling code.
 //

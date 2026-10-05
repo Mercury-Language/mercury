@@ -32,7 +32,7 @@
 ////////////////////////////////////////////////////////////////////////////
 // Configuration parameters determined by autoconf.
 
-// MR_WORD_TYPE: the base type for the definition of Word.
+// MR_WORD_TYPE: the base type for the definition of MR_Word.
 // This must be a C integral type (e.g. int, long, or long long)
 // without any explicit signedness.
 // It ought to be the same size as the machine's general-purpose registers
@@ -51,7 +51,7 @@
 #undef  MR_BITS_PER_WORD
 
 // MR_MERCURY_IS_{32,64}_BITS: we define MR_MERCURY_IS_32_BITS on 32 bit
-// systems, and we defined MR_MERCURY_IS_64_BITS on 64 bit systems.
+// systems, and we define MR_MERCURY_IS_64_BITS on 64 bit systems.
 #undef  MR_MERCURY_IS_32_BITS
 #undef  MR_MERCURY_IS_64_BITS
 
@@ -361,7 +361,6 @@
 #undef  MR_HAVE_SCHED_GETCPU
 #undef  MR_HAVE_SCHED_YIELD
 #undef  MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED
-#undef  MR_HAVE_MKSTEMP
 #undef  MR_HAVE_SETRLIMIT
 #undef  MR_HAVE_ISNAN
 #undef  MR_HAVE_ISNANF
@@ -523,7 +522,7 @@
 //
 // GNU readline and any supporting libraries required (e.g. termcap) are
 // available and should be used by the debugger for the command-line prompt.
-// this will *not* be defined if MR_USE_EDITLINE is defined.
+// This will *not* be defined if MR_USE_EDITLINE is defined.
 //
 // MR_HAVE_READLINE_READLINE_H
 // MR_HAVE_READLINE_HISTORY_H
@@ -543,7 +542,7 @@
 //
 // MR_HAVE_EDITLINE_READLINE_H
 //
-// Define if the header file editline/readline.h. is available.
+// Defined if the header file editline/readline.h is available.
 
 #undef MR_USE_EDITLINE
 #undef MR_HAVE_EDITLINE_READLINE_H

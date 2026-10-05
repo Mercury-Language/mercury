@@ -15,12 +15,12 @@
 #include "mercury_types.h"
 #include "mercury_std.h"    // for MR_CALL
 
-// The continuation function types used for implementing
+// The continuation function type used for implementing
 // nondeterministic procedures.
 
 typedef void MR_CALL (*MR_Cont) (void *);
 
-// The types uses to represent the Mercury builtin types,
+// The types used to represent the Mercury builtin types,
 // MR_Char, MR_Float, MR_Integer, MR_String, and MR_ConstString,
 // are defined in mercury_types.h and mercury_float.h.
 
@@ -34,7 +34,7 @@ typedef void MR_CALL (*MR_Cont) (void *);
 // Define some names for types whose definitions used to differ
 // depending on whether --high-level-data was enabled.
 // These types all correspond to Mercury data types.
-// Some of the have `Mercury_' in their name, to distinguish
+// Some of them have `Mercury_' in their name, to distinguish
 // them from the corresponding C data type.
 
 typedef MR_Word MR_Comparison_Result;

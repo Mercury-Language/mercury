@@ -773,7 +773,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 functor_desc);
             handle_functor_name_number_arity(expand_info, type_ctor_info,
                 functor_desc);
-            assert_no_exist_info(functor_desc, "MR_SECTAG_LOCAL_BITS");
+            assert_no_exist_info(functor_desc, "MR_SECTAG_REMOTE_BITS");
             ti_arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
             ao_arg_vector = ti_arg_vector;
             break;

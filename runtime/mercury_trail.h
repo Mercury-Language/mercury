@@ -423,7 +423,7 @@ struct MR_TrailEntry_Struct {
         MR_store_value_trail_entry(MR_trail_ptr,                            \
             (address), (value));                                            \
         MR_trail_ptr++;                                                     \
-    } while (0);
+    } while (0)
 
 // void  MR_trail_current_value(MR_Word *address);
 //
@@ -449,7 +449,7 @@ struct MR_TrailEntry_Struct {
         MR_store_function_trail_entry((MR_trail_ptr),                       \
             (untrail_func), (datum));                                       \
         MR_trail_ptr++;                                                     \
-    } while (0);
+    } while (0)
 
 // Apply all the trail entries between MR_trail_ptr and old_trail_ptr.
 

@@ -1364,7 +1364,7 @@ MR_find_ready_context(void)
     //
     //  A context that must be run on this engine.
     //  A context that prefers to be run on this engine.
-    //  Any runnable context that may be ran on this engine.
+    //  Any runnable context that may be run on this engine.
     //
     // TODO: There are other scheduling decisions we should test, such as
     // running older versus younger contexts, or more recently stopped/runnable
@@ -1427,7 +1427,7 @@ MR_find_ready_context(void)
             }
           #endif
             if (cur->MR_ctxt_resume_engine == engine_id) {
-                // This context prefers to be ran on this engine.
+                // This context prefers to be run on this engine.
 
                 preferred_context = cur;
                 preferred_context_prev = prev;
@@ -1750,7 +1750,7 @@ MR_schedule_context(MR_Context *ctxt)
         // call MR_do_idle after completing the spark.
         //
         // This is only a problem for contexts that can only be executed on
-        // a single engine. In other causes this engine is guaranteed to
+        // a single engine. In other cases this engine is guaranteed to
         // eventually call MR_do_idle and execute the context. Potentially
         // causing a loss of parallelism but not a deadlock.
         //

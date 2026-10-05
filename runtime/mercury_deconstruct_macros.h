@@ -1,13 +1,13 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002-2004, 2007, 2011 The University of Melbourne.
-// Copyright (C) 2016, 2018, 2021 The Mercury team.
+// Copyright (C) 2016, 2018, 2021, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_deconstruct_macros.h
 //
 // This file defines macros for performing tasks that are useful when
-// deconstructing terms,
+// deconstructing terms.
 
 #ifndef MERCURY_DECONSTRUCT_MACROS_H
 #define MERCURY_DECONSTRUCT_MACROS_H
@@ -51,7 +51,7 @@
             }                                                               \
             MR_assert(idx < num_functors);                                  \
         }                                                                   \
-    } while (0)                                                             \
+    } while (0)
 
 #define MR_index_or_search_ptag_layout(ptag, ptag_layout)                   \
     do {                                                                    \
@@ -99,7 +99,7 @@
             }                                                               \
             MR_assert(idx < num_sharers);                                   \
         }                                                                   \
-    } while (0)                                                             \
+    } while (0)
 
 #define MR_search_foreign_enum_functor(data, functor_name, functor_ordinal) \
     do {                                                                    \
