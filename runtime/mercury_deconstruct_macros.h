@@ -233,22 +233,22 @@
 #ifdef MR_BOXED_INT64S
   #define MR_word_pair_to_int64_value(have_addr, addr, val)                 \
         do {                                                                \
-            MR_Float    flt;                                                \
+            int64_t     i64;                                                \
                                                                             \
             if (have_addr) {                                                \
-                flt = MR_int64_from_dword(addr[0], addr[1]);                \
-                MR_int64_to_value(flt, val);                                \
+                i64 = MR_int64_from_dword(addr[0], addr[1]);                \
+                MR_int64_to_value(i64, val);                                \
             } else {                                                        \
                 MR_fatal_error("double-word int64 in tagword");             \
             }                                                               \
         } while (0)
   #define MR_word_pair_to_uint64_value(have_addr, addr, val)                \
         do {                                                                \
-            MR_Float    flt;                                                \
+            uint64_t    u64;                                                \
                                                                             \
             if (have_addr) {                                                \
-                flt = MR_uint64_from_dword(addr[0], addr[1]);               \
-                MR_uint64_to_value(flt, val);                               \
+                u64 = MR_uint64_from_dword(addr[0], addr[1]);               \
+                MR_uint64_to_value(u64, val);                               \
             } else {                                                        \
                 MR_fatal_error("double-word uint64 in tagword");            \
             }                                                               \
