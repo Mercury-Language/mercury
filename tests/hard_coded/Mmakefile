@@ -242,6 +242,8 @@ ORDINARY_PROGS = \
 	int_impl_imports \
 	int_range_ops \
 	int_uenum \
+	integer_division_rational \
+	integer_division_zero \
 	integer_int16_conv \
 	integer_int32_conv \
 	integer_int64_conv \

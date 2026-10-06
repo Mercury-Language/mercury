@@ -1076,8 +1076,17 @@ div_by_digit_2(X, [H | T], D) = i(Len + 1, [X div D | Tail]) :-
 
 :- func integer_append(integer, digit) = integer.
 
-integer_append(i(L, List), Digit) = i(L + 1, NewList) :-
-    list.append(List, [Digit], NewList).
+integer_append(Integer, Digit) = Result :-
+    % This is used for the partial remainder in long division. In particular,
+    % appending a zero digit to zero must not introduce a leading zero: later
+    % comparisons rely on the digit count reflecting the magnitude.
+    ( if is_zero(Integer) then
+        Result = shortint_to_integer(Digit)
+    else
+        Integer = i(L, List),
+        list.append(List, [Digit], NewList),
+        Result = i(L + 1, NewList)
+    ).
 
 :- func integer_prepend(digit, integer) = integer.
 
