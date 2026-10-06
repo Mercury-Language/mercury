@@ -1991,7 +1991,7 @@ Changes to the Mercury deep profiler
 Changes to the Mercury implementation
 -------------------------------------
 
-* We have upgraded the bundled Boehm GC to v8.2.8 and libatomic_ops to v7.8.2.
+* We have upgraded the bundled Boehm GC to v8.2.12 and libatomic_ops to v7.8.4.
 
 Portability improvements
 ------------------------
