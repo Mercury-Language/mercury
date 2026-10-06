@@ -4,7 +4,7 @@
 // Copyright (C) 2014, 2016, 2018 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// label.c defines the label table, which is a pair of hash tables
+// mercury_label.c defines the label table, which is a pair of hash tables
 // that map from procedure names to addresses and vice versa.
 
 #include    "mercury_imp.h"     // we need libmer_dll.h for Windows DLLs
@@ -16,7 +16,7 @@
 
 #include    "mercury_stack_layout.h"    // for MR_ProcLayout
 #include    "mercury_hash_table.h"      // for MR_Hash_Table and its ops
-#include    "mercury_prof.h"            // for prof_output_addr_decl()
+#include    "mercury_prof.h"            // for MR_prof_output_addr_decl()
 #include    "mercury_engine.h"          // for MR_progdebug
 #include    "mercury_wrapper.h"         // for MR_do_init_modules()
 

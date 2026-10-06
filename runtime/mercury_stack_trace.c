@@ -1125,7 +1125,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp,
 // entry gives the details of the next frame on the nondet stack from that
 // branch. The branch_curfr field is valid for all entries and all entries in
 // the array have distinct values for this field. The branch_sp field is valid
-// only for the entry on the main branch; for all other entries, in contains
+// only for the entry on the main branch; for all other entries, it contains
 // NULL. The branch_layout field gives the address of the layout structure of
 // the return address through which control will return to that frame. (Frames
 // to which control returns via backtracking never get put into this array,
@@ -1297,7 +1297,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp,
                     MR_print_nondetstackptr(fp,
                         &MR_call_num_framevar(base_maxfr));
                     fprintf(fp, " => %" MR_INTEGER_LENGTH_MODIFIER "d, ",
-                        MR_call_num_framevar(base_maxfr)),
+                        MR_call_num_framevar(base_maxfr));
                     fprintf(fp, "depth ");
                     MR_print_nondetstackptr(fp,
                         &MR_call_depth_framevar(base_maxfr));
@@ -1655,8 +1655,8 @@ MR_find_matching_branch(MR_Word *fr, int *branch_ptr)
 // redoip slot of the top temporary nondet stack frame created by the
 // procedure.
 //
-// We record the contents of topmost temp frames as go past them, and erase the
-// records as we go past the ordinary frames to which they refer.
+// We record the contents of topmost temp frames as we go past them, and erase
+// the records as we go past the ordinary frames to which they refer.
 
 typedef struct
 {
@@ -1975,7 +1975,7 @@ MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *proc_layout,
             depth = MR_call_depth_framevar(base_curfr);
         }
 
-        // The code below does has a job that is very similar to the job
+        // The code below does a job that is very similar to the job
         // of the function MR_trace_event_print_internal_report in
         // trace/mercury_trace_internal.c. Any changes here will probably
         // require similar changes there.
