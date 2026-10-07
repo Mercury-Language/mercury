@@ -226,14 +226,14 @@ start_label:
                             sectag = data_value[0] &                          \
                                 ((1 << ptag_layout->MR_sectag_numbits) - 1);  \
                             break;                                            \
-                        case MR_SECTAG_NONE:             /* fall-though */    \
+                        case MR_SECTAG_NONE:             /* fall-through */   \
                         case MR_SECTAG_NONE_DIRECT_ARG:                       \
                             sectag = 0;                                       \
                             break;                                            \
                         case MR_SECTAG_VARIABLE:                              \
                             sectag = 0;     /* Avoid a warning. */            \
                             MR_fatal_error("find_du_functor_desc(): "         \
-                                "attempt get functor desc of variable");      \
+                                "attempt to get functor desc of variable");   \
                         default:                                              \
                             sectag = 0;     /* Avoid a warning. */            \
                             MR_fatal_error("find_du_functor_desc(): "         \
@@ -340,7 +340,7 @@ start_label:
 
                     case MR_SECTAG_VARIABLE:
                         MR_fatal_error("find_du_functor_desc():"
-                            "attempt get functor desc of variable");
+                            "attempt to get functor desc of variable");
                 }
 
                 MR_index_or_search_sectag_functor(ptag_layout, x_sectag,
@@ -727,7 +727,7 @@ start_label:
                 return_unify_answer(builtin, float, 0, fx == fy);
 #endif
             }
-        
+
         case MR_TYPECTOR_REP_INT64:
             {
                 int64_t   fx, fy;
@@ -747,7 +747,7 @@ start_label:
                 return_unify_answer(builtin, int64, 0, fx == fy);
 #endif
             }
-        
+
         case MR_TYPECTOR_REP_UINT64:
             {
                 uint64_t   fx, fy;

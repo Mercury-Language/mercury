@@ -66,7 +66,7 @@
         if ((max) < (cur)) {                                                \
             (max) = (cur);                                                  \
         }                                                                   \
-    } while (0);
+    } while (0)
 
 #ifdef MR_PROFILE_ZONES
 // These values track the number of zones and the total size.
@@ -682,7 +682,7 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
 
     new_base = MR_realloc_zone_memory(old_base, copy_size, new_size);
     if (new_base == NULL) {
-        MR_fatal_error("unable reallocate memory zone: %s#%"
+        MR_fatal_error("unable to reallocate memory zone: %s#%"
                 MR_INTEGER_LENGTH_MODIFIER "d",
             zone->MR_zone_name, zone->MR_zone_id);
     }
@@ -929,10 +929,12 @@ MR_maybe_gc_zones(void)
 // Collect zones until MR_should_stop_gc_memory_zones() returns true.
 //
 // MR_should_gc_memory_zones()
-// True if either number and number of pages are above the high water mark.
+// True if either the number of zones or the number of pages are above the high
+// water mark.
 //
 // MR_should_stop_gc_memory_zones()
-// True if both the number nad number of pages are below the low water mark.
+// True if both the number of zones and the number of pages are below the low
+// water mark.
 
 static void             MR_gc_zones(void);
 static MR_bool          MR_should_gc_memory_zones(void);
@@ -1180,7 +1182,7 @@ MR_gc_zones(void)
 
             cur_list = free_memory_zones;
 
-            // GCC 3.3 thinks that oldest_lru_token will used uninitialised.
+            // GCC 3.3 thinks that oldest_lru_token will be used uninitialised.
             // But it won't, lru_free_memory_zones will always be NULL and
             // therefore the if branch will be followed to set this variable
             // before it is read in the condition of the else-if branch.
@@ -1206,7 +1208,7 @@ MR_gc_zones(void)
 
         if (NULL == lru_free_memory_zones) {
             // There is no memory to collect, perhaps there was a race
-            // before we locked mercury_zones_lock.
+            // before we locked memory_zones_lock.
             MR_UNLOCK(&memory_zones_lock, "MR_gc_zones");
             return;
         }

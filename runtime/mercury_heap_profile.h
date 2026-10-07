@@ -38,7 +38,7 @@
 //  - for objects of each type,
 //  - and an overall total
 //
-// The tables of counters for each procedure is represented as a binary
+// The tables of counters for each procedure are represented as a binary
 // search tree. Similarly for the table of counters for each type.
 //
 // Due to garbage collection, the total amount of memory allocated can exceed
@@ -96,7 +96,7 @@ extern void     MR_record_allocation(int size,
 // MR_prof_output_mem_tables():
 //
 // Write out the information recorded by MR_record_allocation() to a pair
-// of files `Prof.MemoryMR_Words' and `Prof.MemoryCells'.
+// of files `Prof.MemoryWords' and `Prof.MemoryCells'.
 
 extern void     MR_prof_output_mem_tables(void);
 

@@ -789,8 +789,8 @@ MR_write_out_program_name(FILE *fp)
 }
 
 // Flags in the deep profiler data file's header. Any bit without a meaning
-// here must be set to zero as it it may be used in the future. The next line
-// marks 16 bit boundaries in the 64 bit flags value:
+// here must be set to zero as it may be used in the future. The next line
+// marks 16-bit boundaries in the 64-bit flags value:
 //
 //       48  32  16   0
 
@@ -1109,7 +1109,7 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
     MR_write_out_coverage_points_static(deep_fp, ps);
 #endif
 
-    // Write out the actual call site statics,  These are read in after the
+    // Write out the actual call site statics. These are read in after the
     // proc static, not as part of it.
 
     for (int i = 0; i < ps->MR_ps_num_call_sites; i++) {
