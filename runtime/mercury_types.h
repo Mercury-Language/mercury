@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2011 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2023, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_types.h - definitions of some basic types used by the
@@ -110,8 +110,8 @@ typedef MR_Code                 *MR_CodePtr;
 // They are defined here to avoid problems with circular #includes.
 // If you modify them, you will need to modify mercury_string.h as well.
 
-typedef int             MR_Char;
-typedef unsigned int    MR_UnsignedChar;
+typedef MR_int_least32_t    MR_Char;
+typedef MR_uint_least32_t   MR_UnsignedChar;
 
 typedef char            *MR_String;
 typedef const char      *MR_ConstString;
