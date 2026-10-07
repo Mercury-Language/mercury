@@ -49,7 +49,7 @@ main(!IO) :-
     MR_Integer i;
 
     for (i = 0; i < N; i++) {
-        MR_trail_function(my_func, (void *) i)
+        MR_trail_function(my_func, (void *) i);
     }
     SUCCESS_INDICATOR = MR_TRUE;
 ").
