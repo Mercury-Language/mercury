@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2001,2003-2006,2008,2011-2012 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2024, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #ifndef MERCURY_STACK_TRACE_H
@@ -25,7 +25,7 @@ typedef MR_Unsigned MR_Level;
 //
 // Given the succip, det stack pointer and current frame, generate a
 // stack dump showing the name of each active procedure on the stack.
-// If include_trace_data data is set, also print the call event number,
+// If include_trace_data is set, also print the call event number,
 // call sequence number and depth for every traced procedure.
 // NOTE: MR_dump_stack will assume that the succip is for the topmost
 // stack frame. If you call MR_dump_stack from some foreign_proc,
@@ -63,7 +63,7 @@ typedef struct {
     // If the clique frame marker field is non-NULL, then it points to
     // a short (two-character) string that indicates whether the call or calls
     // denoted by this structure is inside a clique or not, and if it is,
-    // then whether it the first call in the clique, the last call in the
+    // then whether it is the first call in the clique, the last call in the
     // clique, or neither. Note that the string will be UTF-8 encoded, and
     // will often contain non-ASCII characters.
 
@@ -165,7 +165,7 @@ extern  void        MR_traverse_nondet_stack_from_layout(
 // The initial part of this walk visits the stack frames of procedures
 // that are mutually recursive with the current event's procedure;
 // the rest of the walk visits the frames of other procedures.
-// This function find the boundary between these two parts.
+// This function finds the boundary between these two parts.
 //
 // If we cannot walk all the way to main (e.g. because some stack frames
 // have no layout information, or because the stack does not have the required
@@ -230,7 +230,7 @@ extern  const MR_LabelLayout *MR_find_nth_ancestor(
 // MR_STEP_ERROR_AFTER:     entry_layout has valid stack trace info,
 //                          but its caller does not.
 //
-// If a MR_stack_walk_step encounters a problem, it will set problem_ptr
+// If MR_stack_walk_step encounters a problem, it will set problem_ptr
 // to point to a string representation of the error.
 //
 // Note that for nondeterministic code, this function will only
