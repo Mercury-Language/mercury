@@ -73,4 +73,4 @@ extern  MR_bool MR_typecheck_arguments(MR_TypeInfo type_info,
                     int arity, MR_Word arg_list,
                     const MR_PseudoTypeInfo *arg_pseudo_type_infos);
 
-#endif  // MERCURY_CONSTRUCT_H
+#endif  // not MERCURY_CONSTRUCT_H

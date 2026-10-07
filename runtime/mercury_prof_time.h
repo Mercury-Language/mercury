@@ -23,4 +23,4 @@ extern  void    MR_init_time_profile_method(void);
 
 #endif  // MR_MPROF_PROFILE_TIMING || MR_DEEP_PROFILING_TIMING
 
-#endif  // MERCURY_PROF_TIME_H
+#endif  // not MERCURY_PROF_TIME_H

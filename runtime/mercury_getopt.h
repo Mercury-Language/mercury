@@ -54,4 +54,4 @@ void MR__getopt_msg(const char *a, const char *b, const char *c, size_t l);
 }
 #endif
 
-#endif
+#endif // not MERCURY_GETOPT_H

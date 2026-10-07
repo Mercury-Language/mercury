@@ -102,4 +102,4 @@ struct MR_ComplexityProc_Struct {
     int                     *MR_clp_sizes;
 };
 
-#endif  // MR_MERCURY_COMPLEXITY_H
+#endif  // not MR_MERCURY_COMPLEXITY_H

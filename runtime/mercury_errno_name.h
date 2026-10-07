@@ -8,4 +8,4 @@
 
 extern const char   *MR_errno_name(int errnum);
 
-#endif  // MERCURY_ERRNO_NAME_H
+#endif  // not MERCURY_ERRNO_NAME_H

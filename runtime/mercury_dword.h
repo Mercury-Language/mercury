@@ -109,6 +109,6 @@
         (src_dest_dword).MR_dword_high += (src_dword).MR_dword_high     \
     )
 
-#endif // not MR_INT_LEAST32_TYPE
+#endif // not MR_INT_LEAST64_TYPE
 
-#endif // MERCURY_DWORD_H
+#endif // not MERCURY_DWORD_H

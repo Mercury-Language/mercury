@@ -32,4 +32,4 @@ extern  int         MR_setenv(const char *name, const char *value,
 // A ".exe" extension on other systems (e.g. Linux) will be left alone.
 extern const char   *MR_get_program_basename(const char *);
 
-#endif  // MERCURY_RUNTIME_UTIL_H
+#endif  // not MERCURY_RUNTIME_UTIL_H

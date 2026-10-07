@@ -157,4 +157,4 @@ extern  MR_GeneratorPtr MR_table_mmos_setup_generator(MR_TrieNode trie_node,
 
 #endif  // MR_HIGHLEVEL_CODE
 
-#endif  // MERCURY_MM_OWN_STACKS_H
+#endif  // not MERCURY_MM_OWN_STACKS_H

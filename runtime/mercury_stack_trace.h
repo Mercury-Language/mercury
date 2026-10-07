@@ -409,4 +409,4 @@ extern  int         MR_find_first_call_less_eq_seq_or_event(
                         MR_Word *det_stack_pointer, MR_Word *current_frame,
                         const char **problem);
 
-#endif // MERCURY_STACK_TRACE_H
+#endif // not MERCURY_STACK_TRACE_H

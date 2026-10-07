@@ -43,4 +43,4 @@ void MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf);
   int MR_ferror(MR_StreamInfo *info);
 #endif
 
-#endif // MERCURY_FILE_H
+#endif // not MERCURY_FILE_H

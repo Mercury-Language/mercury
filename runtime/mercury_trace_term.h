@@ -72,4 +72,4 @@ extern  void        MR_print_cterm(FILE *fp, MR_CTerm term);
 
 extern  void        MR_delete_cterm(MR_CTerm term);
 
-#endif // MERCURY_TRACE_TERM_H
+#endif // not MERCURY_TRACE_TERM_H

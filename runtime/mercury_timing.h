@@ -52,4 +52,4 @@ extern int  MR_get_user_cpu_milliseconds(void);
 
 extern int  MR_get_real_milliseconds(void);
 
-#endif // MERCURY_TIMING_H
+#endif // not MERCURY_TIMING_H

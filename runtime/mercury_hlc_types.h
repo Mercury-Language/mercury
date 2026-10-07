@@ -56,4 +56,4 @@ typedef MR_Word MR_Mercury_Base_TypeClass_Info;
 
 #endif  // MR_HIGHLEVEL_CODE
 
-#endif  // MERCURY_HLC_TYPES_H
+#endif  // not MERCURY_HLC_TYPES_H

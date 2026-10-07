@@ -168,4 +168,4 @@ extern  void    MR_proc_id_arity_addedargs_predfunc(const MR_ProcLayout *proc,
                     int *arity_ptr, int *num_added_args_ptr,
                     MR_PredFunc *pred_or_func_ptr);
 
-#endif  // MERCURY_LAYOUT_UTIL_H
+#endif  // not MERCURY_LAYOUT_UTIL_H

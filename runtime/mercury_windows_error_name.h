@@ -14,4 +14,4 @@ extern const char   *MR_win32_error_name(DWORD errcode);
 
 #endif
 
-#endif  // MERCURY_WINDOWS_ERROR_NAME_H
+#endif  // not MERCURY_WINDOWS_ERROR_NAME_H

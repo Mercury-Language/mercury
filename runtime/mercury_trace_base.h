@@ -712,4 +712,4 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
         MR_TRACE_CALL_MERCURY_DEEP_END;                                 \
     } while (0)
 
-#endif // MERCURY_TRACE_BASE_H
+#endif // not MERCURY_TRACE_BASE_H

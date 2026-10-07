@@ -194,4 +194,4 @@ MR_wsdeque_length(MR_SparkDeque *dq)
 
 #endif // !MR_LL_PARALLEL_CONJ
 
-#endif // !MERCURY_WSDEQUE_H
+#endif // not MERCURY_WSDEQUE_H

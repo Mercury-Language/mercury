@@ -399,4 +399,4 @@
             value, wsa_ptr);                                                \
     } while (0)
 
-#endif // MERCURY_DECONSTRUCT_MACROS_H
+#endif // not MERCURY_DECONSTRUCT_MACROS_H

@@ -403,4 +403,4 @@ extern MR_ThreadLocalMuts   *MR_clone_thread_local_mutables(
 
 extern void     MR_init_thread_stuff(void);
 
-#endif  // MERCURY_THREAD_H
+#endif  // not MERCURY_THREAD_H

@@ -191,4 +191,4 @@ extern  int             MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1,
 extern  MR_bool         MR_unify_type_ctor_desc(MR_TypeCtorDesc tcd1,
                             MR_TypeCtorDesc tcd2);
 
-#endif  // MERCURY_TYPE_DESC_H
+#endif  // not MERCURY_TYPE_DESC_H

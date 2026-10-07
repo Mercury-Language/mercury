@@ -514,4 +514,4 @@
 
 extern const char MR_GRADE_VAR;
 
-#endif // MERCURY_GRADES_H
+#endif // not MERCURY_GRADES_H

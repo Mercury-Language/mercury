@@ -263,4 +263,4 @@ extern  int         MR_minmodel_stats_cnt_dupl_check_not_dupl;
 
 #endif  // !MR_HIGHLEVEL_CODE
 
-#endif  // MERCURY_MINIMAL_MODEL_H
+#endif  // not MERCURY_MINIMAL_MODEL_H

@@ -159,4 +159,4 @@ extern  MR_bool MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
 extern  MR_bool MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     const char *arg_name, int *arg_num_ptr);
 
-#endif // MERCURY_DECONSTRUCT_H
+#endif // not MERCURY_DECONSTRUCT_H

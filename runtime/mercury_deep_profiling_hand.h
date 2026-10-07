@@ -376,4 +376,4 @@
     MR_define_label(label);                                                  \
     MR_update_prof_current_proc(MR_LABEL(proclabel))
 
-#endif  // MERCURY_DEEP_PROFILING_HAND_H
+#endif  // not MERCURY_DEEP_PROFILING_HAND_H

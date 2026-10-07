@@ -1810,4 +1810,4 @@ extern  void    MR_region_print_profiling_info(void);
 
 #endif  // MR_USE_REGIONS
 
-#endif  // MERCURY_REGION_H
+#endif  // not MERCURY_REGION_H

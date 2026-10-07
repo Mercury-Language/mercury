@@ -61,4 +61,4 @@
       MR_debug_new_univ_on_hp((univ), (typeinfo), (value));             \
   } while (0)
 
-#endif // MERCURY_UNIV_H
+#endif // not MERCURY_UNIV_H

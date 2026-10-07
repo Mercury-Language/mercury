@@ -215,4 +215,4 @@
         (next) += 1;                                                    \
     } while (0)
 
-#endif // MERCURY_ARRAY_MACROS_H
+#endif // not MERCURY_ARRAY_MACROS_H

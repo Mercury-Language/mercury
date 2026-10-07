@@ -87,4 +87,4 @@ array_name##_set_item(array_name *a, unsigned int i, item_type x)       \
     a->items[i] = x;                                                    \
 }                                                                       \
 
-#endif // ! MERCURY_EXPANDING_ARRAY_H
+#endif // not MERCURY_EXPANDING_ARRAY_H

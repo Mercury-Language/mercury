@@ -92,4 +92,4 @@ typedef void    *GC_hidden_pointer;
 
 #endif // MR_HGC
 
-#endif // MERCURY_HGC_H
+#endif // not MERCURY_HGC_H
