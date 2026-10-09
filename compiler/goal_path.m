@@ -10,12 +10,15 @@
 % File: goal_path.m.
 % Main author: zs.
 %
-% This module looks after goal ids, which give every goal a unique id within
-% its procedure definition, and goal paths, which map each goal id to its
-% goal's position in the procedure definition.
+% This module allocates
 %
+% - goal ids, which give every goal a unique id within
+%   its procedure definition, and
 %
-% IMPORTANT: the type constraint_id in hlds_data.m makes use of goal ids
+% - goal paths, which map each goal id to its goal's position
+%   in the procedure definition.
+%
+% IMPORTANT: the constraint_id type in hlds_class.m uses goal ids
 % to identify goals that impose constraints between the typechecking pass
 % and the polymorphism pass. For this reason, goal ids should not be
 % recalculated anywhere between these two passes. See the XXX comment
@@ -54,7 +57,7 @@
 %-----------------------------------------------------------------------------%
 
     % Fill in the goal path slots in the given procedure.
-    % This predicate is here ONLY to support the RBMM and GTGC modules,
+    % This predicate is here ONLY to support the RBMM and CTGC modules,
     % which are hard to transition to make use of goal_ids instead.
     % All new code should instead use the predicates above that fill in
     % the goal_id slots.
