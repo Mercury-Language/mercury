@@ -50,31 +50,107 @@
 
 :- func var_and_maybe_csa_to_var(var_and_maybe_csa) = prog_var.
 
-%--------------------%
+%---------------------%
 
+    % These two types together describe a two-stage map from a type
+    % to the type_info describing that type. The two stages specify
+    %
+    % - the type_ctor of the type, and
+    % - its argument types.
+    %
+    % The type_info will in general be a heap cell consisting of
+    %
+    % - a pointer to the statically allocated type_ctor_info for
+    %   the type_ctor (which will contain the arity, amongs other things), and
+    % - the type_info for each argument type.
+    %
+    % (The in-general part is there because for zero-arity type_ctors,
+    % we do not allocate a heap cell.)
+    %
+    % The result of the two-stage map will be the program variable
+    % holding the type_info, and, if the type contains no type variables,
+    % then also a reference to the constant form of the type_info.
+    %
 :- type type_to_type_info_map ==
     map(type_ctor, type_ctor_to_type_info_map).
 :- type type_ctor_to_type_info_map ==
     map(list(mer_type), var_and_maybe_csa).
 
-:- type typeclass_info_map ==
-    map(class_name, typeclass_info_class_map).
-:- type typeclass_info_class_map ==
-    map(list(mer_type), typeclass_info_map_entry).
-:- type typeclass_info_map_entry
-    --->    typeclass_info_map_entry(
-                % The cons_id representing the base_typeclass_info.
-                cons_id,
+%---------------------%
 
-                % Maps the arguments of the typeclass_info_cell_constructor
-                % after the base_typeclass_info to the variable that holds the
-                % typeclass_info for that cell.
-                tci_args_map
-            ).
+    % These three types together describe a three-stage map from a typeclass
+    % constraint to the to the typeclass_info describing that type.
+    % The first two stages specify
+    %
+    % - the class_id of the typeclass constraint, and
+    % - its argument types.
+    %
+    % The third stage is needed because the general form of a typeclass_info
+    % does NOT consist of just
+    %
+    % - a pointer to the statically allocated base_typeclass_info for
+    %   the typeclass, and
+    % - the type_info for each type,
+    %
+    % but also has two kinds of differences.
+    %
+    % The first difference is that a typeclass_info  also contains references
+    % to other typeclass_infos (both from the context of the relevant
+    % instance declaration, and for the applicable superclasses).
+    %
+    % Part of the second difference is that a typeclass_info contains
+    % type_infos not for the argument types of the class, but for the types
+    % occurring in the instance declaration, which may be different.
+    % The rest of the second difference is that the place of these type_infos
+    % in the typeclass_info depends on whether the type variables that
+    % they represent are constrained or not.
+    %
+    % This is why the third stage map specifies exactly the second-and-later
+    % arguments of the typeclass_info_cell_constructor in a typeclass info cell
+    % (the base_typeclass_info arg is always the first). In general, some
+    % of these arguments will be type_infos, and some will be typeclass_infos.
+    % Each argument may be a constant, or a variable.
+    %
+    % The result of the three-stage map will be the program variable
+    % holding the typeclass_info, and, if all the arguments are constants,
+    % then also a reference to the constant form of the typeclass_info.
+    %
+    % XXX I (zs) am not sure whether the second stage of the three-stage map
+    % is actually required (the first and third stages should suffice),
+    % though I am pretty sure that including them made the initial
+    % implementation of the relevant code much easier to debug.
+    %
+    % On the other hand, it may be that the key to the second stage
+    % (the list of the class name's argument types) uniquely determines
+    % the key to the third stage, making the third stage redundant.
+    % (The code that computes the list of const_or_var_args is so long
+    % that answering that question is not at all easy.)
+    %
+    % XXX We should consider replacing the key type of the tci_args_map
+    % with a structure containing not one but FOUR lists of const_or_var_args.
+    % At the moment, make_typeclass_info_from_proof_instance computes
+    % the one list like this:
+    %
+    %   ArgVarsMCAs = ArgUnconstrainedTypeInfoVarsMCAs ++
+    %       ArgTypeClassInfoVarsMCAs ++
+    %       ArgSuperClassVarsMCAs ++ ArgTypeInfoVarsMCAs,
+    %
+    % Instead of ArgVarsMCAs, we could store its four components.
+    % This should make it easier to debug any future changeover
+    % to the design documented in runtime/mercury_typeclass_info.h.
+    %
+:- type class_to_typeclass_info_map ==
+    map(class_id, class_id_to_typeclass_info_map).
+:- type class_id_to_typeclass_info_map ==
+    map(list(mer_type), tci_args_map).
 :- type tci_args_map ==
     map(list(const_or_var_arg), var_and_maybe_csa).
 
+%---------------------%
+
 :- type int_const_map == map(int, prog_var).
+
+%---------------------%
 
     % If the value that can be a constant structure argument is currently
     % available in a variable, give the id of that variable.
@@ -85,17 +161,17 @@
 
 :- type poly_info.
 
-    % Init_poly_info initializes a poly_info from a pred_info and clauses_info.
+    % This predicate initializes a poly_info from a pred_info and clauses_info.
     % (See also create_poly_info.)
     %
 :- pred init_poly_info(module_info::in, pred_info::in, clauses_info::in,
     poly_info::out) is det.
 
-    % Extract some fields from a pred_info and proc_info and use them to
-    % create a poly_info, for use by the polymorphism transformation.
+    % Extract some fields from a pred_info and proc_info, and use them
+    % to create a poly_info, for use by the polymorphism transformation.
     %
-:- pred create_poly_info(module_info::in, pred_info::in,
-    proc_info::in, poly_info::out) is det.
+:- pred create_poly_info(module_info::in, pred_info::in, proc_info::in,
+    poly_info::out) is det.
 
     % Update the fields in a pred_info and proc_info with
     % the values in a poly_info.
@@ -126,8 +202,8 @@
     constraint_map::out) is det.
 :- pred poly_info_get_type_to_type_info_map(poly_info::in,
     type_to_type_info_map::out) is det.
-:- pred poly_info_get_typeclass_info_map(poly_info::in,
-    typeclass_info_map::out) is det.
+:- pred poly_info_get_class_to_typeclass_info_map(poly_info::in,
+    class_to_typeclass_info_map::out) is det.
 :- pred poly_info_get_int_const_map(poly_info::in,
     int_const_map::out) is det.
 :- pred poly_info_get_const_struct_var_map(poly_info::in,
@@ -155,7 +231,8 @@
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_type_to_type_info_map(type_to_type_info_map::in,
     poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_typeclass_info_map(typeclass_info_map::in,
+:- pred poly_info_set_class_to_typeclass_info_map(
+    class_to_typeclass_info_map::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_int_const_map(int_const_map::in,
     poly_info::in, poly_info::out) is det.
@@ -174,11 +251,11 @@
 
 :- type cache_maps
     --->    cache_maps(
-                cm_snapshot_num             :: int,
-                cm_type_to_type_info_map    :: type_to_type_info_map,
-                cm_typeclass_info_map       :: typeclass_info_map,
-                cm_int_const_map            :: int_const_map,
-                cm_const_struct_var_map     :: const_struct_var_map
+                cm_snapshot_num                 :: int,
+                cm_type_to_type_info_map        :: type_to_type_info_map,
+                cm_class_to_typeclass_info_map  :: class_to_typeclass_info_map,
+                cm_int_const_map                :: int_const_map,
+                cm_const_struct_var_map         :: const_struct_var_map
             ).
 
 :- pred get_cache_maps_snapshot(string::in, cache_maps::out,
@@ -288,7 +365,7 @@ var_and_maybe_csa_to_var(var_and_maybe_csa(V, _)) = V.
                 % fourth map. The integers are in the third map.
                 % The fourth map also caches typeclass_infos for instance ids.
                 poly_type_to_type_info_map  :: type_to_type_info_map,
-                poly_typeclass_info_map     :: typeclass_info_map,
+                poly_class_to_typeclass_info_map:: class_to_typeclass_info_map,
                 poly_int_const_map          :: int_const_map,
                 poly_const_struct_var_map   :: const_struct_var_map,
                 poly_num_reuses             :: int,
@@ -388,7 +465,7 @@ poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
 :- pragma inline(pred(poly_info_get_proof_map/2)).
 :- pragma inline(pred(poly_info_get_constraint_map/2)).
 :- pragma inline(pred(poly_info_get_type_to_type_info_map/2)).
-:- pragma inline(pred(poly_info_get_typeclass_info_map/2)).
+:- pragma inline(pred(poly_info_get_class_to_typeclass_info_map/2)).
 :- pragma inline(pred(poly_info_get_const_struct_var_map/2)).
 :- pragma inline(pred(poly_info_get_int_const_map/2)).
 :- pragma inline(pred(poly_info_get_num_reuses/2)).
@@ -411,8 +488,8 @@ poly_info_get_constraint_map(PI, X) :-
     X = PI ^ poly_constraint_map.
 poly_info_get_type_to_type_info_map(PI, X) :-
     X = PI ^ poly_type_to_type_info_map.
-poly_info_get_typeclass_info_map(PI, X) :-
-    X = PI ^ poly_typeclass_info_map.
+poly_info_get_class_to_typeclass_info_map(PI, X) :-
+    X = PI ^ poly_class_to_typeclass_info_map.
 poly_info_get_int_const_map(PI, X) :-
     X = PI ^ poly_int_const_map.
 poly_info_get_const_struct_var_map(PI, X) :-
@@ -434,7 +511,7 @@ poly_info_get_errors(PI, X) :-
 :- pragma inline(pred(poly_info_set_typevarset/3)).
 :- pragma inline(pred(poly_info_set_proof_map/3)).
 :- pragma inline(pred(poly_info_set_type_to_type_info_map/3)).
-:- pragma inline(pred(poly_info_set_typeclass_info_map/3)).
+:- pragma inline(pred(poly_info_set_class_to_typeclass_info_map/3)).
 :- pragma inline(pred(poly_info_set_int_const_map/3)).
 :- pragma inline(pred(poly_info_set_const_struct_var_map/3)).
 :- pragma inline(pred(poly_info_set_num_reuses/3)).
@@ -462,16 +539,21 @@ poly_info_set_proof_map(X, !PI) :-
         !PI ^ poly_proof_map := X
     ).
 poly_info_set_type_to_type_info_map(X, !PI) :-
-    ( if private_builtin.pointer_equal(X, !.PI ^ poly_type_to_type_info_map) then
+    ( if
+        private_builtin.pointer_equal(X, !.PI ^ poly_type_to_type_info_map)
+    then
         true
     else
         !PI ^ poly_type_to_type_info_map := X
     ).
-poly_info_set_typeclass_info_map(X, !PI) :-
-    ( if private_builtin.pointer_equal(X, !.PI ^ poly_typeclass_info_map) then
+poly_info_set_class_to_typeclass_info_map(X, !PI) :-
+    ( if
+        private_builtin.pointer_equal(X,
+            !.PI ^ poly_class_to_typeclass_info_map)
+    then
         true
     else
-        !PI ^ poly_typeclass_info_map := X
+        !PI ^ poly_class_to_typeclass_info_map := X
     ).
 poly_info_set_int_const_map(X, !PI) :-
     ( if private_builtin.pointer_equal(X, !.PI ^ poly_int_const_map) then
@@ -515,7 +597,7 @@ poly_info_set_errors(X, !PI) :-
 %  6     14812      3980      4058  49.515% proof_map
 %  7   3030093         0         0          constraint_map
 %  8    811687    776589    288951  72.882% type_to_type_info_map
-%  9    385071    863384      6104  99.298% typeclass_info_map
+%  9    385071    863384      6104  99.298% class_to_typeclass_info_map
 % 10    385706    863310      8464  99.029% int_const_map
 % 11    253310    331092     41528  88.855% num_reuses
 % 12   2559364     25821     15631  62.291% const_struct_db
@@ -626,7 +708,7 @@ poly_info_set_errors(X, !PI) :-
 
 get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
     poly_info_get_type_to_type_info_map(!.Info, TypeInfoVarMap),
-    poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap),
+    poly_info_get_class_to_typeclass_info_map(!.Info, TypeClassInfoMap),
     poly_info_get_int_const_map(!.Info, IntConstMap),
     poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap),
 
@@ -662,7 +744,7 @@ set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
         private_builtin.pointer_equal(TypeInfoVarMap,
             !.Info ^ poly_type_to_type_info_map),
         private_builtin.pointer_equal(TypeClassInfoMap,
-            !.Info ^ poly_typeclass_info_map),
+            !.Info ^ poly_class_to_typeclass_info_map),
         private_builtin.pointer_equal(IntConstMap,
             !.Info ^ poly_int_const_map),
         private_builtin.pointer_equal(ConstStructVarMap,
@@ -672,7 +754,7 @@ set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
     else
         !:Info = ((((!.Info
             ^ poly_type_to_type_info_map := TypeInfoVarMap)
-            ^ poly_typeclass_info_map := TypeClassInfoMap)
+            ^ poly_class_to_typeclass_info_map := TypeClassInfoMap)
             ^ poly_int_const_map := IntConstMap)
             ^ poly_const_struct_var_map := ConstStructVarMap)
     ),
@@ -696,9 +778,10 @@ set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
 
             io.format(Stream, "%stype_to_type_info_map ", [s(IndentStr)], !IO),
             io.write_line(Stream, CacheMaps ^ cm_type_to_type_info_map, !IO),
-            io.format(Stream, "%stypeclass_info_map ",
+            io.format(Stream, "%sclass_to_typeclass_info_map ",
                 [s(IndentStr)], !IO),
-            io.write_line(Stream, CacheMaps ^ cm_typeclass_info_map, !IO),
+            io.write_line(Stream, CacheMaps ^ cm_class_to_typeclass_info_map,
+                !IO),
             io.format(Stream, "%sstruct_var_map ", [s(IndentStr)], !IO),
             io.write_line(Stream,
                 CacheMaps ^ cm_const_struct_var_map, !IO),
@@ -710,7 +793,7 @@ set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
 
 empty_cache_maps(!Info) :-
     poly_info_set_type_to_type_info_map(map.init, !Info),
-    poly_info_set_typeclass_info_map(map.init, !Info),
+    poly_info_set_class_to_typeclass_info_map(map.init, !Info),
     poly_info_set_int_const_map(map.init, !Info),
     poly_info_set_const_struct_var_map(map.init, !Info).
 
@@ -759,9 +842,10 @@ set_var_maps_snapshot(Name, VarMaps, !Info) :-
             io.format(Stream, "%stype_to_type_info_map ",
                 [s(IndentStr)], !IO),
             io.write_line(Stream, CacheMaps ^ cm_type_to_type_info_map, !IO),
-            io.format(Stream, "%stypeclass_info_map ",
+            io.format(Stream, "%sclass_to_typeclass_info_map ",
                 [s(IndentStr)], !IO),
-            io.write_line(Stream, CacheMaps ^ cm_typeclass_info_map, !IO),
+            io.write_line(Stream, CacheMaps ^ cm_class_to_typeclass_info_map,
+                !IO),
             io.format(Stream, "%sstruct_var_map ", [s(IndentStr)], !IO),
             io.write_line(Stream,
                 CacheMaps ^ cm_const_struct_var_map, !IO),
