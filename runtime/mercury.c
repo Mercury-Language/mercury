@@ -127,6 +127,6 @@ MR_OUTLINE_DEFN(
 
 #endif // MR_BOXED_INT64S && !MR_GNUC
 
-#endif // ! MR_HIGHLEVEL_CODE
+#endif // MR_HIGHLEVEL_CODE
 
 ////////////////////////////////////////////////////////////////////////////

@@ -62,7 +62,6 @@
   #include <sys/ucontext.h>
 #endif
 
-#include "mercury_imp.h"
 #include "mercury_trace_base.h"
 #include "mercury_memory_handlers.h"
 
@@ -122,7 +121,7 @@ MR_init_memory(void)
 
     already_initialized = MR_TRUE;
 
-    // Convert all the sizes are from kilobytes to bytes and make sure
+    // Convert all the sizes from kilobytes to bytes and make sure
     // (a) they are multiples of the page size, and (b) at least as big
     // as the cache size.
 

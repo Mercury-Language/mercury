@@ -9,7 +9,7 @@
 // used by C code that wishes to interface to Mercury.
 //
 // It also declares some stuff that is used in the automatically
-// generate *_init.c files.
+// generated *_init.c files.
 
 #ifndef MERCURY_INIT_H
 #define MERCURY_INIT_H
@@ -55,7 +55,7 @@ extern  void    mercury_call_main(void);
 // mercury_terminate() is defined in the <module>_init.c file.
 // It just calls mercury_runtime_terminate(), which performs
 // any necessary cleanup, and then returns the appropriate
-// exit status as set by io__set_exit_status.
+// exit status as set by io.set_exit_status.
 
 extern  int     mercury_terminate(void);
 

@@ -102,7 +102,7 @@
 // The chain of stack frames, used for accurate GC.
 //
 // Any changes to this struct may require changes to compiler/ml_elim_nested.m,
-// which generates structs that whose initial members have to match the layout
+// which generates structs whose initial members have to match the layout
 // here, and which assumes that the `prev' is at offset zero.
 
 struct MR_StackChain {
@@ -145,7 +145,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
 ////////////////////////////////////////////////////////////////////////////
 // Macros and inline function definitions.
 
-// These macros expand to the either the standard setjmp()/longjmp()
+// These macros expand to either the standard setjmp()/longjmp()
 // or to the GNU __builtin_setjmp() and __builtin_longjmp().
 // The GNU versions are the same as the standard versions,
 // except that they are more efficient, and that they have two restrictions:
@@ -302,7 +302,7 @@ extern  MR_Word mercury__private_builtin__dummy_var;
 
 ////////////////////////////////////////////////////////////////////////////
 // Code to box/unbox 64-bit integers in high-level C grades.
-// The low-level C grades only use MR_{int64,uint64)_to_word and
+// The low-level C grades only use MR_{int64,uint64}_to_word and
 // MR_word_to_{int64,uint64}.
 //
 // This code is not in mercury_int.h because the function definition
