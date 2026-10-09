@@ -27,7 +27,7 @@
         MR_BackJumpChoiceId MR_backjump_next_choice_id = 0;
 
     #endif // not MR_THREAD_SAFE
-#endif // not MR_HIGHLEVEL_CODE
+#endif // MR_HIGHLEVEL_CODE
 
 #if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
 
@@ -44,6 +44,6 @@ MR_get_tl_backjump_next_choice_id(void)
     return new_choice_id;
 }
 
-#endif // MR_HIGLEVEL_CODE && MR_THREAD_SAFE
+#endif // MR_HIGHLEVEL_CODE && MR_THREAD_SAFE
 
 ////////////////////////////////////////////////////////////////////////////
