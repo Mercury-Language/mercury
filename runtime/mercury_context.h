@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2020 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2020, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_context.h - defines Mercury multithreading stuff.
@@ -71,7 +71,7 @@
 // while the rest are accessed via MR_eng_this_context (which requires
 // following an extra pointer). Note that some fields are further cached
 // in abstract machine registers, and some in fact are only ever accessed
-// via these abstract machine registers. The saved copies of some these
+// via these abstract machine registers. The saved copies of some of these
 // abstract machine registers are kept not in the named fields below, but in
 // the engine's fake reg array.
 //
@@ -261,8 +261,8 @@ struct MR_Spark_Struct {
     ((CACHE_LINE_SIZE) > (s) ? (CACHE_LINE_SIZE) - (s) : 0)
 
 struct MR_SparkDeque_Struct {
-    // The top index is modified by thiefs; the other fields are modified by
-    // the owner. Therefore we pad out the structure to reduce false
+    // The top index is modified by thieves; the other fields are modified by
+    // the owner. Therefore, we pad out the structure to reduce false
     // sharing.
 
     volatile MR_Integer     MR_sd_top;
@@ -271,7 +271,7 @@ struct MR_SparkDeque_Struct {
     volatile MR_Integer     MR_sd_bottom;
     volatile MR_SparkArray  *MR_sd_active_array;
 };
-#endif  // !MR_LL_PARALLEL_CONJ
+#endif  // MR_LL_PARALLEL_CONJ
 
 struct MR_Context_Struct {
     const char          *MR_ctxt_id;
@@ -420,7 +420,7 @@ extern  MR_PendingContext   *MR_pending_contexts;
   // be initialised by code in mercury_thread.c.
 
   extern MR_SparkDeque          **MR_spark_deques;
-#endif  // !MR_LL_PARALLEL_CONJ
+#endif  // MR_LL_PARALLEL_CONJ
 
 ////////////////////////////////////////////////////////////////////////////
 
