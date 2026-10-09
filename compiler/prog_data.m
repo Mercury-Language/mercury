@@ -1834,7 +1834,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     %
     % XXX When we are printing variable names for developers in HLDS dumps,
     % there are no constraints on which of these values we want choose.
-    % But in two other uses cases, there are restrictions.
+    % But in two other use cases, there ARE restrictions.
     %
     % The first and more obvious such use case is when we are printing
     % error messages for users. Since users can't be expected to care about
@@ -2060,7 +2060,10 @@ valid_trace_grade_name(GradeName) :-
     %
     % We should replace this single equivalence type with three separate
     % notag types, one for each of these kinds of arities, and all uses
-    % of the plain just "arity" type should be replaced by these.
+    % of the plain just "arity" type for predicates and functions
+    % should be replaced by these. (The arity type itself is fine
+    % for entities such as type_ctors, inst_ctors and mode_ctors, since
+    % these do not have the same issues as pred_infos do.)
     % The user_arity and pred_form_arity types below are a start on this.
     %
     % XXX ARITY We should eventually replace these ints with uint16, since
@@ -2091,12 +2094,6 @@ valid_trace_grade_name(GradeName) :-
 :- type need_qualifier
     --->    must_be_qualified
     ;       may_be_unqualified.
-
-    % Does a module contain the predicate main/2?
-    %
-:- type has_main
-    --->    has_main
-    ;       no_main.
 
 %---------------------------------------------------------------------------%
 
