@@ -4,7 +4,7 @@
 // Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// mercury_deepcopy.h - declares the MR_deep_copy() function.
+// mercury_deep_copy.h - declares the MR_deep_copy() function.
 
 #ifndef MERCURY_DEEP_COPY_H
 #define MERCURY_DEEP_COPY_H
