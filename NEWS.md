@@ -795,6 +795,7 @@ Changes to the Mercury standard library
 
 * The following predicates and functions have been added:
 
+    - func `common_subset_list/1`
     - pred `is_non_empty/1`
     - pred `max_key/2`
     - pred `min_key/2`

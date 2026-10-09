@@ -1,0 +1,66 @@
+-----------------------------------
+
+TEST 0: 0 input maps
+
+-----------------------------------
+
+TEST 1: 1 input maps
+["0zero" - 0, "1one" - 1, "2two" - 2, "3three" - 3, "4four" - 4, "5five" - 5, "6six" - 6, "7seven" - 7]
+
+common_subset_list
+["0zero" - 0, "1one" - 1, "2two" - 2, "3three" - 3, "4four" - 4, "5five" - 5, "6six" - 6, "7seven" - 7]
+
+intersect_list
+["0zero" - 0, "1one" - 1, "2two" - 2, "3three" - 3, "4four" - 4, "5five" - 5, "6six" - 6, "7seven" - 7]
+
+union_list
+["0zero" - 0, "1one" - 1, "2two" - 2, "3three" - 3, "4four" - 4, "5five" - 5, "6six" - 6, "7seven" - 7]
+
+-----------------------------------
+
+TEST 2: 2 input maps
+["0zero" - 0, "1one" - 1, "2two" - 2, "3three" - 3, "4four" - 4, "5five" - 5, "6six" - 6, "7seven" - 7]
+["0zero" - 0, "1oneX" - 1, "2two" - 2, "3threeX" - 3, "4four" - 4, "5five" - 50, "6six" - 60, "7seven" - 7]
+
+common_subset_list
+["0zero" - 0, "2two" - 2, "4four" - 4, "7seven" - 7]
+
+intersect_list
+["0zero" - 0, "2two" - 4, "4four" - 8, "5five" - 55, "6six" - 66, "7seven" - 14]
+
+union_list
+["0zero" - 0, "1one" - 1, "1oneX" - 1, "2two" - 4, "3three" - 3, "3threeX" - 3, "4four" - 8, "5five" - 55, "6six" - 66, "7seven" - 14]
+
+-----------------------------------
+
+TEST 3: 3 input maps
+["0zero" - 0, "1one" - 1, "2two" - 2, "3three" - 3, "4four" - 4, "5five" - 5, "6six" - 6, "7seven" - 7]
+["0zero" - 0, "1oneX" - 1, "2two" - 2, "3threeX" - 3, "4four" - 4, "5five" - 50, "6six" - 60, "7seven" - 7]
+["0zero" - 0, "1oneX" - 100, "2two" - 200, "3threeX" - 300, "4fourX" - 400, "5five" - 500, "6six" - 600, "7seven" - 7]
+
+common_subset_list
+["0zero" - 0, "7seven" - 7]
+
+intersect_list
+["0zero" - 0, "2two" - 204, "5five" - 555, "6six" - 666, "7seven" - 21]
+
+union_list
+["0zero" - 0, "1one" - 1, "1oneX" - 101, "2two" - 204, "3three" - 3, "3threeX" - 303, "4four" - 8, "4fourX" - 400, "5five" - 555, "6six" - 666, "7seven" - 21]
+
+-----------------------------------
+
+TEST 4: 4 input maps
+["0zero" - 0, "1one" - 1, "2two" - 2, "3three" - 3, "4four" - 4, "5five" - 5, "6six" - 6, "7seven" - 7]
+["0zero" - 0, "1oneX" - 1, "2two" - 2, "3threeX" - 3, "4four" - 4, "5five" - 50, "6six" - 60, "7seven" - 7]
+["0zero" - 0, "1oneX" - 100, "2two" - 200, "3threeX" - 300, "4fourX" - 400, "5five" - 500, "6six" - 600, "7seven" - 7]
+["0zero" - 0, "1oneX" - 100, "2two" - 2000, "3threeX" - 3000, "4fourX" - 400, "5fiveX" - 5000, "6six" - 6000, "7seven" - 7]
+
+common_subset_list
+["0zero" - 0, "7seven" - 7]
+
+intersect_list
+["0zero" - 0, "2two" - 2204, "6six" - 6666, "7seven" - 28]
+
+union_list
+["0zero" - 0, "1one" - 1, "1oneX" - 201, "2two" - 2204, "3three" - 3, "3threeX" - 3303, "4four" - 8, "4fourX" - 800, "5five" - 555, "5fiveX" - 5000, "6six" - 6666, "7seven" - 28]
+

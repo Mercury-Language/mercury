@@ -501,6 +501,14 @@
     %
 :- func common_subset(map(K, V), map(K, V)) = map(K, V).
 
+    % Given a list of maps, compute the map that contains the set of
+    % key-value pairs that occur in every map in the list. If the input
+    % is an empty list of maps, this will mean returning an empty map.
+    %
+:- func common_subset_list(list(map(K, V))) = map(K, V).
+
+%---------------------%
+
     % Given two maps MapA and MapB, create a third map, IntersectMap,
     % that has only the keys that occur in both MapA and MapB. For keys
     % that occur in both MapA and MapB, compute the value in the final map
@@ -1990,6 +1998,67 @@ common_subset_loop(ListA, ListB, !RevCommonList) :-
             R = (>),
             % KeyB has no match in ListA.
             map.common_subset_loop(ListA, TailB, !RevCommonList)
+        )
+    ).
+
+common_subset_list(Maps) = Common :-
+    (
+        Maps = [],
+        map.init(Common)
+    ;
+        Maps = [HeadMap | TailMaps],
+        map.to_sorted_assoc_list(HeadMap, HeadAL),
+        list.map(map.to_sorted_assoc_list, TailMaps, TailALs),
+        map.common_subset_list_passes(HeadAL, TailALs, CommonAL),
+        map.from_sorted_assoc_list(CommonAL, Common)
+    ).
+
+:- pred common_subset_list_passes(assoc_list(K, V)::in,
+    list(assoc_list(K, V))::in, assoc_list(K, V)::out) is det.
+
+common_subset_list_passes(HeadAL, TailALs, CommonAL) :-
+    (
+        TailALs = [],
+        CommonAL = HeadAL
+    ;
+        TailALs = [_ | _],
+        map.common_subset_list_pass(HeadAL, TailALs, FirstAL, LaterALs),
+        map.common_subset_list_passes(FirstAL, LaterALs, CommonAL)
+    ).
+
+    % If the list [HeadAL | TailALs] has 2k sorted association
+    % lists (representing 2k maps), then reduce these to k sorted association
+    % lists by intersecting assoc list 2i with assoc list 2i+1 for all i
+    % in 0..(k-1). If it has 2k+1 sorted association lists, intersect
+    % the first 2k as above, and add the last to the end of the list as is,
+    % without intersecting it with anything.
+    %
+    % If the input has N assoc lists, the output will have ceil(N/2) assoc
+    % lists. If invoked with two or more lists, the output will always have
+    % fewer assoc lists than the input. This will always be the case, since
+    % our caller does not call us when N<2.
+    %
+:- pred common_subset_list_pass(
+    assoc_list(K, V)::in, list(assoc_list(K, V))::in,
+    assoc_list(K, V)::out, list(assoc_list(K, V))::out) is det.
+
+common_subset_list_pass(HeadAL, TailALs, FirstAL, LaterALs) :-
+    (
+        TailALs = [],
+        FirstAL = HeadAL,
+        LaterALs = []
+    ;
+        TailALs = [HeadTailAL | TailTailALs],
+        map.common_subset_loop(HeadAL, HeadTailAL, [], RevFirstAL),
+        list.reverse(RevFirstAL, FirstAL),
+        (
+            TailTailALs = [],
+            LaterALs = []
+        ;
+            TailTailALs = [HeadTailTailAL | TailTailTailALs],
+            map.common_subset_list_pass(HeadTailTailAL, TailTailTailALs,
+                HeadLaterAL, TailLaterALs),
+            LaterALs = [HeadLaterAL | TailLaterALs]
         )
     ).
 
