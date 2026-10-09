@@ -61,7 +61,7 @@
     % The type_info will in general be a heap cell consisting of
     %
     % - a pointer to the statically allocated type_ctor_info for
-    %   the type_ctor (which will contain the arity, amongs other things), and
+    %   the type_ctor (which will contain the arity, amongst other things), and
     % - the type_info for each argument type.
     %
     % (The in-general part is there because for zero-arity type_ctors,
@@ -79,7 +79,7 @@
 %---------------------%
 
     % These three types together describe a three-stage map from a typeclass
-    % constraint to the to the typeclass_info describing that type.
+    % constraint to the typeclass_info describing that constraint.
     % The first two stages specify
     %
     % - the class_id of the typeclass constraint, and
@@ -99,8 +99,8 @@
     % instance declaration, and for the applicable superclasses).
     %
     % Part of the second difference is that a typeclass_info contains
-    % type_infos not for the argument types of the class, but for the types
-    % occurring in the instance declaration, which may be different.
+    % type_infos not only for the argument types of the class, but also for
+    % the types occurring in the instance declaration, which may be different.
     % The rest of the second difference is that the place of these type_infos
     % in the typeclass_info depends on whether the type variables that
     % they represent are constrained or not.
@@ -245,6 +245,9 @@
 :- pred poly_info_set_must_requantify(
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_errors(list(diag_spec)::in,
+    poly_info::in, poly_info::out) is det.
+
+:- pred poly_info_incr_num_reuses(int::in,
     poly_info::in, poly_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -613,6 +616,11 @@ poly_info_set_must_requantify(!PI) :-
     !PI ^ poly_must_requantify := must_requantify.
 poly_info_set_errors(X, !PI) :-
     !PI ^ poly_errors := X.
+
+poly_info_incr_num_reuses(Incr, !PI) :-
+    NumReuses0 = !.PI ^ poly_num_reuses,
+    NumReuses = NumReuses0 + Incr,
+    !PI ^ poly_num_reuses := NumReuses.
 
 %  i      read      same      diff   same%
 %  0   6245285         0   1560789   0.000% varset

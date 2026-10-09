@@ -258,7 +258,6 @@
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.set_of_var.
 
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -367,8 +366,7 @@ polymorphism_make_type_info(Context, Type, TypeCtor, TypeArgs,
         map.search(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap0),
         map.search(TypeCtorVarMap0, TypeArgs, OldTypeInfoVarMCA)
     then
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
+        poly_info_incr_num_reuses(1, !Info),
         TypeInfoVarMCA = OldTypeInfoVarMCA,
         ExtraGoals = []
     else
@@ -425,8 +423,7 @@ polymorphism_construct_type_info(Context, Type, TypeCtor, ArgTypes,
     ( if
         map.search(ConstStructVarMap0, TypeCtorConsIdConstArg, OldTypeCtorVar)
     then
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
+        poly_info_incr_num_reuses(1, !Info),
         TypeCtorVar = OldTypeCtorVar,
         TypeCtorGoals = []
     else

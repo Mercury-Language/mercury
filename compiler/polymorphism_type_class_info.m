@@ -383,62 +383,72 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
 
 make_typeclass_info_from_proof_instance(ExistQVars, Context,
         ConstInstanceId, TypeClassInfoVarMCA, Goals, !Info) :-
-    poly_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_instance_table(ModuleInfo, InstanceTable),
-    poly_info_get_typevarset(!.Info, TypeVarSet),
-    poly_info_get_proof_map(!.Info, ProofMap0),
-
     ConstInstanceId = ciid(InstanceNum, Constraint, Seen),
     Constraint = constraint(ClassSymName, ClassArgTypes),
-
     list.length(ClassArgTypes, ClassArity),
     ClassId = class_id(ClassSymName, ClassArity),
 
+    poly_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.lookup(InstanceTable, ClassId, InstanceList),
     list.det_index1(InstanceList, InstanceNum, ProofInstanceDefn),
-
-    ProofInstanceDefn = hlds_instance_defn(_, _, InstanceTVarset,
-        _, InstanceTypes, InstanceConstraints, _, InstanceProofMap, _, _, _),
-
-    % XXX kind inference:
-    % we assume all tvars have kind `star'.
-    map.init(KindMap),
-
-    type_vars_in_types(InstanceTypes, InstanceTVars),
-    get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
-        UnconstrainedTVars),
-
-    % We can ignore the new typevarset because all the type variables
-    % in the instance constraints and superclass proofs must appear in
-    % the arguments of the instance, and all such variables are bound
-    % when we call type_list_subsumes then apply the resulting bindings.
-    tvarset_merge_renaming(TypeVarSet, InstanceTVarset, _NewTVarset, Renaming),
-    apply_renaming_to_types(Renaming, InstanceTypes, RenamedInstanceTypes),
-    type_list_subsumes_det(RenamedInstanceTypes, ClassArgTypes, InstanceSubst),
-    apply_renaming_to_prog_constraints(Renaming,
-        InstanceConstraints, RenamedInstanceConstraints),
-    apply_rec_subst_to_prog_constraints(InstanceSubst,
-        RenamedInstanceConstraints, ActualInstanceConstraints0),
-    % XXX document diamond as guess
-    % XXX does anyone know what the preceding line means?
-    list.delete_elems(ActualInstanceConstraints0, Seen,
-        ActualInstanceConstraints),
-    apply_renaming_to_constraint_proof_map(Renaming,
-        InstanceProofMap, RenamedInstanceProofMap),
-    apply_rec_subst_to_constraint_proof_map(InstanceSubst,
-        RenamedInstanceProofMap, ActualInstanceProofMap),
-
-    apply_renaming_to_tvars(Renaming,
-        UnconstrainedTVars, RenamedUnconstrainedTVars),
-    apply_renaming_to_tvar_kind_map(Renaming, KindMap, RenamedKindMap),
-    apply_rec_subst_to_tvars(RenamedKindMap, InstanceSubst,
-        RenamedUnconstrainedTVars, ActualUnconstrainedTypes),
-
-    map.overlay(ProofMap0, ActualInstanceProofMap, ProofMap),
+    compute_actual_proof_instance_details(!.Info, Seen,
+        ClassArgTypes, ProofInstanceDefn,
+        ActualInstanceConstraints, ActualUnconstrainedTypes, ProofMap),
 
     get_var_maps_snapshot("make_typeclass_info_from_proof_instance",
         InitialVarMapsSnapshot, !Info),
 
+    compute_typeclass_info_args(ClassId, ClassArgTypes, ExistQVars, Context,
+        Seen, ActualInstanceConstraints, ActualUnconstrainedTypes, ProofMap,
+        ArgVarsMCAs, PrevGoals, !Info),
+    list.map(make_const_or_var_arg, ArgVarsMCAs, ArgCOVAs),
+
+    poly_info_get_class_to_typeclass_info_map(!.Info, TypeClassInfoMap0),
+    ( if
+        map.search(TypeClassInfoMap0, ClassId, ClassIdMap0),
+        map.search(ClassIdMap0, ClassArgTypes, ArgsMap0),
+        map.search(ArgsMap0, ArgCOVAs, OldTypeClassInfoVarMCA0)
+    then
+        TypeClassInfoVarMCA = OldTypeClassInfoVarMCA0,
+        Goals = [],
+        set_var_maps_snapshot("make_typeclass_info",
+            InitialVarMapsSnapshot, !Info),
+        poly_info_incr_num_reuses(2, !Info),
+        TypeClassInfoVarMCA =
+            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCA),
+        log_constructed_typeclass_info_var("instance recorded",
+            dump_all_tables, -1, Constraint,
+            TypeClassInfoVar, TypeClassInfoMCA, no, !Info)
+    else
+        InstanceTypes = ProofInstanceDefn ^ instdefn_types,
+        get_base_typeclass_info_cons_id(!.Info, ClassId, InstanceNum,
+            ProofInstanceDefn, InstanceTypes, BaseConsId),
+        materialize_base_typeclass_info_var(Context, Constraint, BaseConsId,
+            BaseVar, BaseGoals, !Info),
+        construct_typeclass_info(Context, Constraint,
+            BaseVar, BaseConsId, ArgVarsMCAs,
+            InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
+            BaseGoals ++ PrevGoals, Goals, !Info),
+        TypeClassInfoVarMCA =
+            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCA),
+        update_class_to_typeclass_info_map(ClassId, ClassArgTypes, ArgCOVAs,
+            TypeClassInfoVarMCA, !Info),
+        log_constructed_typeclass_info_var("instance computed",
+            dump_all_tables, -1, Constraint,
+            TypeClassInfoVar, TypeClassInfoMCA, yes(BaseConsId), !Info)
+    ),
+    record_instance_if_constant(ConstInstanceId, TypeClassInfoVarMCA, !Info).
+
+:- pred compute_typeclass_info_args(class_id::in, list(mer_type)::in,
+    existq_tvars::in, prog_context::in, list(prog_constraint)::in,
+    list(prog_constraint)::in, list(mer_type)::in, constraint_proof_map::in,
+    list(var_and_maybe_csa)::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+compute_typeclass_info_args(ClassId, ClassArgTypes, ExistQVars, Context, Seen,
+        ActualInstanceConstraints, ActualUnconstrainedTypes, ProofMap,
+        ArgVarsMCAs, PrevGoals, !Info) :-
     % Make the type_infos for the types that are constrained by this.
     % These are packaged in the typeclass_info.
     polymorphism_do_make_type_info_vars(Context, ClassArgTypes,
@@ -455,8 +465,7 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
     polymorphism_do_make_type_info_vars(Context, ActualUnconstrainedTypes,
         ArgUnconstrainedTypeInfoVarsMCAs, UnconstrainedTypeInfoGoals, !Info),
 
-    %---------------------%
-
+    poly_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(ClassTable, ClassId, ClassDefn),
     get_arg_superclass_vars(ClassDefn, ClassArgTypes, ProofMap,
@@ -467,83 +476,54 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
     % Lay out the argument variables as expected in the typeclass_info.
     ArgVarsMCAs = ArgUnconstrainedTypeInfoVarsMCAs ++
         ArgTypeClassInfoVarsMCAs ++
-        ArgSuperClassVarsMCAs ++ ArgTypeInfoVarsMCAs,
-    list.map(make_const_or_var_arg, ArgVarsMCAs, ArgCOVAs),
+        ArgSuperClassVarsMCAs ++ ArgTypeInfoVarsMCAs.
 
-    poly_info_get_class_to_typeclass_info_map(!.Info, TypeClassInfoMap0),
-    ( if
-        map.search(TypeClassInfoMap0, ClassId, ClassIdMap0),
-        map.search(ClassIdMap0, ClassArgTypes, ArgsMap0),
-        map.search(ArgsMap0, ArgCOVAs, OldTypeClassInfoVarMCA0)
-    then
-        TypeClassInfoVarMCA = OldTypeClassInfoVarMCA0,
-        Goals = [],
-        set_var_maps_snapshot("make_typeclass_info",
-            InitialVarMapsSnapshot, !Info),
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 2, !Info),
+:- pred compute_actual_proof_instance_details(poly_info::in,
+    list(prog_constraint)::in, list(mer_type)::in, hlds_instance_defn::in,
+    list(prog_constraint)::out, list(mer_type)::out,
+    constraint_proof_map::out) is det.
 
-        TypeClassInfoVarMCA =
-            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCA),
-        log_constructed_typeclass_info_var("instance recorded",
-            dump_all_tables, -1, Constraint,
-            TypeClassInfoVar, TypeClassInfoMCA, no, !Info)
-    else
-        get_base_typeclass_info_cons_id(!.Info, ClassId, InstanceNum,
-            ProofInstanceDefn, InstanceTypes, BaseConsId),
-        materialize_base_typeclass_info_var(Context, Constraint, BaseConsId,
-            BaseVar, BaseGoals, !Info),
-        construct_typeclass_info(Context, Constraint,
-            BaseVar, BaseConsId, ArgVarsMCAs,
-            InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
-            BaseGoals ++ PrevGoals, Goals, !Info),
-        TypeClassInfoVarMCA =
-            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCA),
+compute_actual_proof_instance_details(Info, Seen,
+        ClassArgTypes, ProofInstanceDefn,
+        ActualInstanceConstraints, ActualUnconstrainedTypes, ProofMap) :-
+    ProofInstanceDefn = hlds_instance_defn(_, _, InstanceTVarset,
+        _, InstanceTypes, InstanceConstraints, _, InstanceProofMap, _, _, _),
+    type_vars_in_types(InstanceTypes, InstanceTVars),
+    get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
+        UnconstrainedTVars),
 
-        % We must start the search from scratch, since construct_typeclass_info
-        % may have reset all the cache maps.
-        poly_info_get_class_to_typeclass_info_map(!.Info, TypeClassInfoMap1),
-        ( if
-            map.search(TypeClassInfoMap1, ClassId, ClassIdMap1)
-        then
-            ( if map.search(ClassIdMap1, ClassArgTypes, ArgsMap1) then
-                map.det_insert(ArgCOVAs, TypeClassInfoVarMCA,
-                    ArgsMap1, ArgsMap),
-                map.det_update(ClassArgTypes, ArgsMap,
-                    ClassIdMap1, ClassIdMap),
-                map.det_update(ClassId, ClassIdMap,
-                    TypeClassInfoMap1, TypeClassInfoMap)
-            else
-                ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCA),
-                map.det_insert(ClassArgTypes, ArgsMap,
-                    ClassIdMap1, ClassIdMap),
-                map.det_update(ClassId, ClassIdMap,
-                    TypeClassInfoMap1, TypeClassInfoMap)
-            )
-        else
-            ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCA),
-            ClassIdMap = map.singleton(ClassArgTypes, ArgsMap),
-            map.det_insert(ClassId, ClassIdMap,
-                TypeClassInfoMap1, TypeClassInfoMap)
-        ),
-        poly_info_set_class_to_typeclass_info_map(TypeClassInfoMap, !Info),
+    % We can ignore the new typevarset because all the type variables
+    % in the instance constraints and superclass proofs must appear in
+    % the arguments of the instance, and all such variables are bound
+    % when we call type_list_subsumes then apply the resulting bindings.
+    poly_info_get_typevarset(Info, TypeVarSet),
+    tvarset_merge_renaming(TypeVarSet, InstanceTVarset, _NewTVarset, Renaming),
+    apply_renaming_to_types(Renaming, InstanceTypes, RenamedInstanceTypes),
+    type_list_subsumes_det(RenamedInstanceTypes, ClassArgTypes, InstanceSubst),
+    apply_renaming_to_prog_constraints(Renaming,
+        InstanceConstraints, RenamedInstanceConstraints),
+    apply_rec_subst_to_prog_constraints(InstanceSubst,
+        RenamedInstanceConstraints, ActualInstanceConstraints0),
+    % XXX document diamond as guess
+    % XXX does anyone know what the preceding line means?
+    list.delete_elems(ActualInstanceConstraints0, Seen,
+        ActualInstanceConstraints),
+    apply_renaming_to_constraint_proof_map(Renaming,
+        InstanceProofMap, RenamedInstanceProofMap),
+    apply_rec_subst_to_constraint_proof_map(InstanceSubst,
+        RenamedInstanceProofMap, ActualInstanceProofMap),
 
-        log_constructed_typeclass_info_var("instance computed",
-            dump_all_tables, -1, Constraint,
-            TypeClassInfoVar, TypeClassInfoMCA, yes(BaseConsId), !Info)
-    ),
+    % XXX kind inference:
+    % we assume all tvars have kind `star'.
+    map.init(KindMap),
+    apply_renaming_to_tvars(Renaming,
+        UnconstrainedTVars, RenamedUnconstrainedTVars),
+    apply_renaming_to_tvar_kind_map(Renaming, KindMap, RenamedKindMap),
+    apply_rec_subst_to_tvars(RenamedKindMap, InstanceSubst,
+        RenamedUnconstrainedTVars, ActualUnconstrainedTypes),
 
-    ( if
-        TypeClassInfoVarMCA = var_and_maybe_csa(_, yes(TypeClassInfoConstArg)),
-        TypeClassInfoConstArg = csa_const_struct(TypeClassInfoConstArgNum)
-    then
-        poly_info_get_const_struct_db(!.Info, ConstStructDb1),
-        insert_constant_instance(ConstInstanceId, TypeClassInfoConstArgNum,
-            ConstStructDb1, ConstStructDb),
-        poly_info_set_const_struct_db(ConstStructDb, !Info)
-    else
-        true
-    ).
+    poly_info_get_proof_map(Info, ProofMap0),
+    map.overlay(ProofMap0, ActualInstanceProofMap, ProofMap).
 
 :- pred make_const_or_var_arg(var_and_maybe_csa::in,
     const_or_var_arg::out) is det.
@@ -557,8 +537,54 @@ make_const_or_var_arg(var_and_maybe_csa(Var, MCA), ConstOrVarArg) :-
         ConstOrVarArg = cova_const(ConstArg)
     ).
 
+:- pred update_class_to_typeclass_info_map(class_id::in, list(mer_type)::in,
+    list(const_or_var_arg)::in, var_and_maybe_csa::in,
+    poly_info::in, poly_info::out) is det.
+
+update_class_to_typeclass_info_map(ClassId, ClassArgTypes, ArgCOVAs,
+        TypeClassInfoVarMCA, !Info) :-
+    % We must start the search from scratch, since our caller's call
+    % to construct_typeclass_info may have reset all the cache maps.
+    poly_info_get_class_to_typeclass_info_map(!.Info, TypeClassInfoMap1),
+    ( if map.search(TypeClassInfoMap1, ClassId, ClassIdMap1) then
+        ( if map.search(ClassIdMap1, ClassArgTypes, ArgsMap1) then
+            map.det_insert(ArgCOVAs, TypeClassInfoVarMCA, ArgsMap1, ArgsMap),
+            map.det_update(ClassArgTypes, ArgsMap, ClassIdMap1, ClassIdMap)
+        else
+            ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCA),
+            map.det_insert(ClassArgTypes, ArgsMap, ClassIdMap1, ClassIdMap)
+        ),
+        map.det_update(ClassId, ClassIdMap,
+            TypeClassInfoMap1, TypeClassInfoMap)
+    else
+        ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCA),
+        ClassIdMap = map.singleton(ClassArgTypes, ArgsMap),
+        map.det_insert(ClassId, ClassIdMap,
+            TypeClassInfoMap1, TypeClassInfoMap)
+    ),
+    poly_info_set_class_to_typeclass_info_map(TypeClassInfoMap, !Info).
+
+:- pred record_instance_if_constant(const_instance_id::in,
+    var_and_maybe_csa::in, poly_info::in, poly_info::out) is det.
+
+record_instance_if_constant(ConstInstanceId, TypeClassInfoVarMCA, !Info) :-
+    ( if
+        TypeClassInfoVarMCA = var_and_maybe_csa(_, yes(TypeClassInfoConstArg)),
+        TypeClassInfoConstArg = csa_const_struct(TypeClassInfoConstArgNum)
+    then
+        poly_info_get_const_struct_db(!.Info, ConstStructDb1),
+        insert_constant_instance(ConstInstanceId, TypeClassInfoConstArgNum,
+            ConstStructDb1, ConstStructDb),
+        poly_info_set_const_struct_db(ConstStructDb, !Info)
+    else
+        true
+    ).
+
 %---------------------------------------------------------------------------%
 
+    % Build a unification to add the argvars to the base_typeclass_info,
+    % either statically or dynamically.
+    %
 :- pred construct_typeclass_info(prog_context::in, prog_constraint::in,
     prog_var::in, cons_id::in,
     list(var_and_maybe_csa)::in, var_maps_snapshot::in,
@@ -569,111 +595,133 @@ make_const_or_var_arg(var_and_maybe_csa(Var, MCA), ConstOrVarArg) :-
 construct_typeclass_info(Context, Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
         PrevGoals, AllGoals, !Info) :-
-    % Build a unification to add the argvars to the base_typeclass_info.
-    ConsId = typeclass_info_cell_constructor,
-
     poly_info_get_const_struct_db(!.Info, ConstStructDb0),
     const_struct_db_get_poly_enabled(ConstStructDb0, ConstStructEnabled),
     ( if
         ConstStructEnabled = enable_const_struct_poly,
         all_are_const_struct_args(ArgVarsMCAs, VarConstArgs)
     then
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
-
         set_var_maps_snapshot("construct_typeclass_info",
             InitialVarMapsSnapshot, !Info),
-        new_typeclass_info_var(Constraint, typeclass_info_kind,
-            TypeClassInfoVar, TypeClassInfoVarType, !Info),
-
-        BaseConstArg = csa_constant(BaseConsId, typeclass_info_type),
-        StructArgs = [BaseConstArg | VarConstArgs],
-        list.map(get_inst_of_const_struct_arg(ConstStructDb0),
-            VarConstArgs, VarInsts),
-        list.length(ArgVarsMCAs, NumArgs),
-        InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgs),
-        StructInst = bound(shared, inst_test_results_fgtc,
-            [bound_functor(InstConsId, VarInsts)]),
-        poly_info_get_defined_where(!.Info, DefinedWhere),
-        ConstStruct = const_struct(ConsId, StructArgs,
-            TypeClassInfoVarType, StructInst, DefinedWhere),
-        lookup_insert_const_struct(ConstStruct, ConstNum,
-            ConstStructDb0, ConstStructDb),
-        poly_info_set_const_struct_db(ConstStructDb, !Info),
-        TypeClassInfoConstArg = csa_const_struct(ConstNum),
-        TypeClassInfoMCA = yes(TypeClassInfoConstArg),
-
-        % Create the construction unification to initialize the variable.
-        ConstConsId = typeclass_info_const(ConstNum),
-        Unification = construct(TypeClassInfoVar, ConstConsId, [], [],
-            construct_statically(born_static), cell_is_shared,
-            no_construct_sub_info),
-        Ground = ground(shared, none_or_default_func),
-        UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-        % XXX The UnifyContext is wrong.
-        UnifyContext = unify_context(umc_explicit, []),
-        TypeClassInfoRHS = rhs_functor(ConstConsId, is_not_exist_constr, []),
-        GoalExpr = unify(TypeClassInfoVar, TypeClassInfoRHS, UnifyMode,
-            Unification, UnifyContext),
-
-        % Create a goal_info for the unification.
-        NonLocals = set_of_var.make_singleton(TypeClassInfoVar),
-        % Note that we could perhaps be more accurate than `ground(shared)',
-        % but it shouldn't make any difference.
-        TypeClassInfoInst = bound(shared, inst_test_results_fgtc,
-            [bound_functor(ConsId, [])]),
-        TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
-        InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
-        goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
-            Context, GoalInfo),
-        Goal = hlds_goal(GoalExpr, GoalInfo),
-        % XXX reset varset and vartypes
-        AllGoals = [Goal]
+        construct_typeclass_info_all_const(Context, Constraint,
+            BaseConsId, VarConstArgs, TypeClassInfoVar, TypeClassInfoMCA,
+            AllGoals, !Info)
     else
-        TypeClassInfoMCA = no,
-        new_typeclass_info_var(Constraint, typeclass_info_kind,
-            TypeClassInfoVar, _TypeClassInfoVarType, !Info),
-        ArgVars = list.map(var_and_maybe_csa_to_var, ArgVarsMCAs),
-        AllArgVars = [BaseVar | ArgVars],
-
-        % Create the construction unification to initialize the variable.
-        TypeClassInfoRHS =
-            rhs_functor(ConsId, is_not_exist_constr, AllArgVars),
-        Ground = ground(shared, none_or_default_func),
-        ArgMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-        list.length(AllArgVars, NumArgs),
-        list.duplicate(NumArgs, ArgMode, ArgModes),
-        Unification = construct(TypeClassInfoVar, ConsId, AllArgVars, ArgModes,
-            construct_dynamically, cell_is_unique, no_construct_sub_info),
-        UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-        % XXX The UnifyContext is wrong.
-        UnifyContext = unify_context(umc_explicit, []),
-        GoalExpr = unify(TypeClassInfoVar, TypeClassInfoRHS, UnifyMode,
-            Unification, UnifyContext),
-
-        % Create a goal_info for the unification.
-        set_of_var.list_to_set([TypeClassInfoVar | AllArgVars], NonLocals),
-        list.duplicate(NumArgs, Ground, ArgInsts),
-        % Note that we could perhaps be more accurate than `ground(shared)',
-        % but it shouldn't make any difference.
-        InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgs),
-        InstResults = inst_test_results(inst_result_is_ground,
-            inst_result_does_not_contain_any,
-            inst_result_contains_inst_names_known(set.init),
-            inst_result_contains_inst_vars_unknown,
-            inst_result_contains_types_unknown,
-            inst_result_no_type_ctor_propagated),
-        % XXX that should be inst_result_contains_types_known(set.init),
-        TypeClassInfoInst = bound(unique, InstResults,
-            [bound_functor(InstConsId, ArgInsts)]),
-        TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
-        InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
-        goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
-            Context, GoalInfo),
-
-        Goal = hlds_goal(GoalExpr, GoalInfo),
-        AllGoals = PrevGoals ++ [Goal]
+        construct_typeclass_info_not_all_const(Context, Constraint,
+            BaseVar, ArgVarsMCAs, TypeClassInfoVar, TypeClassInfoMCA,
+            PrevGoals, AllGoals, !Info)
     ).
+
+:- pred construct_typeclass_info_all_const(prog_context::in,
+    prog_constraint::in, cons_id::in, list(const_struct_arg)::in,
+    prog_var::out, maybe(const_struct_arg)::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+construct_typeclass_info_all_const(Context, Constraint,
+        BaseConsId, VarConstArgs, TypeClassInfoVar, TypeClassInfoMCA,
+        AllGoals, !Info) :-
+    poly_info_incr_num_reuses(1, !Info),
+    new_typeclass_info_var(Constraint, typeclass_info_kind,
+        TypeClassInfoVar, TypeClassInfoVarType, !Info),
+
+    poly_info_get_const_struct_db(!.Info, ConstStructDb0),
+    BaseConstArg = csa_constant(BaseConsId, typeclass_info_type),
+    StructArgs = [BaseConstArg | VarConstArgs],
+    list.map(get_inst_of_const_struct_arg(ConstStructDb0),
+        VarConstArgs, VarInsts),
+    list.length(VarConstArgs, NumArgs),
+    InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgs),
+    StructInst = bound(shared, inst_test_results_fgtc,
+        [bound_functor(InstConsId, VarInsts)]),
+    poly_info_get_defined_where(!.Info, DefinedWhere),
+    ConsId = typeclass_info_cell_constructor,
+    ConstStruct = const_struct(ConsId, StructArgs,
+        TypeClassInfoVarType, StructInst, DefinedWhere),
+    lookup_insert_const_struct(ConstStruct, ConstNum,
+        ConstStructDb0, ConstStructDb),
+    poly_info_set_const_struct_db(ConstStructDb, !Info),
+    TypeClassInfoConstArg = csa_const_struct(ConstNum),
+    TypeClassInfoMCA = yes(TypeClassInfoConstArg),
+
+    % Create the construction unification to initialize the variable.
+    ConstConsId = typeclass_info_const(ConstNum),
+    Unification = construct(TypeClassInfoVar, ConstConsId, [], [],
+        construct_statically(born_static), cell_is_shared,
+        no_construct_sub_info),
+    Ground = ground(shared, none_or_default_func),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
+    % XXX The UnifyContext is wrong.
+    UnifyContext = unify_context(umc_explicit, []),
+    TypeClassInfoRHS = rhs_functor(ConstConsId, is_not_exist_constr, []),
+    GoalExpr = unify(TypeClassInfoVar, TypeClassInfoRHS, UnifyMode,
+        Unification, UnifyContext),
+
+    % Create a goal_info for the unification.
+    NonLocals = set_of_var.make_singleton(TypeClassInfoVar),
+    % Note that we could perhaps be more accurate than `ground(shared)',
+    % but it shouldn't make any difference.
+    TypeClassInfoInst = bound(shared, inst_test_results_fgtc,
+        [bound_functor(ConsId, [])]),
+    TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
+    InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+        Context, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    % XXX reset varset and vartypes
+    AllGoals = [Goal].
+
+:- pred construct_typeclass_info_not_all_const(prog_context::in,
+    prog_constraint::in, prog_var::in, list(var_and_maybe_csa)::in,
+    prog_var::out, maybe(const_struct_arg)::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+construct_typeclass_info_not_all_const(Context, Constraint,
+        BaseVar, ArgVarsMCAs, TypeClassInfoVar, TypeClassInfoMCA,
+        PrevGoals, AllGoals, !Info) :-
+    TypeClassInfoMCA = no,
+    new_typeclass_info_var(Constraint, typeclass_info_kind,
+        TypeClassInfoVar, _TypeClassInfoVarType, !Info),
+    ArgVars = list.map(var_and_maybe_csa_to_var, ArgVarsMCAs),
+    AllArgVars = [BaseVar | ArgVars],
+
+    % Create the construction unification to initialize the variable.
+    ConsId = typeclass_info_cell_constructor,
+    TypeClassInfoRHS = rhs_functor(ConsId, is_not_exist_constr, AllArgVars),
+    Ground = ground(shared, none_or_default_func),
+    ArgMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
+    list.length(AllArgVars, NumArgs),
+    list.duplicate(NumArgs, ArgMode, ArgModes),
+    Unification = construct(TypeClassInfoVar, ConsId, AllArgVars, ArgModes,
+        construct_dynamically, cell_is_unique, no_construct_sub_info),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
+    % XXX The UnifyContext is wrong.
+    UnifyContext = unify_context(umc_explicit, []),
+    GoalExpr = unify(TypeClassInfoVar, TypeClassInfoRHS, UnifyMode,
+        Unification, UnifyContext),
+
+    % Create a goal_info for the unification.
+    set_of_var.list_to_set([TypeClassInfoVar | AllArgVars], NonLocals),
+    list.duplicate(NumArgs, Ground, ArgInsts),
+    % Note that we could perhaps be more accurate than `ground(shared)',
+    % but it shouldn't make any difference.
+    InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgs),
+    InstResults = inst_test_results(inst_result_is_ground,
+        inst_result_does_not_contain_any,
+        inst_result_contains_inst_names_known(set.init),
+        inst_result_contains_inst_vars_unknown,
+        inst_result_contains_types_unknown,
+        inst_result_no_type_ctor_propagated),
+    % XXX that should be inst_result_contains_types_known(set.init),
+    TypeClassInfoInst = bound(unique, InstResults,
+        [bound_functor(InstConsId, ArgInsts)]),
+    TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
+    InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+        Context, GoalInfo),
+
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    AllGoals = PrevGoals ++ [Goal].
 
 %---------------------------------------------------------------------------%
 
@@ -949,8 +997,7 @@ materialize_typeclass_info_var(Context, Constraint, InstanceIdConstNum,
     poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap0),
     InstanceIdConstArg = csa_const_struct(InstanceIdConstNum),
     ( if map.search(ConstStructVarMap0, InstanceIdConstArg, OldVar) then
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
+        poly_info_incr_num_reuses(1, !Info),
         Var = OldVar,
         MaybeConsId = no,
         Goals = []
