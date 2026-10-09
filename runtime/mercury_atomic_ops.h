@@ -679,13 +679,13 @@ typedef struct {
     volatile MR_Unsigned    MR_stat_count_not_recorded;
 
     // Atomic instructions are used to update these fields, and these fields
-    // must be 64 bit to contain the valid ranges of values. However a 32 bit
-    // machine cannot (usually) do atomic operations on 64 bit data. Therefore
+    // must be 64 bit to contain the valid ranges of values. However, a 32-bit
+    // machine cannot (usually) do atomic operations on 64-bit data. Therefore,
     // if we have fewer than 64 bits we protect these two fields with a lock.
     //
     // The sum of squares is used to calculate variance and standard deviation.
 
-  #if MR_LOW_TAG_BIGS >= 3
+  #if MR_LOW_TAG_BITS >= 3
     volatile MR_Integer     MR_stat_sum;
     volatile MR_Unsigned    MR_stat_sum_squares;
   #else
