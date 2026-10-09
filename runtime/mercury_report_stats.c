@@ -144,7 +144,7 @@ MR_report_standard_stats(FILE *fp, int *line_number)
 
 #ifdef MR_USE_TRAIL
     #ifdef MR_THREAD_SAFE
-        result = fprintf(fp, ", Trail: %.3fk,",
+        result = fprintf(fp, " Trail: %.3fk,",
             ((char *) MR_trail_ptr -
             (char *) MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min) / 1024.0
         );
@@ -410,7 +410,7 @@ MR_insert_into_memprof_table(const MR_memprof_report_entry *new_entry,
     // Find the slot where this entry should be inserted.
     // Start at the end and work backwards until we find
     // the start of the table or until we find a table
-    // entry which ranks higher that the new entry.
+    // entry which ranks higher than the new entry.
     slot = next_slot;
     while (slot > 0 && table[slot - 1].counter.words_since_period_start
         < new_entry->counter.words_since_period_start)

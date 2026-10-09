@@ -83,8 +83,8 @@ extern  void    MR_init_heap(void);
 //  old block.
 //
 // MR_ensure_big_enough_buffer(buffer_ptr, buffer_size_ptr, needed_size):
-//  Given a character buffer pointed to by buffer_ptr whose is given by
-//  *buffer_size_ptr, ensure that the buffer is big enough to hold
+//  Given a character buffer pointed to by buffer_ptr whose size is given
+//  by *buffer_size_ptr, ensure that the buffer is big enough to hold
 //  needed_size characters. If it needs to make the block bigger,
 //  this function will update both *buffer_ptr and *buffer_size_ptr.
 //
@@ -173,8 +173,8 @@ extern  void    MR_ensure_big_enough_buffer(char **buffer_ptr,
 //  (.gc grades). In other grades, this is an ordinary pointer.
 //
 // MR_weak_ptr_read(weak_ptr):
-//  Dereference a weak pointer. Returns NULL of the pointed to object has
-//  been deallocated. If weak_ptr is NULL then NULL is returned, so the
+//  Dereference a weak pointer. Returns NULL if the pointed to object has
+//  been deallocated. If weak_ptr is NULL, then NULL is returned, so the
 //  programmer doesn't need to do an extra NULL check in case their pointer
 //  is deliberately NULL.
 

@@ -62,7 +62,6 @@
 
 #include    "mercury_label.h"
 #include    "mercury_wrapper.h"
-#include    "mercury_engine.h"
 #include    "mercury_context.h"
 #include    "mercury_thread.h"
 #include    "mercury_type_info.h"
