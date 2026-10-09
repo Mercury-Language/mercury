@@ -249,8 +249,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- type cache_maps
-    --->    cache_maps(
+:- type cache_maps_snapshot
+    --->    cache_maps_snapshot(
                 cm_snapshot_num                 :: int,
                 cm_type_to_type_info_map        :: type_to_type_info_map,
                 cm_class_to_typeclass_info_map  :: class_to_typeclass_info_map,
@@ -258,28 +258,28 @@
                 cm_const_struct_var_map         :: const_struct_var_map
             ).
 
-:- pred get_cache_maps_snapshot(string::in, cache_maps::out,
+:- pred get_cache_maps_snapshot(string::in, cache_maps_snapshot::out,
     poly_info::in, poly_info::out) is det.
 
-:- pred set_cache_maps_snapshot(string::in, cache_maps::in,
+:- pred set_cache_maps_snapshot(string::in, cache_maps_snapshot::in,
     poly_info::in, poly_info::out) is det.
 
 :- pred empty_cache_maps(poly_info::in, poly_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- type var_maps
-    --->    var_maps(
-                vm_snapshot_num             :: int,
-                vm_var_table                :: var_table,
-                vm_rtti_varmaps             :: rtti_varmaps,
-                vm_cache_maps               :: cache_maps
+:- type var_maps_snapshot
+    --->    var_maps_snapshot(
+                vm_snapshot_num                 :: int,
+                vm_var_table                    :: var_table,
+                vm_rtti_varmaps                 :: rtti_varmaps,
+                vm_cache_maps                   :: cache_maps_snapshot
             ).
 
-:- pred get_var_maps_snapshot(string::in, var_maps::out,
+:- pred get_var_maps_snapshot(string::in, var_maps_snapshot::out,
     poly_info::in, poly_info::out) is det.
 
-:- pred set_var_maps_snapshot(string::in, var_maps::in,
+:- pred set_var_maps_snapshot(string::in, var_maps_snapshot::in,
     poly_info::in, poly_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -310,6 +310,25 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Predicates that can help debug the polymorphism transformation.
+%
+
+:- pred write_cache_maps(io.text_output_stream::in, poly_info::in,
+    string::in, io::di, io::uo) is det.
+
+:- func var_and_maybe_csa_to_string(var_table, var_and_maybe_csa) = string.
+
+:- func const_or_var_arg_to_string(tvarset, var_table, const_or_var_arg)
+    = string.
+
+:- func const_struct_arg_to_string(tvarset, const_struct_arg) = string.
+
+:- func trace_constraint_to_string(tvarset, prog_constraint) = string.
+
+:- func trace_type_to_string(tvarset, mer_type) = string.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -318,9 +337,18 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_cons_id.
+:- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
+:- import_module deconstruct.
 :- import_module int.
+:- import_module pretty_printer.
 :- import_module string.
 :- import_module varset.
 
@@ -713,8 +741,8 @@ get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
     poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap),
 
     SnapshotNum = !.Info ^ poly_snapshot_num,
-    CacheMaps = cache_maps(SnapshotNum, TypeInfoVarMap, TypeClassInfoMap,
-        IntConstMap, ConstStructVarMap),
+    CacheMaps = cache_maps_snapshot(SnapshotNum, TypeInfoVarMap,
+        TypeClassInfoMap, IntConstMap, ConstStructVarMap),
     !Info ^ poly_snapshot_num := SnapshotNum + 1,
 
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
@@ -738,8 +766,8 @@ get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
     ).
 
 set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
-    CacheMaps = cache_maps(SnapshotNum, TypeInfoVarMap, TypeClassInfoMap,
-        IntConstMap, ConstStructVarMap),
+    CacheMaps = cache_maps_snapshot(SnapshotNum, TypeInfoVarMap,
+        TypeClassInfoMap, IntConstMap, ConstStructVarMap),
     ( if
         private_builtin.pointer_equal(TypeInfoVarMap,
             !.Info ^ poly_type_to_type_info_map),
@@ -775,16 +803,7 @@ set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
                 [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
             io.format(Stream, "%snum_allocated vars: %d\n\n",
                 [s(IndentStr), i(NumVars)], !IO),
-
-            io.format(Stream, "%stype_to_type_info_map ", [s(IndentStr)], !IO),
-            io.write_line(Stream, CacheMaps ^ cm_type_to_type_info_map, !IO),
-            io.format(Stream, "%sclass_to_typeclass_info_map ",
-                [s(IndentStr)], !IO),
-            io.write_line(Stream, CacheMaps ^ cm_class_to_typeclass_info_map,
-                !IO),
-            io.format(Stream, "%sstruct_var_map ", [s(IndentStr)], !IO),
-            io.write_line(Stream,
-                CacheMaps ^ cm_const_struct_var_map, !IO),
+            write_cache_maps(Stream, !.Info, IndentStr, !IO),
             io.nl(Stream, !IO)
         else
             true
@@ -822,10 +841,10 @@ get_var_maps_snapshot(Name, VarMaps, !Info) :-
     ),
 
     get_cache_maps_snapshot("", CacheMaps, !Info),
-    VarMaps = var_maps(SnapshotNum, VarTable, RttiVarMaps, CacheMaps).
+    VarMaps = var_maps_snapshot(SnapshotNum, VarTable, RttiVarMaps, CacheMaps).
 
 set_var_maps_snapshot(Name, VarMaps, !Info) :-
-    VarMaps = var_maps(SnapshotNum, VarTable, RttiVarMaps, CacheMaps),
+    VarMaps = var_maps_snapshot(SnapshotNum, VarTable, RttiVarMaps, CacheMaps),
 
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
         get_selected_pred(SelectedPred, !IO),
@@ -838,17 +857,7 @@ set_var_maps_snapshot(Name, VarMaps, !Info) :-
             IndentStr = string.duplicate_char(' ', Level * 4),
             io.format(Stream, "%sset_var_maps_snapshot %d %s\n",
                 [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
-
-            io.format(Stream, "%stype_to_type_info_map ",
-                [s(IndentStr)], !IO),
-            io.write_line(Stream, CacheMaps ^ cm_type_to_type_info_map, !IO),
-            io.format(Stream, "%sclass_to_typeclass_info_map ",
-                [s(IndentStr)], !IO),
-            io.write_line(Stream, CacheMaps ^ cm_class_to_typeclass_info_map,
-                !IO),
-            io.format(Stream, "%sstruct_var_map ", [s(IndentStr)], !IO),
-            io.write_line(Stream,
-                CacheMaps ^ cm_const_struct_var_map, !IO),
+            write_cache_maps(Stream, !.Info, IndentStr, !IO),
             io.nl(Stream, !IO)
         )
     ),
@@ -917,6 +926,203 @@ poly_info_get_debug_stream(PolyInfo, Stream, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     get_debug_output_stream(Globals, ModuleName, Stream, !IO).
+
+%---------------------------------------------------------------------------%
+
+write_cache_maps(Stream, Info, IndentStr, !IO) :-
+    write_type_to_type_info_map(Stream, Info, IndentStr, !IO),
+    write_class_to_typeclass_info_map(Stream, Info, IndentStr, !IO),
+    write_constr_struct_var_map(Stream, Info, IndentStr, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred write_type_to_type_info_map(io.text_output_stream::in,
+    poly_info::in, string::in, io::di, io::uo) is det.
+
+write_type_to_type_info_map(Stream, Info, IndentStr, !IO) :-
+    poly_info_get_type_to_type_info_map(Info, TypeInfoVarMap),
+    poly_info_get_typevarset(Info, TVarSet),
+    poly_info_get_var_table(Info, VarTable),
+    io.format(Stream, "%stype_to_type_info_map\n", [s(IndentStr)], !IO),
+    NextIndentStr = IndentStr ++ "    ",
+    map.foldl(
+        write_type_ctor_to_type_info_map(Stream, TVarSet, VarTable,
+            NextIndentStr),
+        TypeInfoVarMap, !IO).
+
+:- pred write_type_ctor_to_type_info_map(io.text_output_stream::in,
+    tvarset::in, var_table::in, string::in, type_ctor::in,
+    type_ctor_to_type_info_map::in, io::di, io::uo) is det.
+
+write_type_ctor_to_type_info_map(Stream, TVarSet, VarTable, IndentStr,
+        TypeCtor, TypeInfoVarMapEntry, !IO) :-
+    TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+    TypeCtorName = unqualify_name(TypeCtorSymName),
+    io.format(Stream, "%s%s/%d:\n",
+        [s(IndentStr), s(TypeCtorName), i(TypeCtorArity)], !IO),
+    NextIndentStr = IndentStr ++ "    ",
+    map.foldl(
+        write_type_ctor_to_type_info_map_entry(Stream, TVarSet, VarTable,
+            NextIndentStr),
+        TypeInfoVarMapEntry, !IO).
+
+:- pred write_type_ctor_to_type_info_map_entry(io.text_output_stream::in,
+    tvarset::in, var_table::in, string::in,
+    list(mer_type)::in, var_and_maybe_csa::in, io::di, io::uo) is det.
+
+write_type_ctor_to_type_info_map_entry(Stream, TVarSet, VarTable, IndentStr,
+        Types, VarMaybeCSA, !IO) :-
+    TypeStrs = list.map(trace_type_to_string(TVarSet), Types),
+    TypesStr = string.join_list(", ", TypeStrs),
+    VarCSAStr = var_and_maybe_csa_to_string(VarTable, VarMaybeCSA),
+    io.format(Stream, "%s[%s] -> %s\n",
+        [s(IndentStr), s(TypesStr), s(VarCSAStr)], !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred write_class_to_typeclass_info_map(io.text_output_stream::in,
+    poly_info::in, string::in, io::di, io::uo) is det.
+
+write_class_to_typeclass_info_map(Stream, Info, IndentStr, !IO) :-
+    poly_info_get_class_to_typeclass_info_map(Info, TypeClassInfoMap),
+    poly_info_get_typevarset(Info, TVarSet),
+    poly_info_get_var_table(Info, VarTable),
+    io.format(Stream, "%sclass_to_typeclass_info_map\n", [s(IndentStr)], !IO),
+    NextIndentStr = IndentStr ++ "    ",
+    map.foldl(
+        write_typeclass_info_top_map_entry(Stream, TVarSet, VarTable,
+            NextIndentStr),
+        TypeClassInfoMap, !IO).
+
+:- pred write_typeclass_info_top_map_entry(io.text_output_stream::in,
+    tvarset::in, var_table::in, string::in,
+    class_id::in, class_id_to_typeclass_info_map::in, io::di, io::uo) is det.
+
+write_typeclass_info_top_map_entry(Stream, TVarSet, VarTable, IndentStr,
+        ClassId, TypeClassInfoClassMap, !IO) :-
+    ClassId = class_id(ClassSymName, ClassArity),
+    ClassName = unqualify_name(ClassSymName),
+    io.format(Stream, "%sclass id %s/%d\n",
+        [s(IndentStr), s(ClassName), i(ClassArity)], !IO),
+    NextIndentStr = IndentStr ++ "    ",
+    map.foldl(
+        write_typeclass_info_args(Stream, TVarSet, VarTable,
+            NextIndentStr),
+        TypeClassInfoClassMap, !IO).
+
+:- pred write_typeclass_info_args(io.text_output_stream::in,
+    tvarset::in, var_table::in, string::in,
+    list(mer_type)::in, tci_args_map::in, io::di, io::uo) is det.
+
+write_typeclass_info_args(Stream, TVarSet, VarTable, IndentStr,
+        Types, CVAMap, !IO) :-
+    TypeStrs = list.map(trace_type_to_string(TVarSet), Types),
+    TypesStr = string.join_list(", ", TypeStrs),
+    io.format(Stream, "%stypes [%s]:\n", [s(IndentStr), s(TypesStr)], !IO),
+    io.format(Stream, "%s:\n", [s(IndentStr)], !IO),
+    NextIndentStr = IndentStr ++ "    ",
+    map.foldl(
+        write_typeclass_info_cva_map_entry(Stream, TVarSet, VarTable,
+            NextIndentStr),
+        CVAMap, !IO).
+
+:- pred write_typeclass_info_cva_map_entry(io.text_output_stream::in,
+    tvarset::in, var_table::in, string::in,
+    list(const_or_var_arg)::in, var_and_maybe_csa::in,
+    io::di, io::uo) is det.
+
+write_typeclass_info_cva_map_entry(Stream, TVarSet, VarTable, IndentStr,
+        ConstOrVarArgs, VarMaybeCSA, !IO) :-
+    COVAStrs = list.map(const_or_var_arg_to_string(TVarSet, VarTable),
+        ConstOrVarArgs),
+    COVAsStr = string.join_list(", ", COVAStrs),
+    VarMaybeCSAStr = var_and_maybe_csa_to_string(VarTable, VarMaybeCSA),
+    io.format(Stream, "%s%s ->\n%s    %s\n",
+        [s(IndentStr), s(COVAsStr), s(IndentStr), s(VarMaybeCSAStr)], !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred write_constr_struct_var_map(io.text_output_stream::in,
+    poly_info::in, string::in, io::di, io::uo) is det.
+
+write_constr_struct_var_map(Stream, Info, IndentStr, !IO) :-
+    poly_info_get_const_struct_var_map(Info, ConstStructVarMap),
+    poly_info_get_typevarset(Info, TVarSet),
+    poly_info_get_var_table(Info, VarTable),
+    io.format(Stream, "%sconst_struct_var_map\n", [s(IndentStr)], !IO),
+    NextIndentStr = IndentStr ++ "    ",
+    map.foldl(
+        write_constr_struct_var_map_entry(Stream, TVarSet, VarTable,
+            NextIndentStr),
+        ConstStructVarMap, !IO).
+
+:- pred write_constr_struct_var_map_entry(io.text_output_stream::in,
+    tvarset::in, var_table::in, string::in, const_struct_arg::in, prog_var::in,
+    io::di, io::uo) is det.
+
+write_constr_struct_var_map_entry(Stream, TVarSet, VarTable, IndentStr,
+        CSA, Var, !IO) :-
+    CSAStr = const_struct_arg_to_string(TVarSet, CSA),
+    VarStr = mercury_var_to_string(VarTable, print_name_and_num, Var),
+    io.format(Stream, "%s%s ->\n%s    %s\n",
+        [s(IndentStr), s(CSAStr), s(IndentStr), s(VarStr)], !IO).
+
+%---------------------------------------------------------------------------%
+
+var_and_maybe_csa_to_string(VarTable, var_and_maybe_csa(Var, MaybeCSA))
+        = Str :-
+    VarStr = mercury_var_to_string(VarTable, print_name_and_num, Var),
+    string.format("%s - %s", [s(VarStr), s(string(MaybeCSA))], Str).
+
+const_or_var_arg_to_string(TVarSet, VarTable, ConstOrVarArg) = Str :-
+    (
+        ConstOrVarArg = cova_const(ConstStructArg),
+        Str = const_struct_arg_to_string(TVarSet, ConstStructArg)
+    ;
+        ConstOrVarArg = cova_var(Var),
+        Str = mercury_var_to_string(VarTable, print_name_and_num, Var)
+    ).
+
+const_struct_arg_to_string(TVarSet, ConstStructArg) = Str :-
+    (
+        ConstStructArg = csa_const_struct(N),
+        string.format("struct #%d", [i(N)], Str)
+    ;
+        ConstStructArg = csa_constant(ConsId, Type),
+        ConsIdStr = unqual_cons_id_and_arity_to_string(ConsId),
+        TypeStr = trace_type_to_string(TVarSet, Type),
+        string.format("constant(%s %s)", [s(ConsIdStr), s(TypeStr)], Str)
+    ).
+
+%---------------------------------------------------------------------------%
+
+trace_constraint_to_string(TVarSet, Constraint0) = Str :-
+    strip_module_names_from_constraint(strip_all_module_names,
+        set_default_func, Constraint0, Constraint),
+    Constraint = constraint(ClassSymName, ArgTypes),
+    ClassName = unqualify_name(ClassSymName),
+    ArgTypeStrs = list.map(trace_type_to_string(TVarSet), ArgTypes),
+    ArgTypesStr = string.join_list(", ", ArgTypeStrs),
+    string.format("%s(%s)", [s(ClassName), s(ArgTypesStr)], Str).
+
+trace_type_to_string(TVarSet, Type0) = Str :-
+    strip_module_names_from_type(strip_all_module_names, set_default_func,
+        Type0, Type),
+    Str = mercury_type_to_string(TVarSet, print_name_and_num, Type).
+
+%---------------------------------------------------------------------------%
+
+:- pred format_for_trace(string::in, T::in, string::out,
+    io::di, io::uo) is det.
+:- pragma consider_used(pred(format_for_trace/5)).
+
+format_for_trace(IndentStr, Item, ItemDocStr, !IO) :-
+    get_default_formatter_map(FormatterMap, !IO),
+    MaxLen = 78 - string.count_code_points(IndentStr),
+    Params = pp_params(MaxLen, 99999, linear(99999)),
+    ItemDoc = pretty_printer.format(Item),
+    doc_to_string(canonicalize, FormatterMap, Params, ItemDoc, ItemDocStr0),
+    add_prefix_to_every_line(IndentStr, ItemDocStr0, ItemDocStr).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism_info.

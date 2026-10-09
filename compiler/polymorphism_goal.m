@@ -1194,8 +1194,8 @@ polymorphism_process_plain_conj([Goal0 | Goals0], [Goal | Goals], !Info) :-
     polymorphism_process_plain_conj(Goals0, Goals, !Info).
 
 :- pred polymorphism_process_par_conj(list(hlds_goal)::in,
-    list(hlds_goal)::out, cache_maps::in, poly_info::in, poly_info::out)
-    is det.
+    list(hlds_goal)::out, cache_maps_snapshot::in,
+    poly_info::in, poly_info::out) is det.
 
 polymorphism_process_par_conj([], [], _, !Info).
 polymorphism_process_par_conj([Goal0 | Goals0], [Goal | Goals],
@@ -1211,7 +1211,7 @@ polymorphism_process_par_conj([Goal0 | Goals0], [Goal | Goals],
     polymorphism_process_par_conj(Goals0, Goals, InitialSnapshot, !Info).
 
 :- pred polymorphism_process_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    cache_maps::in, poly_info::in, poly_info::out) is det.
+    cache_maps_snapshot::in, poly_info::in, poly_info::out) is det.
 
 polymorphism_process_disj([], [], _, !Info).
 polymorphism_process_disj([Goal0 | Goals0], [Goal | Goals], InitialSnapshot,
@@ -1221,7 +1221,7 @@ polymorphism_process_disj([Goal0 | Goals0], [Goal | Goals], InitialSnapshot,
     polymorphism_process_disj(Goals0, Goals, InitialSnapshot, !Info).
 
 :- pred polymorphism_process_cases(list(case)::in, list(case)::out,
-    cache_maps::in, poly_info::in, poly_info::out) is det.
+    cache_maps_snapshot::in, poly_info::in, poly_info::out) is det.
 
 polymorphism_process_cases([], [], _, !Info).
 polymorphism_process_cases([Case0 | Cases0], [Case | Cases], InitialSnapshot,

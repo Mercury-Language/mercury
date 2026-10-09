@@ -483,7 +483,7 @@ polymorphism_construct_type_info(Context, Type, TypeCtor, ArgTypes,
     mer_type::in, type_ctor::in, type_ctor_is_var_arity::in,
     prog_var::in, cons_id::in, list(hlds_goal)::in,
     list(var_and_maybe_csa)::in, list(hlds_goal)::in,
-    var_maps::in, prog_var::out, maybe(const_struct_arg)::out,
+    var_maps_snapshot::in, prog_var::out, maybe(const_struct_arg)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 :- pragma inline(pred(polymorphism_maybe_construct_second_type_info_cell/15)).
 
@@ -564,11 +564,11 @@ polymorphism_maybe_construct_second_type_info_cell(Context, Type, TypeCtor,
             TypeInfoVar, MCA, ExtraGoals, !Info)
     ).
 
-:- pred polymorphism_construct_second_type_info_cell(prog_context::in
-    ,mer_type::in, type_ctor::in, maybe_need_arity::in,
+:- pred polymorphism_construct_second_type_info_cell(prog_context::in,
+    mer_type::in, type_ctor::in, maybe_need_arity::in,
     prog_var::in, cons_id::in, list(hlds_goal)::in,
     list(var_and_maybe_csa)::in, list(hlds_goal)::in,
-    var_maps::in, prog_var::out, maybe(const_struct_arg)::out,
+    var_maps_snapshot::in, prog_var::out, maybe(const_struct_arg)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 :- pragma inline(pred(polymorphism_construct_second_type_info_cell/15)).
 
