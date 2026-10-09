@@ -1,11 +1,11 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2016, 2018, 2021, 2024 The Mercury team.
+// Copyright (C) 2016, 2018, 2021, 2024, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// mercury_atomic.h - defines atomic operations and other primitives used by
-// the parallel runtime.
+// mercury_atomic_ops.h - defines atomic operations and other primitives used
+// by the parallel runtime.
 //
 // XXX we should have a version of this module that uses C11 atomics
 // where possible.
@@ -38,7 +38,7 @@
 // On some chips it may cause the spin-loop to use less power.
 //
 // This instruction was introduced with the Pentium 4 but is backwards
-// compatible, This works because the two byte instruction for PAUSE is
+// compatible. This works because the two byte instruction for PAUSE is
 // equivalent to the NOP instruction prefixed by REPE. Therefore older
 // processors perform a no-op.
 //
@@ -631,7 +631,7 @@ typedef MR_Unsigned MR_Us_Lock;
 // Similar support for condition variables. Again, make sure that storage for
 // these is declared as volatile.
 //
-// XXX: These are not atomic, A waiting thread will not see a change until
+// XXX: These are not atomic. A waiting thread will not see a change until
 // sometime after the signaling thread has signaled the condition. The same
 // race can occur when clearing a condition. Order of memory operations is not
 // guaranteed either.

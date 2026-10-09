@@ -257,7 +257,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 
         fprintf(stderr, "Mercury runtime: Garbage collection scheduled"
             " while collector is already running\n");
-        fprintf(stderr, "Mercury_runtime: Trying to continue...\n");
+        fprintf(stderr, "Mercury runtime: Trying to continue...\n");
         return;
     }
 #ifdef MR_DEBUG_AGC_SCHEDULING
@@ -293,7 +293,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
                     "has no stack layout info\n", entry_label->MR_entry_addr);
             }
             fprintf(stderr, "Mercury runtime: PC address = %p\n", pc_at_signal);
-            fprintf(stderr, "Mercury runtime: PC = label + 0x%zx\n",
+            fprintf(stderr, "Mercury runtime: PC = label + 0x%tx\n",
                 ((char *) pc_at_signal - (char *) entry_label->MR_entry_addr));
         } else {
             fprintf(stderr, "Mercury runtime: no entry label ");

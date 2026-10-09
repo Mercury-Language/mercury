@@ -323,7 +323,7 @@ MR_do_cpu_feature_detection(void)
         // This processor supports the brand string from which we can
         // try to extract the clock speed. This algorithm is described
         // in the Intel Instruction Set Reference, Volume 2B, Chapter 3,
-        // Pages 207-208, In particular the flow chart in figure 3-10.
+        // Pages 207-208. In particular the flow chart in figure 3-10.
         // This does not work on AMD processors since they don't include
         // the clock speed in the brand string.
 
@@ -525,7 +525,7 @@ MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
         : "=a"(*a), "=b"(*b), "=c"(*c), "=d"(*d)
         : "0"(code), "2"(sub_code));
 #elif defined(__i386__)
-    // i386 is more register staved, in particular we can't use ebx in
+    // i386 is more register starved, in particular we can't use ebx in
     // position independent code. And we can't move ebx into another
     // general purpose register, between register pinning, PIC, the
     // stack and frame pointers and the other registers used by CPUID
