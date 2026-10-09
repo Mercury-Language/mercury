@@ -1,15 +1,16 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1999-2003, 2005-2006 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_ho_call.h - defines the structure of closures.
 //
 // The places in the system that know about the layouts of closures are
 //
-//  compiler/unify_gen.m (unify_gen__generate_construction_2)
-//  runtime/mercury_ho_call.[ch]
+//  compiler/closure_gen.m    (closure_gen.construct_closure)
+//  compiler/ml_closure_gen.m (ml_closure_gen.ml_construct_closure)
+//  runtime/mercury_ho_call.c
 //
 // Any changes here will need to be reflected in the other places as well.
 
