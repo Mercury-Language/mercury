@@ -1,15 +1,15 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2003, 2005 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_term_size.h
 //
 // This module declares functions for returning the sizes of terms.
 
-#ifndef MR_MERCURY_TERM_SIZE_H
-#define MR_MERCURY_TERM_SIZE_H
+#ifndef MERCURY_TERM_SIZE_H
+#define MERCURY_TERM_SIZE_H
 
 #include "mercury_std.h"        // for MR_bool
 #include "mercury_types.h"      // for the typedefs of the structs we define
@@ -66,7 +66,7 @@ extern  void    MR_complexity_redo_func(int procnum, int slot);
 extern  void    MR_complexity_fill_size_slot(MR_ComplexityProc *proc, int slot,
                     int num_input_args, int argnum, int size);
 
-#else   // MR_RECORD_TERM_SIZES
+#else   // ! MR_RECORD_TERM_SIZES
 
 // Term sizes are not meaningful if MR_RECORD_TERM_SIZES is not defined.
 // This macro, and others in mercury_heap.h, allows us to write code to
@@ -75,8 +75,8 @@ extern  void    MR_complexity_fill_size_slot(MR_ComplexityProc *proc, int slot,
 
 #define MR_term_size(type_info, term)       0
 
-#endif  // MR_RECORD_TERM_SIZES
+#endif  // ! MR_RECORD_TERM_SIZES
 
-#endif  // MR_MERCURY_TERM_SIZE_H
+#endif  // not MERCURY_TERM_SIZE_H
 
 #define MR_COMPLEXITY_SLOTS_PER_CHUNK   1024

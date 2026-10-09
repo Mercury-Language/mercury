@@ -1,20 +1,17 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2003 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_complexity.h
 //
 // This module defines the structures returning the sizes of terms.
 
-#ifndef MR_MERCURY_COMPLEXITY_H
-#define MR_MERCURY_COMPLEXITY_H
+#ifndef MERCURY_COMPLEXITY_H
+#define MERCURY_COMPLEXITY_H
 
 #define MR_COMPLEXITY_SLOTS_PER_CHUNK   1024
-
-// This type should correspond to the representation of the
-// complexity_is_active type in library/term_size_prof_builtin.m.
 
 typedef struct MR_ComplexityProc_Struct         MR_ComplexityProc;
 
@@ -28,6 +25,9 @@ typedef struct {
     const char              *MR_clpai_maybe_name;
     MR_ComplexityArgKind    MR_clpai_kind;
 } MR_ComplexityArgInfo;
+
+// This type should correspond to the representation of the
+// complexity_is_active type in library/term_size_prof_builtin.m.
 
 typedef enum {
     MR_COMPLEXITY_IS_INACTIVE,
@@ -55,7 +55,7 @@ struct MR_ComplexityPastSlots_Struct {
 // experimentally.
 //
 // The MR_clp_full_proc_name field contains the name of the procedure. The
-// format of the name is name/arity-modenum, where name is the a fully module
+// format of the name is name/arity-modenum, where name is the fully module
 // qualified predicate or function name, arity is the user arity (not including
 // the return value for functions), and modenum is the mode number. This field
 // is initialized in the program's mkinit-generated _init.c file and never
@@ -73,7 +73,7 @@ struct MR_ComplexityPastSlots_Struct {
 // as necessary by the macros we invoke at the call, exit, fail and redo ports.
 //
 // The MR_clp_metrics field points to an array of MR_COMPLEXITY_SLOTS_PER_CHUNK
-// elements, while the MR_clp_sizes field point to an array of
+// elements, while the MR_clp_sizes field points to an array of
 // MR_COMPLEXITY_SLOTS_PER_CHUNK times MR_clp_num_profiled_args elements.
 //
 // Each top-level invocation of the procedure allocates a "slot" for its
@@ -82,8 +82,8 @@ struct MR_ComplexityPastSlots_Struct {
 // The MR_clp_next_slot_num identifies the next available slot.
 //
 // When we have used up all the slots in the MR_clp_metrics and MR_clp_sizes
-// arrays, we allocate a MR_ComplexityPastSlots structure, move those arrays to
-// the new structure, and allocate a fresh pair of arrays.
+// arrays, we allocate an MR_ComplexityPastSlots structure, move those arrays
+// to the new structure, and allocate a fresh pair of arrays.
 //
 // The full set of measurements for a procedure is thus the initial
 // MR_clp_next_slot_num elements of the MR_clp_metrics and MR_clp_sizes arrays,
@@ -102,4 +102,4 @@ struct MR_ComplexityProc_Struct {
     int                     *MR_clp_sizes;
 };
 
-#endif  // not MR_MERCURY_COMPLEXITY_H
+#endif  // not MERCURY_COMPLEXITY_H

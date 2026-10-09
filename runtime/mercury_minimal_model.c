@@ -523,7 +523,7 @@ MR_setup_subgoal(MR_TrieNode trie_node)
         // processor in the subgoal allows us to interpret the contents
         // of the subgoal's answer tables. If the procedure executing
         // table_mm_setup is not traced, then the layout structure
-        // belongs to another procedure and the any use of the
+        // belongs to another procedure and any use of the
         // MR_sg_proc_layout field will probably cause a core dump.
         // For implementors debugging minimal model tabling, this is
         // the right tradeoff.
@@ -2150,7 +2150,7 @@ MR_define_label(COMPLETION_LABEL(ReturnAnswer));
     // Return the next answer in the answer_list of the current consumer
     // to the current consumer. Since we have already restored the context
     // of the suspended consumer before we returned the first answer,
-    // we don't need to restore it again, since will not have changed
+    // we don't need to restore it again, since it will not have changed
     // in the meantime.
     //
     // XXX We need to prove that assertion.

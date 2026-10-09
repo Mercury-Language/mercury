@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998,2000,2002, 2006, 2010 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018, 2020 The Mercury team.
+// Copyright (C) 2015-2016, 2018, 2020, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines functions for setting up signal handlers.
@@ -18,8 +18,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-
-#include "mercury_signal.h"
 
 #ifdef MR_HAVE_SYS_SIGINFO_H
   #include <sys/siginfo.h>
@@ -63,7 +61,7 @@ MR_setup_signal_no_restart(int sig, MR_Code *handler, MR_bool need_info,
     MR_do_setup_signal(sig, handler, need_info, MR_FALSE, error_message);
 }
 
-void
+static void
 MR_do_setup_signal(int sig, MR_Code *handler, MR_bool need_info,
     MR_bool restart, const char *error_message)
 {

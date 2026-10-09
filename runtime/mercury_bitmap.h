@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2007, 2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_bitmap.h - bitmap handling
@@ -92,7 +92,7 @@ MR_Integer MR_bitmap_cmp(MR_ConstBitmapPtr, MR_ConstBitmapPtr);
 
 // MR_hash_bitmap(b):
 //
-// Given a Mercury bitmap `b', return a hash value for that array.
+// Given a Mercury bitmap `b', return a hash value for that bitmap.
 
 MR_Integer    MR_hash_bitmap(MR_ConstBitmapPtr);
 
@@ -167,7 +167,7 @@ MR_String MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr,
                                                                         \
         byte = (bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)];   \
         byte &= ~(1 << MR_bitmap_bit_index_within_byte(bit));           \
-        (bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)] =  byte;  \
+        (bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)] = byte;   \
     } while (0)
 
 // void MR_allocate_bitmap_msg(MR_BitmapPtr ptr, size_t bits,
