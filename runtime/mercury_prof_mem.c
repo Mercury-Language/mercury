@@ -1,10 +1,10 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1996-1997, 1999-2000, 2002, 2006 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// prof_mem.c
+// mercury_prof_mem.c
 //
 // Author:  petdr
 //

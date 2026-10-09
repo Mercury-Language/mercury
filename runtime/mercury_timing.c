@@ -1,10 +1,10 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1993-1994,1997,2000, 2005-2006 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// file: timing.c
+// file: mercury_timing.c
 // main authors: fjh
 //
 //  Timing routines.

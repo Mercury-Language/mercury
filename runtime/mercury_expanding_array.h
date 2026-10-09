@@ -5,7 +5,7 @@
 // Copyright (C) 2016, 2018 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// expanding_array.h
+// mercury_expanding_array.h
 //
 // Template definition for expanding arrays. The initial_size argument
 // must be at least 1. The storage used can be reclaimed with free().

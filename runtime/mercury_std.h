@@ -1,10 +1,10 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1993-1995, 1997-2005, 2011-2012 The University of Melbourne.
-// Copyright (C) 2014, 2016-2019, 2021-2023 The Mercury team.
+// Copyright (C) 2014, 2016-2019, 2021-2023, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// std.h - "standard" [sic] definitions for C:
+// mercury_std.h - "standard" [sic] definitions for C:
 //  MR_bool, MR_TRUE, MR_FALSE, MR_min(), MR_max(), MR_streq(), etc.
 
 #ifndef MERCURY_STD_H

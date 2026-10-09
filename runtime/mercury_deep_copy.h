@@ -1,10 +1,10 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2000, 2002-2003, 2007 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// deepcopy.h - declares the MR_deep_copy() function.
+// mercury_deepcopy.h - declares the MR_deep_copy() function.
 
 #ifndef MERCURY_DEEP_COPY_H
 #define MERCURY_DEEP_COPY_H

@@ -2,10 +2,10 @@
 
 // Copyright (C) 2009 Ralph Becket <ralphbecket@gmail.com>
 // Copyright (C) 2010 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// hgc.c - A history-based conservative garbage collector.
+// mercury_hgc.c - A history-based conservative garbage collector.
 //
 // TODO: support collection of mutables.
 // TODO: explore incremental collection.
