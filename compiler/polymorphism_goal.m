@@ -44,7 +44,6 @@
 :- import_module check_hlds.polymorphism_lambda.
 :- import_module check_hlds.polymorphism_type_class_info.
 :- import_module check_hlds.polymorphism_type_info.
-:- import_module hlds.const_struct.
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_list_util.
 :- import_module hlds.goal_util.
@@ -642,7 +641,8 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
             NumExistentialConstraints, ActualExistentialConstraints),
         make_typeclass_info_vars(ActualExistentialConstraints, [], Context,
             ExtraTypeClassVarsMCAs, ExtraTypeClassGoals, !Info),
-        assoc_list.keys(ExtraTypeClassVarsMCAs, ExtraTypeClassVars)
+        ExtraTypeClassVars =
+            list.map(var_and_maybe_csa_to_var, ExtraTypeClassVarsMCAs)
     ;
         IsExistConstr = is_not_exist_constr,
         % Assume it is a deconstruction.
@@ -656,7 +656,8 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
     % quantified type variables.
     polymorphism_do_make_type_info_vars(Context, ActualExistentialTypes,
         ExtraTypeInfoVarsMCAs, ExtraTypeInfoGoals, !Info),
-    assoc_list.keys(ExtraTypeInfoVarsMCAs, ExtraTypeInfoVars),
+    ExtraTypeInfoVars =
+        list.map(var_and_maybe_csa_to_var, ExtraTypeInfoVarsMCAs),
 
     % The type_class_info variables go AFTER the type_info variables
     % (for consistency with the order for argument passing,
@@ -1040,7 +1041,8 @@ polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
         CallContext = goal_info_get_context(CallGoalInfo0),
         make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
             CallContext, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals, !Info),
-        assoc_list.keys(ExtraUnivClassVarsMCAs, ExtraUnivClassVars),
+        ExtraUnivClassVars =
+            list.map(var_and_maybe_csa_to_var, ExtraUnivClassVarsMCAs),
 
         % Make variables to hold any existentially quantified typeclass_infos
         % in the call, insert them into the typeclass_info map.
@@ -1057,7 +1059,8 @@ polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
         polymorphism_do_make_type_info_vars(CallContext,
             ActualUnconstrainedUnivTypes, ExtraUnivTypeInfoVarsMCAs,
             ExtraUnivTypeInfoGoals, !Info),
-        assoc_list.keys(ExtraUnivTypeInfoVarsMCAs, ExtraUnivTypeInfoVars),
+        ExtraUnivTypeInfoVars =
+            list.map(var_and_maybe_csa_to_var, ExtraUnivTypeInfoVarsMCAs),
 
         % Make variables to hold typeinfos for unconstrained existential type
         % vars.
@@ -1066,7 +1069,8 @@ polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
         polymorphism_do_make_type_info_vars(CallContext,
             ActualUnconstrainedExistTypes, ExtraExistTypeInfoVarsMCAs,
             ExtraExistTypeInfoGoals, !Info),
-        assoc_list.keys(ExtraExistTypeInfoVarsMCAs, ExtraExistTypeInfoVars),
+        ExtraExistTypeInfoVars =
+            list.map(var_and_maybe_csa_to_var, ExtraExistTypeInfoVarsMCAs),
 
         % Add up the extra vars and goals.
         ExtraGoals = ExtraUnivClassGoals ++ ExtraExistClassGoals

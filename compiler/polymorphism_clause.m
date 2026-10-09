@@ -40,7 +40,6 @@
 :- import_module check_hlds.polymorphism_goal.
 :- import_module check_hlds.polymorphism_type_class_info.
 :- import_module check_hlds.polymorphism_type_info.
-:- import_module hlds.const_struct.
 :- import_module hlds.goal_list_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_goal.
@@ -58,11 +57,8 @@
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
-:- import_module assoc_list.
 :- import_module list.
 :- import_module map.
-:- import_module maybe.
-:- import_module pair.
 :- import_module string.
 :- import_module term_context.
 :- import_module varset.
@@ -418,7 +414,8 @@ produce_clause_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     Context = goal_info_get_context(GoalInfo),
     make_typeclass_info_vars(ActualExistConstraints, ExistQVarsForCall,
         Context, ExistTypeClassVarsMCAs, ExtraTypeClassGoals, !Info),
-    assoc_list.keys(ExistTypeClassVarsMCAs, ExistTypeClassVars),
+    ExistTypeClassVars =
+        list.map(var_and_maybe_csa_to_var, ExistTypeClassVarsMCAs),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     list.foldl(rtti_reuse_typeclass_info_var, ExistTypeClassVars,
         RttiVarMaps0, RttiVarMaps),
@@ -452,7 +449,7 @@ produce_clause_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
         UnconstrainedTVars, ActualTypes),
     polymorphism_do_make_type_info_vars(Context, ActualTypes,
         TypeInfoVarsMCAs, ExtraTypeInfoGoals, !Info),
-    assoc_list.keys(TypeInfoVarsMCAs, TypeInfoVars),
+    TypeInfoVars = list.map(var_and_maybe_csa_to_var, TypeInfoVarsMCAs),
     make_complicated_unify_assigns(Context, TypeInfoHeadVars, TypeInfoVars,
         ExtraTypeInfoUnifyGoals),
     list.condense([[Goal0 | ExtraTypeClassGoals], ExtraTypeClassUnifyGoals,

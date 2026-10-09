@@ -89,7 +89,6 @@
 
 :- import_module check_hlds.polymorphism_info.
 :- import_module hlds.
-:- import_module hlds.const_struct.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -99,9 +98,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
-:- import_module assoc_list.
 :- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -127,8 +124,7 @@
     % into static data.
     %
 :- pred polymorphism_do_make_type_info_vars(prog_context::in,
-    list(mer_type)::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    list(mer_type)::in, list(var_and_maybe_csa)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 %---------------------%
@@ -246,6 +242,7 @@
 
 :- implementation.
 
+:- import_module hlds.const_struct.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
@@ -263,6 +260,7 @@
 
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -273,15 +271,15 @@
 polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
     polymorphism_do_make_type_info_var(Type, Context,
         VarMCA, ExtraGoals, !Info),
-    VarMCA = Var - _.
+    VarMCA = var_and_maybe_csa(Var, _).
 
 polymorphism_make_type_info_vars(Types, Context, Vars, ExtraGoals, !Info) :-
     polymorphism_do_make_type_info_vars(Types, Context,
         VarsMCAs, ExtraGoals, !Info),
-    assoc_list.keys(VarsMCAs, Vars).
+    Vars = list.map(var_and_maybe_csa_to_var, VarsMCAs).
 
 :- pred polymorphism_do_make_type_info_var(term.context::in, mer_type::in,
-    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    var_and_maybe_csa::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 polymorphism_do_make_type_info_var(Context, Type, VarMCA, ExtraGoals, !Info) :-
@@ -319,7 +317,7 @@ polymorphism_do_make_type_info_var(Context, Type, VarMCA, ExtraGoals, !Info) :-
             poly_get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
             get_type_info_from_locn(TypeVar, TypeInfoLocn, Context,
                 Var, ExtraGoals, !Info),
-            VarMCA = Var - no
+            VarMCA = var_and_maybe_csa(Var, no)
         )
     ).
 
@@ -359,12 +357,12 @@ polymorphism_make_type_info_vars_mi(Types, Context, Vars, ExtraGoals,
 
 :- pred polymorphism_make_type_info(prog_context::in,
     mer_type::in, type_ctor::in, list(mer_type)::in,
-    type_ctor_is_var_arity::in, pair(prog_var, maybe(const_struct_arg))::out,
+    type_ctor_is_var_arity::in, var_and_maybe_csa::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 polymorphism_make_type_info(Context, Type, TypeCtor, TypeArgs,
         TypeCtorIsVarArity, TypeInfoVarMCA, ExtraGoals, !Info) :-
-    poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap0),
+    poly_info_get_type_to_type_info_map(!.Info, TypeInfoVarMap0),
     ( if
         map.search(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap0),
         map.search(TypeCtorVarMap0, TypeArgs, OldTypeInfoVarMCA)
@@ -377,10 +375,10 @@ polymorphism_make_type_info(Context, Type, TypeCtor, TypeArgs,
         polymorphism_construct_type_info(Context, Type, TypeCtor, TypeArgs,
             TypeCtorIsVarArity, TypeInfoVar, TypeInfoConstArg,
             ExtraGoals, !Info),
-        TypeInfoVarMCA = TypeInfoVar - TypeInfoConstArg,
-        % We have to get the type_info_var_map again since the call just above
-        % could have added relevant new entries to it.
-        poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap1),
+        TypeInfoVarMCA = var_and_maybe_csa(TypeInfoVar, TypeInfoConstArg),
+        % We have to get the type_to_type_info_map again, since
+        % the call just above could have added relevant new entries to it.
+        poly_info_get_type_to_type_info_map(!.Info, TypeInfoVarMap1),
         ( if map.search(TypeInfoVarMap1, TypeCtor, TypeCtorVarMap1) then
             map.det_insert(TypeArgs, TypeInfoVarMCA,
                 TypeCtorVarMap1, TypeCtorVarMap),
@@ -391,7 +389,7 @@ polymorphism_make_type_info(Context, Type, TypeCtor, TypeArgs,
             map.det_insert(TypeCtor, TypeCtorVarMap,
                 TypeInfoVarMap1, TypeInfoVarMap)
         ),
-        poly_info_set_type_info_var_map(TypeInfoVarMap, !Info)
+        poly_info_set_type_to_type_info_map(TypeInfoVarMap, !Info)
     ).
 
 :- pred polymorphism_construct_type_info(prog_context::in,
@@ -484,7 +482,7 @@ polymorphism_construct_type_info(Context, Type, TypeCtor, ArgTypes,
 :- pred polymorphism_maybe_construct_second_type_info_cell(prog_context::in,
     mer_type::in, type_ctor::in, type_ctor_is_var_arity::in,
     prog_var::in, cons_id::in, list(hlds_goal)::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::in, list(hlds_goal)::in,
+    list(var_and_maybe_csa)::in, list(hlds_goal)::in,
     var_maps::in, prog_var::out, maybe(const_struct_arg)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 :- pragma inline(pred(polymorphism_maybe_construct_second_type_info_cell/15)).
@@ -569,7 +567,7 @@ polymorphism_maybe_construct_second_type_info_cell(Context, Type, TypeCtor,
 :- pred polymorphism_construct_second_type_info_cell(prog_context::in
     ,mer_type::in, type_ctor::in, maybe_need_arity::in,
     prog_var::in, cons_id::in, list(hlds_goal)::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::in, list(hlds_goal)::in,
+    list(var_and_maybe_csa)::in, list(hlds_goal)::in,
     var_maps::in, prog_var::out, maybe(const_struct_arg)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 :- pragma inline(pred(polymorphism_construct_second_type_info_cell/15)).
@@ -661,7 +659,8 @@ polymorphism_construct_second_type_info_cell(Context, Type, TypeCtor,
         ExtraGoals = [TypeInfoGoal]
     else
         new_type_info_var(Type, type_info, TypeInfoVar, !Info),
-        assoc_list.keys(ArgTypeInfoVarsMCAs, ArgTypeInfoVars),
+        ArgTypeInfoVars =
+            list.map(var_and_maybe_csa_to_var, ArgTypeInfoVarsMCAs),
         (
             NeedTypeCtorArity = need_arity_in_second_ti_cell,
             list.length(ArgTypeInfoVars, ActualArity),

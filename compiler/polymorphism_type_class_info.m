@@ -12,14 +12,11 @@
 
 :- import_module check_hlds.polymorphism_info.
 :- import_module hlds.
-:- import_module hlds.const_struct.
 :- import_module hlds.hlds_goal.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
 :- import_module list.
-:- import_module maybe.
 
     % Given the list of constraints for a called predicate, create a list of
     % variables to hold the typeclass_info for those constraints, and create
@@ -33,7 +30,7 @@
     %
 :- pred make_typeclass_info_vars(list(prog_constraint)::in,
     existq_tvars::in, prog_context::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    list(var_and_maybe_csa)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -72,6 +69,7 @@
 :- implementation.
 
 :- import_module check_hlds.polymorphism_type_info.
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
@@ -103,6 +101,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module pretty_printer.
 :- import_module require.
@@ -123,7 +122,7 @@ make_typeclass_info_vars(Constraints, ExistQVars, Context,
     %
 :- pred make_typeclass_info_vars_loop(existq_tvars::in, prog_context::in,
     list(prog_constraint)::in, list(prog_constraint)::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    list(var_and_maybe_csa)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_vars_loop(_Context,  _ExistQVars, _Seen,
@@ -141,7 +140,7 @@ make_typeclass_info_vars_loop(ExistQVars, Context, Seen,
 
 :- pred make_typeclass_info_var(existq_tvars::in, prog_context::in,
     list(prog_constraint)::in, prog_constraint::in,
-    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    var_and_maybe_csa::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
@@ -155,7 +154,7 @@ make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
         % a parameter to the pred or from an existentially quantified goal
         % that we have already processed.
         TypeClassInfoVar = OldTypeClassInfoVar,
-        TypeClassInfoVarMCA = TypeClassInfoVar - no,
+        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, no),
         Goals = [],
         record_constructed_typeclass_info_var("rtti_varmaps",
             do_not_dump_all_tables, 0, Constraint,
@@ -177,7 +176,7 @@ make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
         rtti_reuse_typeclass_info_var(TypeClassInfoVar,
             RttiVarMaps0, RttiVarMaps),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
-        TypeClassInfoVarMCA = TypeClassInfoVar - no,
+        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, no),
         Goals = [],
         record_constructed_typeclass_info_var("for later",
             do_not_dump_all_tables, 0, Constraint,
@@ -188,8 +187,8 @@ make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
 
 :- pred make_typeclass_info_from_proof(existq_tvars::in, prog_context::in,
     list(prog_constraint)::in, prog_constraint::in, constraint_proof::in,
-    pair(prog_var, maybe(const_struct_arg))::out,
-    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
+    var_and_maybe_csa::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_from_proof(ExistQVars, Context, Seen,
         Constraint, Proof, TypeClassInfoVarMCA, Goals, !Info) :-
@@ -213,7 +212,7 @@ make_typeclass_info_from_proof(ExistQVars, Context, Seen,
 :- pred get_or_make_typeclass_info_from_proof_subclass(existq_tvars::in,
     prog_context::in, list(prog_constraint)::in,
     prog_constraint::in, prog_constraint::in,
-    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    var_and_maybe_csa::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
@@ -267,7 +266,7 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
     % Make the typeclass_info for the subclass.
     make_typeclass_info_var(ExistQVars, Context, Seen, SubClassConstraint,
         SubClassVarMCA, SubClassVarGoals, !Info),
-    SubClassVarMCA = SubClassVar - SubClassMCA,
+    SubClassVarMCA = var_and_maybe_csa(SubClassVar, SubClassMCA),
 
     % Look up the definition of the subclass.
     poly_info_get_module_info(!.Info, ModuleInfo),
@@ -312,7 +311,8 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
                 materialize_typeclass_info_var(Context, Constraint,
                     SelectedConstNum, TypeClassInfoVar, MaybeConsId,
                     Goals, !Info),
-                TypeClassInfoVarMCA = TypeClassInfoVar - yes(SelectedArg),
+                TypeClassInfoVarMCA =
+                    var_and_maybe_csa(TypeClassInfoVar, yes(SelectedArg)),
                 record_constructed_typeclass_info_var("subclass constant",
                     do_not_dump_all_tables, -1, Constraint,
                     TypeClassInfoVar, yes(SelectedArg), MaybeConsId, !Info)
@@ -324,7 +324,7 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
         SubClassMCA = no,
         new_typeclass_info_var(Constraint, typeclass_info_kind,
             TypeClassInfoVar, _TypeClassInfoVarType, !Info),
-        TypeClassInfoVarMCA = TypeClassInfoVar - no,
+        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, no),
         get_poly_const(Context, SuperClassIndex, IndexVar, IndexGoals, !Info),
 
         % We extract the superclass typeclass_info by inserting a call
@@ -345,7 +345,7 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
 :- pred get_or_make_typeclass_info_from_proof_instance(existq_tvars::in,
     prog_context::in, list(prog_constraint)::in,
     prog_constraint::in, instance_id::in,
-    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    var_and_maybe_csa::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
@@ -428,7 +428,7 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
         materialize_typeclass_info_var(Context, Constraint, InstanceIdConstNum,
             TypeClassInfoVar, MaybeConsId, Goals, !Info),
         CSA = csa_const_struct(InstanceIdConstNum),
-        TypeClassInfoVarMCA = TypeClassInfoVar - yes(CSA),
+        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, yes(CSA)),
         (
             Goals = [],
             ResultStr = "instance doubly cached result"
@@ -442,7 +442,7 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
     else
         make_typeclass_info_from_proof_instance(ExistQVars, Context,
             ConstInstanceId, TypeClassInfoVarMCA, BaseConsId, Goals, !Info),
-        TypeClassInfoVarMCA = TypeClassInfoVar - MaybeCSA,
+        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, MaybeCSA),
         record_constructed_typeclass_info_var("instance computed",
             dump_all_tables, -1, Constraint,
             TypeClassInfoVar, MaybeCSA, yes(BaseConsId), !Info)
@@ -450,7 +450,7 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
 
 :- pred make_typeclass_info_from_proof_instance(existq_tvars::in,
     prog_context::in, const_instance_id::in,
-    pair(prog_var, maybe(const_struct_arg))::out, cons_id::out,
+    var_and_maybe_csa::out, cons_id::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_from_proof_instance(ExistQVars, Context,
@@ -568,7 +568,8 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
             BaseVar, BaseConsId, ArgVarsMCAs,
             InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
             BaseGoals ++ PrevGoals, Goals, !Info),
-        TypeClassInfoVarMCA = TypeClassInfoVar - TypeClassInfoMCA,
+        TypeClassInfoVarMCA =
+            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCA),
 
         % We must start the search from scratch, since construct_typeclass_info
         % may have reset all the cache maps.
@@ -606,7 +607,7 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
     ),
 
     ( if
-        TypeClassInfoVarMCA = _ - yes(TypeClassInfoConstArg),
+        TypeClassInfoVarMCA = var_and_maybe_csa(_, yes(TypeClassInfoConstArg)),
         TypeClassInfoConstArg = csa_const_struct(TypeClassInfoConstArgNum)
     then
         poly_info_get_const_struct_db(!.Info, ConstStructDb1),
@@ -617,10 +618,10 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
         true
     ).
 
-:- pred make_const_or_var_arg(pair(prog_var, maybe(const_struct_arg))::in,
+:- pred make_const_or_var_arg(var_and_maybe_csa::in,
     const_or_var_arg::out) is det.
 
-make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
+make_const_or_var_arg(var_and_maybe_csa(Var, MCA), ConstOrVarArg) :-
     (
         MCA = no,
         ConstOrVarArg = cova_var(Var)
@@ -633,7 +634,7 @@ make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
 
 :- pred construct_typeclass_info(prog_context::in, prog_constraint::in,
     prog_var::in, cons_id::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::in, var_maps::in,
+    list(var_and_maybe_csa)::in, var_maps::in,
     prog_var::out, maybe(const_struct_arg)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
@@ -705,7 +706,7 @@ construct_typeclass_info(Context, Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         TypeClassInfoMCA = no,
         new_typeclass_info_var(Constraint, typeclass_info_kind,
             TypeClassInfoVar, _TypeClassInfoVarType, !Info),
-        assoc_list.keys(ArgVarsMCAs, ArgVars),
+        ArgVars = list.map(var_and_maybe_csa_to_var, ArgVarsMCAs),
         AllArgVars = [BaseVar | ArgVars],
 
         % Create the construction unification to initialize the variable.
@@ -751,7 +752,7 @@ construct_typeclass_info(Context, Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
 
 :- pred get_arg_superclass_vars(hlds_class_defn::in, list(mer_type)::in,
     constraint_proof_map::in, existq_tvars::in, prog_context::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    list(var_and_maybe_csa)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
@@ -781,7 +782,7 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
 
 :- pred make_typeclass_infos_for_superclasses(existq_tvars::in,
     prog_context::in, list(prog_constraint)::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::out,
+    list(var_and_maybe_csa)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 make_typeclass_infos_for_superclasses(_, _, [], [], [], !Info).
@@ -1160,7 +1161,7 @@ record_constructed_typeclass_info_var(Where, MaybeDumpAll, LevelStep,
                 MaybeDumpAll = do_not_dump_all_tables
             ;
                 MaybeDumpAll = dump_all_tables,
-                write_type_info_var_map(Stream, Info, IndentStr, !IO),
+                write_type_to_type_info_map(Stream, Info, IndentStr, !IO),
                 write_typeclass_info_map(Stream, Info, IndentStr, !IO),
                 write_constr_struct_var_map(Stream, Info, IndentStr, !IO)
             ),
@@ -1171,25 +1172,25 @@ record_constructed_typeclass_info_var(Where, MaybeDumpAll, LevelStep,
 
 %---------------------------------------------------------------------------%
 
-:- pred write_type_info_var_map(io.text_output_stream::in,
+:- pred write_type_to_type_info_map(io.text_output_stream::in,
     poly_info::in, string::in, io::di, io::uo) is det.
 
-write_type_info_var_map(Stream, Info, IndentStr, !IO) :-
-    poly_info_get_type_info_var_map(Info, TypeInfoVarMap),
+write_type_to_type_info_map(Stream, Info, IndentStr, !IO) :-
+    poly_info_get_type_to_type_info_map(Info, TypeInfoVarMap),
     poly_info_get_typevarset(Info, TVarSet),
     poly_info_get_var_table(Info, VarTable),
-    io.format(Stream, "%stype_info_var_map\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%stype_to_type_info_map\n", [s(IndentStr)], !IO),
     NextIndentStr = IndentStr ++ "    ",
     map.foldl(
-        write_type_info_var_map_entry(Stream, TVarSet, VarTable,
+        write_type_ctor_to_type_info_map(Stream, TVarSet, VarTable,
             NextIndentStr),
         TypeInfoVarMap, !IO).
 
-:- pred write_type_info_var_map_entry(io.text_output_stream::in, tvarset::in,
-    var_table::in, string::in, type_ctor::in, type_info_var_map_entry::in,
+:- pred write_type_ctor_to_type_info_map(io.text_output_stream::in, tvarset::in,
+    var_table::in, string::in, type_ctor::in, type_ctor_to_type_info_map::in,
     io::di, io::uo) is det.
 
-write_type_info_var_map_entry(Stream, TVarSet, VarTable, IndentStr,
+write_type_ctor_to_type_info_map(Stream, TVarSet, VarTable, IndentStr,
         TypeCtor, TypeInfoVarMapEntry, !IO) :-
     TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
     TypeCtorName = unqualify_name(TypeCtorSymName),
@@ -1197,21 +1198,19 @@ write_type_info_var_map_entry(Stream, TVarSet, VarTable, IndentStr,
         [s(IndentStr), s(TypeCtorName), i(TypeCtorArity)], !IO),
     NextIndentStr = IndentStr ++ "    ",
     map.foldl(
-        write_type_info_var_map_entry_entry(Stream, TVarSet, VarTable,
+        write_type_ctor_to_type_info_map_entry(Stream, TVarSet, VarTable,
             NextIndentStr),
         TypeInfoVarMapEntry, !IO).
 
-:- pred write_type_info_var_map_entry_entry(io.text_output_stream::in,
+:- pred write_type_ctor_to_type_info_map_entry(io.text_output_stream::in,
     tvarset::in, var_table::in, string::in,
-    list(mer_type)::in, pair(prog_var, maybe(const_struct_arg))::in,
-    io::di, io::uo) is det.
+    list(mer_type)::in, var_and_maybe_csa::in, io::di, io::uo) is det.
 
-write_type_info_var_map_entry_entry(Stream, TVarSet, VarTable, IndentStr,
+write_type_ctor_to_type_info_map_entry(Stream, TVarSet, VarTable, IndentStr,
         Types, VarMaybeCSA, !IO) :-
     TypeStrs = list.map(trace_type_to_string(TVarSet), Types),
     TypesStr = string.join_list(", ", TypeStrs),
-    VarCSAStr =
-        var_and_maybe_const_struct_arg_to_string(VarTable, VarMaybeCSA),
+    VarCSAStr = var_and_maybe_csa_to_string(VarTable, VarMaybeCSA),
     io.format(Stream, "%s[%s] -> %s\n",
         [s(IndentStr), s(TypesStr), s(VarCSAStr)], !IO).
 
@@ -1265,7 +1264,7 @@ write_typeclass_info_class_map_entry(Stream, TVarSet, VarTable, IndentStr,
 
 :- pred write_typeclass_info_cva_map_entry(io.text_output_stream::in,
     tvarset::in, var_table::in, string::in,
-    list(const_or_var_arg)::in, pair(prog_var, maybe(const_struct_arg))::in,
+    list(const_or_var_arg)::in, var_and_maybe_csa::in,
     io::di, io::uo) is det.
 
 write_typeclass_info_cva_map_entry(Stream, TVarSet, VarTable, IndentStr,
@@ -1273,8 +1272,7 @@ write_typeclass_info_cva_map_entry(Stream, TVarSet, VarTable, IndentStr,
     COVAStrs = list.map(const_or_var_arg_to_string(TVarSet, VarTable),
         ConstOrVarArgs),
     COVAsStr = string.join_list(", ", COVAStrs),
-    VarMaybeCSAStr =
-        var_and_maybe_const_struct_arg_to_string(VarTable, VarMaybeCSA),
+    VarMaybeCSAStr = var_and_maybe_csa_to_string(VarTable, VarMaybeCSA),
     io.format(Stream, "%s%s ->\n%s    %s\n",
         [s(IndentStr), s(COVAsStr), s(IndentStr), s(VarMaybeCSAStr)], !IO).
 
@@ -1307,10 +1305,10 @@ write_constr_struct_var_map_entry(Stream, TVarSet, VarTable, IndentStr,
 
 %---------------------------------------------------------------------------%
 
-:- func var_and_maybe_const_struct_arg_to_string(var_table,
-    pair(prog_var, maybe(const_struct_arg))) = string.
+:- func var_and_maybe_csa_to_string(var_table, var_and_maybe_csa) = string.
 
-var_and_maybe_const_struct_arg_to_string(VarTable, Var - MaybeCSA) = Str :-
+var_and_maybe_csa_to_string(VarTable, var_and_maybe_csa(Var, MaybeCSA))
+        = Str :-
     VarStr = mercury_var_to_string(VarTable, print_name_and_num, Var),
     string.format("%s - %s", [s(VarStr), s(string(MaybeCSA))], Str).
 
