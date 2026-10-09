@@ -224,40 +224,8 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
         run_time(env("DEBUG_POLY_CACHES")),
         io(!IO)]
     (
-        poly_info_get_selected_pred(SelectedPred, !IO),
-        (
-            SelectedPred = is_not_selected_pred
-        ;
-            SelectedPred = is_selected_pred,
-            poly_info_get_debug_stream(!.Info, Stream, !IO),
-            poly_info_get_indent_level(Level, !IO),
-            IndentStr = string.duplicate_char(' ', Level * 4),
-            poly_info_set_indent_level(Level + 1, !IO),
-            poly_info_get_typevarset(!.Info, TVarSet),
-            ConstraintStr = trace_constraint_to_string(TVarSet, Constraint),
-            SubClassConstraintStr =
-                trace_constraint_to_string(TVarSet, SubClassConstraint),
-
-            io.format(Stream, "%smake_typeclass_info_from_subclass\n",
-                [s(IndentStr)], !IO),
-            io.format(Stream, "%sConstraint: %s\n",
-                [s(IndentStr), s(ConstraintStr)], !IO),
-            ( if Seen = [Constraint] then
-                io.format(Stream, "%sSeen: only Constraint\n",
-                    [s(IndentStr)], !IO)
-            else
-                SeenStrs = list.map(trace_constraint_to_string(TVarSet), Seen),
-                SeenStr = string.join_list(", ", SeenStrs),
-                io.format(Stream, "%sSeen: %s\n",
-                    [s(IndentStr), s(SeenStr)], !IO)
-            ),
-            io.format(Stream, "%sSubClassConstraint: %s\n",
-                [s(IndentStr), s(SubClassConstraintStr)], !IO),
-            io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
-            io.write_line(Stream, ExistQVars, !IO),
-            io.nl(Stream, !IO),
-            io.flush_output(Stream, !IO)
-        )
+        trace_get_or_make_typeclass_info_from_proof_subclass(!.Info,
+            ExistQVars, Seen, Constraint, SubClassConstraint, !IO)
     ),
 
     % Work out where to extract the typeclass info from.
@@ -358,47 +326,8 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
         run_time(env("DEBUG_POLY_CACHES")),
         io(!IO)]
     (
-        poly_info_get_selected_pred(SelectedPred, !IO),
-        poly_info_get_indent_level(Level, !IO),
-        (
-            SelectedPred = is_not_selected_pred
-        ;
-            SelectedPred = is_selected_pred,
-            poly_info_get_debug_stream(!.Info, Stream, !IO),
-            IndentStr = string.duplicate_char(' ', Level * 4),
-            poly_info_set_indent_level(Level + 1, !IO),
-            poly_info_get_typevarset(!.Info, TVarSet),
-            ConstraintStr = trace_constraint_to_string(TVarSet, Constraint),
-
-            io.format(Stream,
-                "%sget_or_make_typeclass_info_from_proof_instance\n",
-                [s(IndentStr)], !IO),
-            io.format(Stream, "%sConstraint: %s\n",
-                [s(IndentStr), s(ConstraintStr)], !IO),
-            ( if Seen = [Constraint] then
-                io.format(Stream, "%sSeen: only Constraint\n",
-                    [s(IndentStr)], !IO)
-            else
-                SeenStrs = list.map(trace_constraint_to_string(TVarSet), Seen),
-                SeenStr = string.join_list(", ", SeenStrs),
-                io.format(Stream, "%sSeen: %s\n",
-                    [s(IndentStr), s(SeenStr)], !IO)
-            ),
-            list.sort(Seen, SortedSeen),
-            list.sort_and_remove_dups(Seen, SortedSeenNoDups),
-            ( if SortedSeen = SortedSeenNoDups then
-                true
-            else
-                io.format(Stream, "%sSeen CONTAINS DUPLICATES\n",
-                    [s(IndentStr)], !IO)
-            ),
-            io.format(Stream, "%sInstanceId: %d\n",
-                [s(IndentStr), i(InstanceNum)], !IO),
-            io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
-            io.write_line(Stream, ExistQVars, !IO),
-            io.nl(Stream, !IO),
-            io.flush_output(Stream, !IO)
-        )
+        trace_get_or_make_typeclass_info_from_proof_instance(!.Info,
+            ExistQVars, Seen, Constraint, InstanceId, !IO)
     ),
 
     % We have two obvious choices for how we reuse existing typeclass_infos.
@@ -1075,29 +1004,131 @@ get_base_typeclass_info_cons_id(Info, ClassId, InstanceNum, ProofInstanceDefn,
         run_time(env("DEBUG_POLY_CACHES")),
         io(!IO)]
     (
-        poly_info_get_selected_pred(SelectedPred, !IO),
-        (
-            SelectedPred = is_not_selected_pred
-        ;
-            SelectedPred = is_selected_pred,
-            poly_info_get_debug_stream(Info, Stream, !IO),
-            poly_info_get_indent_level(Level, !IO),
-            IndentStr = string.duplicate_char(' ', Level * 4),
-            ClassId = class_id(ClassSymName, ClassArity),
-            ClassSymNameStr = sym_name_to_string(ClassSymName),
-            ConsIdStr = unqual_cons_id_and_arity_to_string(ConsId),
-            io.format(Stream, "%sget_base_typeclass_info_cons_id:\n",
-                [s(IndentStr)], !IO),
-            io.format(Stream, "%s    %s/%d\n",
-                [s(IndentStr), s(ClassSymNameStr), i(ClassArity)], !IO),
-            io.format(Stream, "%s    %s\n\n",
-                [s(IndentStr), s(ConsIdStr)], !IO),
-            io.flush_output(Stream, !IO)
-        )
+        trace_get_base_typeclass_info_cons_id(Info, ClassId, ConsId, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 % The rest of this file contains code that is needed only for debugging.
+%---------------------------------------------------------------------------%
+
+:- pred trace_get_or_make_typeclass_info_from_proof_subclass(poly_info::in,
+    existq_tvars::in, list(prog_constraint)::in,
+    prog_constraint::in, prog_constraint::in, io::di, io::uo) is det.
+
+trace_get_or_make_typeclass_info_from_proof_subclass(Info, ExistQVars, Seen,
+        Constraint, SubClassConstraint, !IO) :-
+    poly_info_get_selected_pred(SelectedPred, !IO),
+    (
+        SelectedPred = is_not_selected_pred
+    ;
+        SelectedPred = is_selected_pred,
+        poly_info_get_debug_stream(Info, Stream, !IO),
+        poly_info_get_indent_level(Level, !IO),
+        IndentStr = string.duplicate_char(' ', Level * 4),
+        poly_info_set_indent_level(Level + 1, !IO),
+        poly_info_get_typevarset(Info, TVarSet),
+        ConstraintStr = trace_constraint_to_string(TVarSet, Constraint),
+        SubClassConstraintStr =
+            trace_constraint_to_string(TVarSet, SubClassConstraint),
+
+        io.format(Stream, "%smake_typeclass_info_from_subclass\n",
+            [s(IndentStr)], !IO),
+        io.format(Stream, "%sConstraint: %s\n",
+            [s(IndentStr), s(ConstraintStr)], !IO),
+        ( if Seen = [Constraint] then
+            io.format(Stream, "%sSeen: only Constraint\n",
+                [s(IndentStr)], !IO)
+        else
+            SeenStrs = list.map(trace_constraint_to_string(TVarSet), Seen),
+            SeenStr = string.join_list(", ", SeenStrs),
+            io.format(Stream, "%sSeen: %s\n",
+                [s(IndentStr), s(SeenStr)], !IO)
+        ),
+        io.format(Stream, "%sSubClassConstraint: %s\n",
+            [s(IndentStr), s(SubClassConstraintStr)], !IO),
+        io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
+        io.write_line(Stream, ExistQVars, !IO),
+        io.nl(Stream, !IO),
+        io.flush_output(Stream, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred trace_get_or_make_typeclass_info_from_proof_instance(poly_info::in,
+    existq_tvars::in, list(prog_constraint)::in,
+    prog_constraint::in, instance_id::in, io::di, io::uo) is det.
+
+trace_get_or_make_typeclass_info_from_proof_instance(Info, ExistQVars, Seen,
+        Constraint, InstanceId, !IO) :-
+    poly_info_get_selected_pred(SelectedPred, !IO),
+    (
+        SelectedPred = is_not_selected_pred
+    ;
+        SelectedPred = is_selected_pred,
+        poly_info_get_debug_stream(Info, Stream, !IO),
+        poly_info_get_indent_level(Level, !IO),
+        IndentStr = string.duplicate_char(' ', Level * 4),
+        poly_info_set_indent_level(Level + 1, !IO),
+        poly_info_get_typevarset(Info, TVarSet),
+        ConstraintStr = trace_constraint_to_string(TVarSet, Constraint),
+
+        io.format(Stream,
+            "%sget_or_make_typeclass_info_from_proof_instance\n",
+            [s(IndentStr)], !IO),
+        io.format(Stream, "%sConstraint: %s\n",
+            [s(IndentStr), s(ConstraintStr)], !IO),
+        ( if Seen = [Constraint] then
+            io.format(Stream, "%sSeen: only Constraint\n",
+                [s(IndentStr)], !IO)
+        else
+            SeenStrs = list.map(trace_constraint_to_string(TVarSet), Seen),
+            SeenStr = string.join_list(", ", SeenStrs),
+            io.format(Stream, "%sSeen: %s\n",
+                [s(IndentStr), s(SeenStr)], !IO)
+        ),
+        list.sort(Seen, SortedSeen),
+        list.sort_and_remove_dups(Seen, SortedSeenNoDups),
+        ( if SortedSeen = SortedSeenNoDups then
+            true
+        else
+            io.format(Stream, "%sSeen CONTAINS DUPLICATES\n",
+                [s(IndentStr)], !IO)
+        ),
+        InstanceId = instance_id(InstanceNum),
+        io.format(Stream, "%sInstanceId: %d\n",
+            [s(IndentStr), i(InstanceNum)], !IO),
+        io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
+        io.write_line(Stream, ExistQVars, !IO),
+        io.nl(Stream, !IO),
+        io.flush_output(Stream, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred trace_get_base_typeclass_info_cons_id(poly_info::in,
+    class_id::in, cons_id::in, io::di, io::uo) is det.
+
+trace_get_base_typeclass_info_cons_id(Info, ClassId, ConsId, !IO) :-
+    poly_info_get_selected_pred(SelectedPred, !IO),
+    (
+        SelectedPred = is_not_selected_pred
+    ;
+        SelectedPred = is_selected_pred,
+        poly_info_get_debug_stream(Info, Stream, !IO),
+        poly_info_get_indent_level(Level, !IO),
+        IndentStr = string.duplicate_char(' ', Level * 4),
+        ClassId = class_id(ClassSymName, ClassArity),
+        ClassSymNameStr = sym_name_to_string(ClassSymName),
+        ConsIdStr = unqual_cons_id_and_arity_to_string(ConsId),
+        io.format(Stream, "%sget_base_typeclass_info_cons_id:\n",
+            [s(IndentStr)], !IO),
+        io.format(Stream, "%s    %s/%d\n",
+            [s(IndentStr), s(ClassSymNameStr), i(ClassArity)], !IO),
+        io.format(Stream, "%s    %s\n\n",
+            [s(IndentStr), s(ConsIdStr)], !IO),
+        io.flush_output(Stream, !IO)
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- type maybe_dump_all_tables
