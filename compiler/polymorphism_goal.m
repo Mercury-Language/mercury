@@ -642,7 +642,7 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
         make_typeclass_info_vars(ActualExistentialConstraints, [], Context,
             ExtraTypeClassVarsMCAs, ExtraTypeClassGoals, !Info),
         ExtraTypeClassVars =
-            list.map(var_and_maybe_csa_to_var, ExtraTypeClassVarsMCAs)
+            list.map(var_and_maybe_csa_to_var, coerce(ExtraTypeClassVarsMCAs))
     ;
         IsExistConstr = is_not_exist_constr,
         % Assume it is a deconstruction.
@@ -1042,7 +1042,7 @@ polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
         make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
             CallContext, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals, !Info),
         ExtraUnivClassVars =
-            list.map(var_and_maybe_csa_to_var, ExtraUnivClassVarsMCAs),
+            list.map(var_and_maybe_csa_to_var, coerce(ExtraUnivClassVarsMCAs)),
 
         % Make variables to hold any existentially quantified typeclass_infos
         % in the call, insert them into the typeclass_info map.

@@ -415,7 +415,7 @@ produce_clause_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     make_typeclass_info_vars(ActualExistConstraints, ExistQVarsForCall,
         Context, ExistTypeClassVarsMCAs, ExtraTypeClassGoals, !Info),
     ExistTypeClassVars =
-        list.map(var_and_maybe_csa_to_var, ExistTypeClassVarsMCAs),
+        list.map(var_and_maybe_csa_to_var, coerce(ExistTypeClassVarsMCAs)),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     list.foldl(rtti_reuse_typeclass_info_var, ExistTypeClassVars,
         RttiVarMaps0, RttiVarMaps),

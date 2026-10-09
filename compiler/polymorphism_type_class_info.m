@@ -30,7 +30,7 @@
     %
 :- pred make_typeclass_info_vars(list(prog_constraint)::in,
     existq_tvars::in, prog_context::in,
-    list(var_and_maybe_csa)::out, list(hlds_goal)::out,
+    list(var_and_maybe_csac)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -118,7 +118,7 @@ make_typeclass_info_vars(Constraints, ExistQVars, Context,
     %
 :- pred make_typeclass_info_vars_loop(existq_tvars::in, prog_context::in,
     list(prog_constraint)::in, list(prog_constraint)::in,
-    list(var_and_maybe_csa)::out, list(hlds_goal)::out,
+    list(var_and_maybe_csac)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_vars_loop(_Context,  _ExistQVars, _Seen,
@@ -136,11 +136,11 @@ make_typeclass_info_vars_loop(ExistQVars, Context, Seen,
 
 :- pred make_typeclass_info_var(existq_tvars::in, prog_context::in,
     list(prog_constraint)::in, prog_constraint::in,
-    var_and_maybe_csa::out, list(hlds_goal)::out,
+    var_and_maybe_csac::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
-        TypeClassInfoVarMCA, Goals, !Info) :-
+        TypeClassInfoVarMCAC, Goals, !Info) :-
     ( if
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         rtti_search_typeclass_info_var(RttiVarMaps0, Constraint,
@@ -150,7 +150,7 @@ make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
         % a parameter to the pred or from an existentially quantified goal
         % that we have already processed.
         TypeClassInfoVar = OldTypeClassInfoVar,
-        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, no),
+        TypeClassInfoVarMCAC = var_and_maybe_csa(TypeClassInfoVar, no),
         Goals = [],
         log_constructed_typeclass_info_var("rtti_varmaps",
             do_not_dump_all_tables, 0, Constraint,
@@ -164,7 +164,7 @@ make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
         % make_typeclass_info_from_proof will call
         % log_constructed_typeclass_info_var.
         make_typeclass_info_from_proof(ExistQVars, Context, Seen,
-            Constraint, Proof, TypeClassInfoVarMCA, Goals, !Info)
+            Constraint, Proof, TypeClassInfoVarMCAC, Goals, !Info)
     else
         % ... it will be produced by an existentially typed goal that
         % we will process later on.
@@ -174,7 +174,7 @@ make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
         rtti_reuse_typeclass_info_var(TypeClassInfoVar,
             RttiVarMaps0, RttiVarMaps),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
-        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, no),
+        TypeClassInfoVarMCAC = var_and_maybe_csa(TypeClassInfoVar, no),
         Goals = [],
         log_constructed_typeclass_info_var("for later",
             do_not_dump_all_tables, 0, Constraint,
@@ -185,11 +185,11 @@ make_typeclass_info_var(ExistQVars, Context, Seen, Constraint,
 
 :- pred make_typeclass_info_from_proof(existq_tvars::in, prog_context::in,
     list(prog_constraint)::in, prog_constraint::in, constraint_proof::in,
-    var_and_maybe_csa::out, list(hlds_goal)::out,
+    var_and_maybe_csac::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_from_proof(ExistQVars, Context, Seen,
-        Constraint, Proof, TypeClassInfoVarMCA, Goals, !Info) :-
+        Constraint, Proof, TypeClassInfoVarMCAC, Goals, !Info) :-
     (
         % XXX MR_Dictionary should have MR_Dictionaries for superclass
         % We have to extract the typeclass_info from another one.
@@ -197,7 +197,7 @@ make_typeclass_info_from_proof(ExistQVars, Context, Seen,
         % get_or_make_typeclass_info_from_proof_subclass will call
         % log_constructed_typeclass_info_var.
         get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context,
-            Seen, Constraint, SubClassConstraint, TypeClassInfoVarMCA,
+            Seen, Constraint, SubClassConstraint, TypeClassInfoVarMCAC,
             Goals, !Info)
     ;
         % We have to construct the typeclass_info using an instance
@@ -206,7 +206,7 @@ make_typeclass_info_from_proof(ExistQVars, Context, Seen,
         % get_or_make_typeclass_info_from_proof_instance will call
         % log_constructed_typeclass_info_var.
         get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context,
-            Seen, Constraint, InstanceNum, TypeClassInfoVarMCA, Goals, !Info)
+            Seen, Constraint, InstanceNum, TypeClassInfoVarMCAC, Goals, !Info)
     ).
 
 %---------------------------------------------------------------------------%
@@ -214,11 +214,11 @@ make_typeclass_info_from_proof(ExistQVars, Context, Seen,
 :- pred get_or_make_typeclass_info_from_proof_subclass(existq_tvars::in,
     prog_context::in, list(prog_constraint)::in,
     prog_constraint::in, prog_constraint::in,
-    var_and_maybe_csa::out, list(hlds_goal)::out,
+    var_and_maybe_csac::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
-        Constraint, SubClassConstraint, TypeClassInfoVarMCA, Goals, !Info) :-
+        Constraint, SubClassConstraint, TypeClassInfoVarMCAC, Goals, !Info) :-
     trace [
         compile_time(flag("debug_poly_caches")),
         run_time(env("DEBUG_POLY_CACHES")),
@@ -235,8 +235,8 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
 
     % Make the typeclass_info for the subclass.
     make_typeclass_info_var(ExistQVars, Context, Seen, SubClassConstraint,
-        SubClassVarMCA, SubClassVarGoals, !Info),
-    SubClassVarMCA = var_and_maybe_csa(SubClassVar, SubClassMCA),
+        SubClassVarMCAC, SubClassVarGoals, !Info),
+    SubClassVarMCAC = var_and_maybe_csa(SubClassVar, SubClassMCAC),
 
     % Look up the definition of the subclass.
     poly_info_get_module_info(!.Info, ModuleInfo),
@@ -253,48 +253,44 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
         list.det_index1_of_first_occurrence(SuperClasses, Constraint),
 
     (
-        SubClassMCA = yes(SubClassConstArg),
-        (
-            SubClassConstArg = csa_constant(_, _),
-            unexpected($pred, "typeclass infos need a cell")
-        ;
-            SubClassConstArg = csa_const_struct(SubClassConstNum),
-            poly_info_get_const_struct_db(!.Info, ConstStructDb),
-            lookup_const_struct_num(ConstStructDb, SubClassConstNum,
-                SubClassConstStruct),
-            SubClassConstStruct =
-                const_struct(SubClassConsId, SubClassArgs, _, _, _),
-            ( if
-                SubClassConsId = typeclass_info_cell_constructor,
-                SubClassArgs = [BTCIArg | OtherArgs],
-                BTCIArg = csa_constant(BTCIConsId, _),
-                BTCIConsId = base_typeclass_info_const(_, SubClassId,
-                    SubInstanceNum, _),
-                module_info_get_instance_table(ModuleInfo, InstanceTable),
-                map.lookup(InstanceTable, SubClassId, SubInstanceDefns),
-                list.index1(SubInstanceDefns, SubInstanceNum, SubInstanceDefn),
-                num_extra_instance_args(SubInstanceDefn, NumExtra),
-                Index = NumExtra + SuperClassIndex,
-                list.det_index1(OtherArgs, Index, SelectedArg),
-                SelectedArg = csa_const_struct(SelectedConstNum)
-            then
-                materialize_typeclass_info_var(Context, Constraint,
-                    SelectedConstNum, TypeClassInfoVar, MaybeConsId,
-                    Goals, !Info),
-                TypeClassInfoVarMCA =
-                    var_and_maybe_csa(TypeClassInfoVar, yes(SelectedArg)),
-                log_constructed_typeclass_info_var("subclass constant",
-                    do_not_dump_all_tables, -1, Constraint,
-                    TypeClassInfoVar, yes(SelectedArg), MaybeConsId, !Info)
-            else
-                unexpected($pred, "unexpected typeclass info structure")
-            )
+        SubClassMCAC = yes(SubClassConstArg),
+        SubClassConstArg = csa_const_struct(SubClassConstNum),
+        poly_info_get_const_struct_db(!.Info, ConstStructDb),
+        lookup_const_struct_num(ConstStructDb, SubClassConstNum,
+            SubClassConstStruct),
+        SubClassConstStruct =
+            const_struct(SubClassConsId, SubClassArgs, _, _, _),
+        ( if
+            SubClassConsId = typeclass_info_cell_constructor,
+            SubClassArgs = [BTCIArg | OtherArgs],
+            BTCIArg = csa_constant(BTCIConsId, _),
+            BTCIConsId = base_typeclass_info_const(_, SubClassId,
+                SubInstanceNum, _),
+            module_info_get_instance_table(ModuleInfo, InstanceTable),
+            map.lookup(InstanceTable, SubClassId, SubInstanceDefns),
+            list.index1(SubInstanceDefns, SubInstanceNum, SubInstanceDefn),
+            num_extra_instance_args(SubInstanceDefn, NumExtra),
+            Index = NumExtra + SuperClassIndex,
+            list.det_index1(OtherArgs, Index, SelectedArg0),
+            SelectedArg0 = csa_const_struct(SelectedConstNum)
+        then
+            materialize_typeclass_info_var(Context, Constraint,
+                SelectedConstNum, TypeClassInfoVar, MaybeConsId,
+                Goals, !Info),
+            SelectedArg = coerce(SelectedArg0),
+            TypeClassInfoVarMCAC =
+                var_and_maybe_csa(TypeClassInfoVar, yes(SelectedArg)),
+            log_constructed_typeclass_info_var("subclass constant",
+                do_not_dump_all_tables, -1, Constraint,
+                TypeClassInfoVar, yes(SelectedArg), MaybeConsId, !Info)
+        else
+            unexpected($pred, "unexpected typeclass info structure")
         )
     ;
-        SubClassMCA = no,
+        SubClassMCAC = no,
         new_typeclass_info_var(Constraint, typeclass_info_kind,
             TypeClassInfoVar, _TypeClassInfoVarType, !Info),
-        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, no),
+        TypeClassInfoVarMCAC = var_and_maybe_csa(TypeClassInfoVar, no),
         get_poly_const(Context, SuperClassIndex, IndexVar, IndexGoals, !Info),
 
         % We extract the superclass typeclass_info by inserting a call
@@ -315,11 +311,11 @@ get_or_make_typeclass_info_from_proof_subclass(ExistQVars, Context, Seen,
 :- pred get_or_make_typeclass_info_from_proof_instance(existq_tvars::in,
     prog_context::in, list(prog_constraint)::in,
     prog_constraint::in, instance_id::in,
-    var_and_maybe_csa::out, list(hlds_goal)::out,
+    var_and_maybe_csac::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
-        Constraint, InstanceId, TypeClassInfoVarMCA, Goals, !Info) :-
+        Constraint, InstanceId, TypeClassInfoVarMCAC, Goals, !Info) :-
     InstanceId = instance_id(InstanceNum),
     trace [
         compile_time(flag("debug_poly_caches")),
@@ -359,7 +355,7 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
         materialize_typeclass_info_var(Context, Constraint, InstanceIdConstNum,
             TypeClassInfoVar, MaybeConsId, Goals, !Info),
         CSA = csa_const_struct(InstanceIdConstNum),
-        TypeClassInfoVarMCA = var_and_maybe_csa(TypeClassInfoVar, yes(CSA)),
+        TypeClassInfoVarMCAC = var_and_maybe_csa(TypeClassInfoVar, yes(CSA)),
         (
             Goals = [],
             ResultStr = "instance doubly cached result"
@@ -374,15 +370,15 @@ get_or_make_typeclass_info_from_proof_instance(ExistQVars, Context, Seen,
         % make_typeclass_info_from_proof_instance will call
         % log_constructed_typeclass_info_var.
         make_typeclass_info_from_proof_instance(ExistQVars, Context,
-            ConstInstanceId, TypeClassInfoVarMCA, Goals, !Info)
+            ConstInstanceId, TypeClassInfoVarMCAC, Goals, !Info)
     ).
 
 :- pred make_typeclass_info_from_proof_instance(existq_tvars::in,
-    prog_context::in, const_instance_id::in, var_and_maybe_csa::out,
+    prog_context::in, const_instance_id::in, var_and_maybe_csac::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_from_proof_instance(ExistQVars, Context,
-        ConstInstanceId, TypeClassInfoVarMCA, Goals, !Info) :-
+        ConstInstanceId, TypeClassInfoVarMCAC, Goals, !Info) :-
     ConstInstanceId = ciid(InstanceNum, Constraint, Seen),
     Constraint = constraint(ClassSymName, ClassArgTypes),
     list.length(ClassArgTypes, ClassArity),
@@ -408,18 +404,18 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
     ( if
         map.search(TypeClassInfoMap0, ClassId, ClassIdMap0),
         map.search(ClassIdMap0, ClassArgTypes, ArgsMap0),
-        map.search(ArgsMap0, ArgCOVAs, OldTypeClassInfoVarMCA0)
+        map.search(ArgsMap0, ArgCOVAs, OldTypeClassInfoVarMCAC0)
     then
-        TypeClassInfoVarMCA = OldTypeClassInfoVarMCA0,
+        TypeClassInfoVarMCAC = OldTypeClassInfoVarMCAC0,
         Goals = [],
         set_var_maps_snapshot("make_typeclass_info",
             InitialVarMapsSnapshot, !Info),
         poly_info_incr_num_reuses(2, !Info),
-        TypeClassInfoVarMCA =
-            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCA),
+        TypeClassInfoVarMCAC =
+            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCAC),
         log_constructed_typeclass_info_var("instance recorded",
             dump_all_tables, -1, Constraint,
-            TypeClassInfoVar, TypeClassInfoMCA, no, !Info)
+            TypeClassInfoVar, TypeClassInfoMCAC, no, !Info)
     else
         InstanceTypes = ProofInstanceDefn ^ instdefn_types,
         get_base_typeclass_info_cons_id(!.Info, ClassId, InstanceNum,
@@ -428,17 +424,17 @@ make_typeclass_info_from_proof_instance(ExistQVars, Context,
             BaseVar, BaseGoals, !Info),
         construct_typeclass_info(Context, Constraint,
             BaseVar, BaseConsId, ArgVarsMCAs,
-            InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
+            InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCAC,
             BaseGoals ++ PrevGoals, Goals, !Info),
-        TypeClassInfoVarMCA =
-            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCA),
+        TypeClassInfoVarMCAC =
+            var_and_maybe_csa(TypeClassInfoVar, TypeClassInfoMCAC),
         update_class_to_typeclass_info_map(ClassId, ClassArgTypes, ArgCOVAs,
-            TypeClassInfoVarMCA, !Info),
+            TypeClassInfoVarMCAC, !Info),
         log_constructed_typeclass_info_var("instance computed",
             dump_all_tables, -1, Constraint,
-            TypeClassInfoVar, TypeClassInfoMCA, yes(BaseConsId), !Info)
+            TypeClassInfoVar, TypeClassInfoMCAC, yes(BaseConsId), !Info)
     ),
-    record_instance_if_constant(ConstInstanceId, TypeClassInfoVarMCA, !Info).
+    record_instance_if_constant(ConstInstanceId, TypeClassInfoVarMCAC, !Info).
 
 :- pred compute_typeclass_info_args(class_id::in, list(mer_type)::in,
     existq_tvars::in, prog_context::in, list(prog_constraint)::in,
@@ -475,8 +471,8 @@ compute_typeclass_info_args(ClassId, ClassArgTypes, ExistQVars, Context, Seen,
         InstanceConstraintGoals ++ SuperClassGoals,
     % Lay out the argument variables as expected in the typeclass_info.
     ArgVarsMCAs = ArgUnconstrainedTypeInfoVarsMCAs ++
-        ArgTypeClassInfoVarsMCAs ++
-        ArgSuperClassVarsMCAs ++ ArgTypeInfoVarsMCAs.
+        coerce(ArgTypeClassInfoVarsMCAs) ++
+        coerce(ArgSuperClassVarsMCAs) ++ ArgTypeInfoVarsMCAs.
 
 :- pred compute_actual_proof_instance_details(poly_info::in,
     list(prog_constraint)::in, list(mer_type)::in, hlds_instance_defn::in,
@@ -538,26 +534,26 @@ make_const_or_var_arg(var_and_maybe_csa(Var, MCA), ConstOrVarArg) :-
     ).
 
 :- pred update_class_to_typeclass_info_map(class_id::in, list(mer_type)::in,
-    list(const_or_var_arg)::in, var_and_maybe_csa::in,
+    list(const_or_var_arg)::in, var_and_maybe_csac::in,
     poly_info::in, poly_info::out) is det.
 
 update_class_to_typeclass_info_map(ClassId, ClassArgTypes, ArgCOVAs,
-        TypeClassInfoVarMCA, !Info) :-
+        TypeClassInfoVarMCAC, !Info) :-
     % We must start the search from scratch, since our caller's call
     % to construct_typeclass_info may have reset all the cache maps.
     poly_info_get_class_to_typeclass_info_map(!.Info, TypeClassInfoMap1),
     ( if map.search(TypeClassInfoMap1, ClassId, ClassIdMap1) then
         ( if map.search(ClassIdMap1, ClassArgTypes, ArgsMap1) then
-            map.det_insert(ArgCOVAs, TypeClassInfoVarMCA, ArgsMap1, ArgsMap),
+            map.det_insert(ArgCOVAs, TypeClassInfoVarMCAC, ArgsMap1, ArgsMap),
             map.det_update(ClassArgTypes, ArgsMap, ClassIdMap1, ClassIdMap)
         else
-            ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCA),
+            ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCAC),
             map.det_insert(ClassArgTypes, ArgsMap, ClassIdMap1, ClassIdMap)
         ),
         map.det_update(ClassId, ClassIdMap,
             TypeClassInfoMap1, TypeClassInfoMap)
     else
-        ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCA),
+        ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCAC),
         ClassIdMap = map.singleton(ClassArgTypes, ArgsMap),
         map.det_insert(ClassId, ClassIdMap,
             TypeClassInfoMap1, TypeClassInfoMap)
@@ -565,19 +561,19 @@ update_class_to_typeclass_info_map(ClassId, ClassArgTypes, ArgCOVAs,
     poly_info_set_class_to_typeclass_info_map(TypeClassInfoMap, !Info).
 
 :- pred record_instance_if_constant(const_instance_id::in,
-    var_and_maybe_csa::in, poly_info::in, poly_info::out) is det.
+    var_and_maybe_csac::in, poly_info::in, poly_info::out) is det.
 
-record_instance_if_constant(ConstInstanceId, TypeClassInfoVarMCA, !Info) :-
-    ( if
-        TypeClassInfoVarMCA = var_and_maybe_csa(_, yes(TypeClassInfoConstArg)),
-        TypeClassInfoConstArg = csa_const_struct(TypeClassInfoConstArgNum)
-    then
+record_instance_if_constant(ConstInstanceId, TypeClassInfoVarMCAC, !Info) :-
+    TypeClassInfoVarMCAC = var_and_maybe_csa(_, MaybeTCIConstArg),
+    (
+        MaybeTCIConstArg = yes(TypeClassInfoConstArg),
+        TypeClassInfoConstArg = csa_const_struct(TypeClassInfoConstArgNum),
         poly_info_get_const_struct_db(!.Info, ConstStructDb1),
         insert_constant_instance(ConstInstanceId, TypeClassInfoConstArgNum,
             ConstStructDb1, ConstStructDb),
         poly_info_set_const_struct_db(ConstStructDb, !Info)
-    else
-        true
+    ;
+        MaybeTCIConstArg = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -588,7 +584,7 @@ record_instance_if_constant(ConstInstanceId, TypeClassInfoVarMCA, !Info) :-
 :- pred construct_typeclass_info(prog_context::in, prog_constraint::in,
     prog_var::in, cons_id::in,
     list(var_and_maybe_csa)::in, var_maps_snapshot::in,
-    prog_var::out, maybe(const_struct_arg)::out,
+    prog_var::out, maybe(const_struct_arg_cell)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
@@ -614,11 +610,11 @@ construct_typeclass_info(Context, Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
 
 :- pred construct_typeclass_info_all_const(prog_context::in,
     prog_constraint::in, cons_id::in, list(const_struct_arg)::in,
-    prog_var::out, maybe(const_struct_arg)::out, list(hlds_goal)::out,
+    prog_var::out, maybe(const_struct_arg_cell)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 construct_typeclass_info_all_const(Context, Constraint,
-        BaseConsId, VarConstArgs, TypeClassInfoVar, TypeClassInfoMCA,
+        BaseConsId, VarConstArgs, TypeClassInfoVar, TypeClassInfoMCAC,
         AllGoals, !Info) :-
     poly_info_incr_num_reuses(1, !Info),
     new_typeclass_info_var(Constraint, typeclass_info_kind,
@@ -641,7 +637,7 @@ construct_typeclass_info_all_const(Context, Constraint,
         ConstStructDb0, ConstStructDb),
     poly_info_set_const_struct_db(ConstStructDb, !Info),
     TypeClassInfoConstArg = csa_const_struct(ConstNum),
-    TypeClassInfoMCA = yes(TypeClassInfoConstArg),
+    TypeClassInfoMCAC = yes(TypeClassInfoConstArg),
 
     % Create the construction unification to initialize the variable.
     ConstConsId = typeclass_info_const(ConstNum),
@@ -672,7 +668,7 @@ construct_typeclass_info_all_const(Context, Constraint,
 
 :- pred construct_typeclass_info_not_all_const(prog_context::in,
     prog_constraint::in, prog_var::in, list(var_and_maybe_csa)::in,
-    prog_var::out, maybe(const_struct_arg)::out,
+    prog_var::out, maybe(const_struct_arg_cell)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
@@ -727,7 +723,7 @@ construct_typeclass_info_not_all_const(Context, Constraint,
 
 :- pred get_arg_superclass_vars(hlds_class_defn::in, list(mer_type)::in,
     constraint_proof_map::in, existq_tvars::in, prog_context::in,
-    list(var_and_maybe_csa)::out, list(hlds_goal)::out,
+    list(var_and_maybe_csac)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
@@ -757,7 +753,7 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
 
 :- pred make_typeclass_infos_for_superclasses(existq_tvars::in,
     prog_context::in, list(prog_constraint)::in,
-    list(var_and_maybe_csa)::out,
+    list(var_and_maybe_csac)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 make_typeclass_infos_for_superclasses(_, _, [], [], [], !Info).
@@ -1184,7 +1180,7 @@ trace_get_base_typeclass_info_cons_id(Info, ClassId, ConsId, !IO) :-
 
 :- pred log_constructed_typeclass_info_var(string::in,
     maybe_dump_all_tables::in, int::in, prog_constraint::in,
-    prog_var::in, maybe(const_struct_arg)::in, maybe(cons_id)::in,
+    prog_var::in, maybe(const_struct_arg_cell)::in, maybe(cons_id)::in,
     poly_info::in, poly_info::out) is det.
 
 log_constructed_typeclass_info_var(Where, MaybeDumpAll, LevelStep,
@@ -1211,7 +1207,8 @@ log_constructed_typeclass_info_var(Where, MaybeDumpAll, LevelStep,
                 TypeClassInfoVar),
             (
                 MaybeCSA = yes(ConstStructArg),
-                CSAStr = const_struct_arg_to_string(TVarSet, ConstStructArg)
+                CSAStr = const_struct_arg_to_string(TVarSet,
+                    coerce(ConstStructArg))
             ;
                 MaybeCSA = no,
                 CSAStr = "no const_struct_arg"

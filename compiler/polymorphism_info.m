@@ -48,6 +48,15 @@
                 maybe(const_struct_arg)
             ).
 
+:- type var_and_maybe_csac =< var_and_maybe_csa
+    --->    var_and_maybe_csa(
+                prog_var,
+                maybe(const_struct_arg_cell)
+            ).
+
+:- type const_struct_arg_cell =< const_struct_arg
+    --->    csa_const_struct(int).
+
 :- func var_and_maybe_csa_to_var(var_and_maybe_csa) = prog_var.
 
 %---------------------%
@@ -144,7 +153,7 @@
 :- type class_id_to_typeclass_info_map ==
     map(list(mer_type), tci_args_map).
 :- type tci_args_map ==
-    map(list(const_or_var_arg), var_and_maybe_csa).
+    map(list(const_or_var_arg), var_and_maybe_csac).
 
 %---------------------%
 
@@ -1036,7 +1045,7 @@ write_typeclass_info_args(Stream, TVarSet, VarTable, IndentStr,
 
 :- pred write_typeclass_info_cva_map_entry(io.text_output_stream::in,
     tvarset::in, var_table::in, string::in,
-    list(const_or_var_arg)::in, var_and_maybe_csa::in,
+    list(const_or_var_arg)::in, var_and_maybe_csac::in,
     io::di, io::uo) is det.
 
 write_typeclass_info_cva_map_entry(Stream, TVarSet, VarTable, IndentStr,
@@ -1044,7 +1053,8 @@ write_typeclass_info_cva_map_entry(Stream, TVarSet, VarTable, IndentStr,
     COVAStrs = list.map(const_or_var_arg_to_string(TVarSet, VarTable),
         ConstOrVarArgs),
     COVAsStr = string.join_list(", ", COVAStrs),
-    VarMaybeCSAStr = var_and_maybe_csa_to_string(VarTable, VarMaybeCSA),
+    VarMaybeCSAStr =
+        var_and_maybe_csa_to_string(VarTable, coerce(VarMaybeCSA)),
     io.format(Stream, "%s%s ->\n%s    %s\n",
         [s(IndentStr), s(COVAsStr), s(IndentStr), s(VarMaybeCSAStr)], !IO).
 
