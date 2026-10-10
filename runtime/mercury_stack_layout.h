@@ -649,7 +649,7 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
 #define MR_cast_to_pti3(r1, r2, r3)                                         \
         (MR_PseudoTypeInfo) (r1),                                           \
         (MR_PseudoTypeInfo) (r2),                                           \
-        (MR_PseudoTypeInfo) (r3)
+        (MR_PseudoTypeInfo) (r3),
 
 #define MR_cast_to_pti4(r1, r2, r3, r4)                                     \
         (MR_PseudoTypeInfo) (r1),                                           \
