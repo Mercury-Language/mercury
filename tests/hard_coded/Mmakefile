@@ -252,6 +252,7 @@ ORDINARY_PROGS = \
 	integer_uint64_conv \
 	integer_uint8_conv \
 	integer_uint_conv \
+	integer_zero_arithmetic \
 	intermod_c_code \
 	intermod_foreign_type \
 	intermod_may_export_body \
@@ -355,6 +356,7 @@ ORDINARY_PROGS = \
 	quoting_bug_test \
 	ra_list_test \
 	rational_test \
+	rational_zero_arithmetic \
 	rbtree_count \
 	read_binary_int16 \
 	read_binary_int32 \

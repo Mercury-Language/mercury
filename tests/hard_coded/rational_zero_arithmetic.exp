@@ -1,0 +1,3 @@
+PASS subtraction through GCD
+PASS normalizing arithmetic-zero numerators
+PASS rejecting arithmetic-zero denominator
