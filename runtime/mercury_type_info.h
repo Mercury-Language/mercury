@@ -409,7 +409,7 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 ////////////////////////////////////////////////////////////////////////////
 
 // Definitions for accessing typeclass_infos and base_typeclass_infos.
-// Their structure is described type_class_transformation.html in
+// Their structure is described in type_class_transformation.html in
 // compiler/notes.
 
 // Extract the base_typeclass_info from a typeclass_info.
@@ -503,7 +503,7 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
     (((MR_Word *)(tci))[(n)])
 #endif
 
-// MR_typeclass_info_superclass_info return a typeclass_info for one of the
+// MR_typeclass_info_superclass_info returns a typeclass_info for one of the
 // constraints on the typeclass declaration, i.e. for one this class's
 // superclasses.
 //
@@ -740,7 +740,7 @@ typedef const MR_TypeClassConstraintStruct      *MR_TypeClassConstraint;
         ((MR_TypeClassConstraint) &((p).MR_tc_constr_type_class_info))
 
 // The argument number field gives the offset in the cell (in a form in which
-// it can be given to the MR_field macro directly) of either of the typeinfo
+// it can be given to the MR_field macro directly) of either the typeinfo
 // itself or of the typeclassinfo containing the typeinfo. If the former,
 // the offset field will be negative; otherwise, it will be an integer
 // which can be given as a second argument to the MR_typeclass_info_type_info
@@ -768,7 +768,7 @@ typedef struct {
 // stored inside the typeclassinfos of the cell.
 //
 // The MR_exist_typeinfo_locns field points to an array of
-// MR_ExistTypeInfoLocns. This array has MR_exist_typeinfos_plain +
+// MR_DuExistLocns. This array has MR_exist_typeinfos_plain +
 // MR_exist_typeinfos_in_tci elements, each one of which describes
 // the location (directly in the cell or indirectly inside a typeclassinfo)
 // of the typeinfo for an existentially quantified type variable.
@@ -778,7 +778,7 @@ typedef struct {
 //
 // The MR_exist_constraints field points to an array of type class constraints
 // (each of which is a pointer to a type class constraint structure). The array
-// contains MR_exist_tci elements, giving the constraint from which each
+// contains MR_exist_tcis elements, giving the constraint from which each
 // typeclass_info in the functor is derived.
 
 typedef struct {
@@ -1085,7 +1085,7 @@ typedef struct {
     int8_t                          MR_sectag_numbits;
     // XXX ARG_PACK The numbits field should be before MR_sectag_alternatives,
     // but that requires nontrivial bootstrapping. The locn field should
-    // also be something like a uint8_t. The num_sharers field could be
+    // also be something like a uint8_t. The sectag_sharers field could be
     // MR_uint_least16_t if we want to make a practical limit official.
     // XXX ARG_PACK We should consider storing the value of the sectag mask
     // ((1 << ptag_layout->MR_sectag_numbits) - 1) here, to avoid having to
@@ -1636,7 +1636,7 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 //  mercury_data_group__type_ctor_info_group_1, group__group_1_0);
 //
 // MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
-//  mercury_date__type_ctor_info_void_0, mercury__unused_0_0);
+//  mercury_data__type_ctor_info_void_0, mercury__unused_0_0);
 //
 // This will initialize a type_ctor_info with a single code address.
 
@@ -1845,9 +1845,9 @@ extern  MR_PseudoTypeInfo MR_collapse_equivalences_pseudo(
 extern  MR_PseudoTypeInfo MR_collapse_equivalences_pseudo(
                     MR_PseudoTypeInfo pseudo_type_info);
 
-// MR_create_type and MR_make_type_info both turn a pseudo typeinfo into
+// MR_create_type_info and MR_make_type_info both turn a pseudo typeinfo into
 // a typeinfo, looking up the typeinfos associated with the type variables
-// in the pseudointo typeinfo in the supplied vector of type parameters.
+// in the pseudo typeinfo in the supplied vector of type parameters.
 //
 // The two functions differ in how they allocate memory. MR_create_type_info
 // allocates memory for a new type_info on the Mercury heap. Since this
@@ -1942,7 +1942,7 @@ extern  MR_Word     MR_type_params_vector_to_list(int arity,
 extern  MR_Word     MR_pseudo_type_params_vector_to_list(int arity,
                         MR_PseudoTypeInfoParams type_params);
 
-// ML_arg_name_vector_to_list:
+// MR_arg_name_vector_to_list:
 //
 // Copy `arity' argument names from the `arg_names' vector, which starts
 // at index 0, onto the Mercury heap in a list.

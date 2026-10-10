@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2006 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_stacks.h - definitions for manipulating the det and nondet stacks.
@@ -532,8 +532,8 @@ typedef struct MR_Exception_Handler_Frame_struct {
 
     // If code_model is MR_MODEL_*_HANDLER, then the `handler' field holds the
     // Mercury closure for the handler, which will be a closure of the
-    // specified determinism. If code_model is MR_C_LONGJMP, then this field
-    // is unused.
+    // specified determinism. If code_model is MR_C_LONGJMP_HANDLER, then this
+    // field is unused.
 
     MR_Word             MR_excp_handler;
 
