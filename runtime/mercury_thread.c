@@ -543,17 +543,21 @@ MR_create_thread_local_mutables(MR_Unsigned numslots)
 }
 
 MR_ThreadLocalMuts *
-MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts)
+MR_clone_thread_local_mutables(MR_ThreadLocalMuts *old_muts)
 {
     MR_ThreadLocalMuts  *new_muts;
 
     new_muts = MR_create_thread_local_mutables(MR_num_thread_local_mutables);
 
-    MR_LOCK(&new_muts->MR_tlm_lock, "MR_clone_thread_local_mutables");
+    // We need to lock old_muts here, otherwise some other parallel conjunction
+    // may modify it while we are copying it.
+    // (new_muts does not need to be locked since it has only just been created
+    // and there are no other references to it yet.)
+    MR_LOCK(&old_muts->MR_tlm_lock, "MR_clone_thread_local_mutables");
     for (MR_Unsigned i = 0; i < MR_num_thread_local_mutables; i++) {
         new_muts->MR_tlm_values[i] = old_muts->MR_tlm_values[i];
     }
-    MR_UNLOCK(&new_muts->MR_tlm_lock, "MR_clone_thread_local_mutables");
+    MR_UNLOCK(&old_muts->MR_tlm_lock, "MR_clone_thread_local_mutables");
 
     return new_muts;
 }
