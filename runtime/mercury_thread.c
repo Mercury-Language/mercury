@@ -8,7 +8,7 @@
 #include "mercury_regs.h"
 #include "mercury_engine.h"
 #include "mercury_memory.h"
-#include "mercury_context.h"    // for MR_do_runnext
+#include "mercury_context.h"    // for MR_do_idle, MR_{create,load}_context
 #include "mercury_runtime_util.h"
 #include "mercury_thread.h"
 #include "mercury_threadscope.h"
@@ -58,7 +58,7 @@ MR_shutdown_engine_for_threads(MercuryEngine *eng);
 
 #ifdef MR_LL_PARALLEL_CONJ
 static void *
-MR_create_worksteal_thread_2(void *goal);
+MR_create_worksteal_thread_2(void *arg);
 
 MercuryThread
 MR_create_worksteal_thread(void)
@@ -87,9 +87,9 @@ static void *
 MR_create_worksteal_thread_2(void *arg)
 {
   #ifdef MR_HAVE_THREAD_PINNING
-     // TODO: We may use the cpu value returned to determine which CPUs
-     // which engines are on. This can help with some interesting work
-     // stealing algorithms.
+    // TODO: We may use the cpu value returned to determine which CPUs
+    // the engines are on. This can help with some interesting work
+    // stealing algorithms.
 
     MR_pin_thread();
   #endif
