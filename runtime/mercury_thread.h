@@ -369,7 +369,7 @@ extern MR_ThreadLocalMuts   *MR_create_thread_local_mutables(
 // Make a copy of a thread-local mutable array.
 
 extern MR_ThreadLocalMuts   *MR_clone_thread_local_mutables(
-                                const MR_ThreadLocalMuts *old_muts);
+                                MR_ThreadLocalMuts *old_muts);
 
 #define MR_THREAD_LOCAL_MUTABLES                                        \
     (MR_ENGINE(MR_eng_this_context)->MR_ctxt_thread_local_mutables)
