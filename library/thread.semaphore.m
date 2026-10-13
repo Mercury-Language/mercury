@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001,2003-2004, 2006-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2022, 2024 The Mercury Team.
+% Copyright (C) 2014-2018, 2020-2022, 2024, 2026 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -106,11 +106,11 @@ try_wait(Sem, Res, !IO) :-
 
 :- impure pred impure_init(semaphore::uo) is det.
 
+:- impure pred impure_signal(semaphore::in) is det.
+
 :- impure pred impure_wait(semaphore::in) is det.
 
 :- impure pred impure_try_wait(semaphore::in, bool::out) is det.
-
-:- impure pred impure_signal(semaphore::in) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -222,21 +222,28 @@ ML_finalize_semaphore(void *obj, void *cd)
 
 %---------------------------------------------------------------------------%
 
-    % impure_signal causes the calling context to resume in semaphore.nop,
+impure_signal(Semaphore) :-
+    impure impure_signal_2(Semaphore, DoYield),
+    (
+        DoYield = yes,
+        impure thread.impure_yield
+    ;
+        DoYield = no
+    ).
+
+:- impure pred impure_signal_2(semaphore::in, bool::out) is det.
+
+    % impure_signal_2 causes the calling context to resume in semaphore.resume,
     % which simply jumps to the succip. That will return control to the caller
     % of semaphore.signal as intended, but not if this procedure is inlined.
     %
-    % XXX get rid of this limitation at some stage.
-    %
-:- pragma no_inline(pred(semaphore.impure_signal/1)).
+:- pragma no_inline(pred(impure_signal_2/2)).
 :- pragma foreign_proc("C",
-    impure_signal(Semaphore::in),
-    [will_not_call_mercury, thread_safe],
+    impure_signal_2(Semaphore::in, DoYield::out),
+    [will_not_call_mercury, thread_safe, may_not_export_body],
 "
     ML_Semaphore    *sem;
-#ifndef MR_HIGHLEVEL_CODE
-    MR_Context  *ctxt;
-#endif
+    MR_bool         must_yield;
 
     sem = (ML_Semaphore *) Semaphore;
 
@@ -244,7 +251,9 @@ ML_finalize_semaphore(void *obj, void *cd)
 
 #ifndef MR_HIGHLEVEL_CODE
     if (sem->count >= 0 && sem->suspended_head != NULL) {
-        // Reschedule the context at the start of the queue.
+        MR_Context  *ctxt;
+
+        // Schedule the context at the start of the queue to run.
         ctxt = sem->suspended_head;
         sem->suspended_head = ctxt->MR_ctxt_next;
         if (sem->suspended_tail == ctxt) {
@@ -253,89 +262,61 @@ ML_finalize_semaphore(void *obj, void *cd)
         }
         MR_UNLOCK(&(sem->lock), ""semaphore.signal"");
         MR_schedule_context(ctxt);
-
-        // yield()
-        // This context switch can be done more directly and faster.
-        MR_save_context(MR_ENGINE(MR_eng_this_context));
-      #ifdef ML_THREAD_AVOID_LABEL_ADDRS
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-            MR_ENTRY(mercury__thread__semaphore__nop);
-      #else
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-            &&signal_skip_to_the_end_1;
-      #endif
-        MR_schedule_context(MR_ENGINE(MR_eng_this_context));
-
-        MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_idle();
-
-      #ifndef ML_THREAD_AVOID_LABEL_ADDRS
-        signal_skip_to_the_end_1: ;
-      #endif
+        must_yield = MR_TRUE;
     } else {
         sem->count++;
         MR_UNLOCK(&(sem->lock), ""semaphore.signal"");
-
-        // yield()
-        MR_save_context(MR_ENGINE(MR_eng_this_context));
-      #ifdef ML_THREAD_AVOID_LABEL_ADDRS
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-            MR_ENTRY(mercury__thread__semaphore__nop);
-      #else
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-            &&signal_skip_to_the_end_2;
-      #endif
-        MR_schedule_context(MR_ENGINE(MR_eng_this_context));
-
-        MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_idle();
-
-      #ifndef ML_THREAD_AVOID_LABEL_ADDRS
-        signal_skip_to_the_end_2: ;
-      #endif
+        must_yield = MR_FALSE;
+    }
+    // Not sure if it is necessary to always yield, but that is what we have
+    // done historically.
+    DoYield = MR_YES;
+    if (must_yield) {
+    #ifndef ML_THREAD_CAN_SUSPEND
+        MR_fatal_error(
+            ""semaphore.signal does not work properly in this grade"");
+    #endif
     }
 #else
     sem->count++;
     MR_COND_SIGNAL(&(sem->cond), ""semaphore.signal"");
     MR_UNLOCK(&(sem->lock), ""semaphore.signal"");
+    DoYield = MR_NO;
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    impure_signal(Semaphore::in),
-    [will_not_call_mercury, thread_safe],
+    impure_signal_2(Semaphore::in, DoYield::out),
+    [will_not_call_mercury, thread_safe, may_not_export_body],
 "
     System.Threading.Monitor.Enter(Semaphore);
     Semaphore.count++;
-        // XXX I think we only need to do a Pulse.
+    // XXX I think we only need to do a Pulse.
     System.Threading.Monitor.PulseAll(Semaphore);
     System.Threading.Monitor.Exit(Semaphore);
+    DoYield = mr_bool.NO;
 ").
 
 :- pragma foreign_proc("Java",
-    impure_signal(Semaphore::in),
-    [will_not_call_mercury, thread_safe],
+    impure_signal_2(Semaphore::in, DoYield::out),
+    [will_not_call_mercury, thread_safe, may_not_export_body],
 "
     Semaphore.release();
+    DoYield = bool.NO;
 ").
 
 %---------------------------------------------------------------------------%
 
-    % impure_wait causes the calling context to resume in semaphore.nop,
+    % impure_wait causes the calling context to resume in semaphore.resume,
     % which simply jumps to the succip. That will return control to the caller
     % of semaphore.wait as intended, but not if this procedure is inlined.
-    %
-    % XXX get rid of this limitation at some stage.
     %
 :- pragma no_inline(pred(impure_wait/1)).
 :- pragma foreign_proc("C",
     impure_wait(Semaphore::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     ML_Semaphore    *sem;
-#ifndef MR_HIGHLEVEL_CODE
-    MR_Context  *ctxt;
-#endif
 
     sem = (ML_Semaphore *) Semaphore;
 
@@ -346,15 +327,20 @@ ML_finalize_semaphore(void *obj, void *cd)
         sem->count--;
         MR_UNLOCK(&(sem->lock), ""semaphore.wait"");
     } else {
-        MR_save_context(MR_ENGINE(MR_eng_this_context));
+    #ifdef ML_THREAD_CAN_SUSPEND
+        MR_Context  *ctxt;
 
-        // Put the current context at the end of the queue.
+        // Prepare to suspend the current context.
         ctxt = MR_ENGINE(MR_eng_this_context);
-      #ifdef ML_THREAD_AVOID_LABEL_ADDRS
-        ctxt->MR_ctxt_resume = MR_ENTRY(mercury__thread__semaphore__nop);
-      #else
-        ctxt->MR_ctxt_resume = &&wait_skip_to_the_end;
-      #endif
+        MR_save_context(ctxt);
+        #ifdef MR_USE_GCC_NONLOCAL_GOTOS
+            ctxt->MR_ctxt_resume = &&wait_skip_to_the_end;
+        #else
+            ctxt->MR_ctxt_resume =
+                MR_ENTRY(mercury__thread__semaphore__resume);
+        #endif
+
+        // Put the current context at the end of the semaphore's waiters queue.
         ctxt->MR_ctxt_next = NULL;
         if (sem->suspended_tail) {
             sem->suspended_tail->MR_ctxt_next = ctxt;
@@ -365,13 +351,16 @@ ML_finalize_semaphore(void *obj, void *cd)
         }
         MR_UNLOCK(&(sem->lock), ""semaphore.wait"");
 
-        // Make the current engine do something else.
+        // Make the current engine look for other work.
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_idle();
 
-      #ifndef ML_THREAD_AVOID_LABEL_ADDRS
+        goto wait_skip_to_the_end;
         wait_skip_to_the_end: ;
-      #endif
+    #else
+        MR_fatal_error(
+            ""semaphore.wait does not work properly in this grade"");
+    #endif
     }
 #else
     while (sem->count <= 0) {
@@ -394,7 +383,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 
 :- pragma foreign_proc("C#",
     impure_wait(Semaphore::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, may_not_export_body],
 "
     System.Threading.Monitor.Enter(Semaphore);
 
@@ -409,7 +398,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 
 :- pragma foreign_proc("Java",
     impure_wait(Semaphore::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, may_not_export_body],
 "
     // acquire() might be useful as well; it will throw an exception
     // if the thread is interrupted.
@@ -426,7 +415,7 @@ impure_try_wait(Sem, Res) :-
 
 :- pragma foreign_proc("C",
     impure_try_wait_2(Semaphore::in, Res::out),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, may_not_export_body],
 "
     ML_Semaphore    *sem;
 
@@ -445,7 +434,7 @@ impure_try_wait(Sem, Res) :-
 
 :- pragma foreign_proc("C#",
     impure_try_wait_2(Semaphore::in, Res::out),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, may_not_export_body],
 "
     if (System.Threading.Monitor.TryEnter(Semaphore)) {
         if (Semaphore.count > 0) {
@@ -463,7 +452,7 @@ impure_try_wait(Sem, Res) :-
 
 :- pragma foreign_proc("Java",
     impure_try_wait_2(Semaphore::in, Res::out),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, may_not_export_body],
 "
     Res = Semaphore.tryAcquire() ? 0 : 1;
 ").
@@ -477,7 +466,7 @@ INIT mercury_sys_init_semaphore_modules
 */
 
 #ifndef MR_HIGHLEVEL_CODE
-    MR_define_extern_entry(mercury__thread__semaphore__nop);
+    MR_define_extern_entry(mercury__thread__semaphore__resume);
 #endif
 ").
 
@@ -486,10 +475,10 @@ INIT mercury_sys_init_semaphore_modules
 #ifndef MR_HIGHLEVEL_CODE
 
     MR_BEGIN_MODULE(hand_written_semaphores_module)
-        MR_init_entry_ai(mercury__thread__semaphore__nop);
+        MR_init_entry_ai(mercury__thread__semaphore__resume);
     MR_BEGIN_CODE
 
-    MR_define_entry(mercury__thread__semaphore__nop);
+    MR_define_entry(mercury__thread__semaphore__resume);
     {
         MR_proceed();
     }

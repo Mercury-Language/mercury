@@ -168,6 +168,14 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+:- interface.
+
+    % Exported for thread.semaphore.m
+    %
+:- impure pred impure_yield is det.
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module bool.
@@ -176,22 +184,32 @@
 
 :- pragma foreign_decl("C", "
 #ifndef MR_HIGHLEVEL_CODE
-  #if (!defined(MR_EXEC_TRACE) && !defined(MR_DEEP_PROFILING)) \
-        || !defined(MR_USE_GCC_NONLOCAL_GOTOS)
-    // In calling thread.yield, semaphore.wait or semaphore.signal,
-    // the calling context may need to suspend and yield to another context.
-    // This is implemented by setting the resume address of the context to
-    // an auxiliary function outside of the foreign_proc. This breaks when
-    // execution tracing or deep profiling are enabled as code inserted at the
-    // end of the foreign_proc won't be executed. In those cases we rely on
-    // the gcc extension that allows us to take the address of labels within
-    // the foreign_proc, so the context will resume back inside the
-    // foreign_proc.
+    // thread.yield, thread.semaphore.wait, and thread.semaphore.signal
+    // may suspend the current context, then resume into it later.
+    // We use two methods to implement the resumption behaviour:
     //
-    // XXX Implement those procedures as :- pragma external_preds so that the
-    // transforms won't be applied.
-    #define ML_THREAD_AVOID_LABEL_ADDRS
-  #endif
+    // - If using GCC non-local gotos, then we can take the address of a label
+    // in the body of the foreign_proc as the resume point, and jump back to it
+    // later.
+    //
+    // - Otherwise, we take the address of an entry point (an auxiliary
+    // function) as the resume point.
+    //
+    // The problem with the second method is that by resuming into another
+    // function, we skip over the epilogue of the original foreign_proc.
+    // In most grades, this works fine as there is nothing in the function
+    // epilogue. However, in debugging (execution tracing) or deep profiling
+    // grades, skipping the epilogue will corrupt the state of the program.
+    //
+    // An alternative fix may be to implement thread.yield etc. as external
+    // predicates, so they would not be affected by the transforms for
+    // execution tracing or deep profiling. The tricky part is making the
+    // handwritten code work in deep profiling grades.
+    #if defined(MR_USE_GCC_NONLOCAL_GOTOS)
+        #define ML_THREAD_CAN_SUSPEND
+    #elif !defined(MR_EXEC_TRACE) && !defined(MR_DEEP_PROFILING)
+        #define ML_THREAD_CAN_SUSPEND
+    #endif
 #endif
 
 #ifdef MR_THREAD_SAFE
@@ -674,46 +692,65 @@ join_thread(Thread, Res, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_inline(pred(yield/2)).
+yield(!IO) :-
+    promise_pure (
+        impure impure_yield,
+        !:IO = !.IO
+    ).
+
+:- pragma no_inline(pred(impure_yield/0)).
 :- pragma foreign_proc("C",
-    yield(_IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    impure_yield,
+    [will_not_call_mercury, thread_safe, tabled_for_io, may_not_duplicate],
 "
 #ifndef MR_HIGHLEVEL_CODE
-    MR_save_context(MR_ENGINE(MR_eng_this_context));
-  #ifdef ML_THREAD_AVOID_LABEL_ADDRS
-    MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-        MR_ENTRY(mercury__thread__yield_resume);
-  #else
-    MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-        &&yield_skip_to_the_end;
-  #endif
-    MR_schedule_context(MR_ENGINE(MR_eng_this_context));
-    MR_ENGINE(MR_eng_this_context) = NULL;
-    MR_idle();
+    #ifdef ML_THREAD_CAN_SUSPEND
+        MR_Context  *ctxt;
 
-  #ifndef ML_THREAD_AVOID_LABEL_ADDRS
-    yield_skip_to_the_end:
-  #endif
+        // Prepare to suspend the current context.
+        ctxt = MR_ENGINE(MR_eng_this_context);
+        MR_save_context(ctxt);
+        #ifdef MR_USE_GCC_NONLOCAL_GOTOS
+            ctxt->MR_ctxt_resume = &&yield_skip_to_the_end;
+        #else
+            ctxt->MR_ctxt_resume = MR_ENTRY(mercury__thread__yield_resume);
+        #endif
+        MR_schedule_context(ctxt);
+
+        // Make the current engine look for other work.
+        MR_ENGINE(MR_eng_this_context) = NULL;
+        MR_idle();
+
+        goto yield_skip_to_the_end;
+        yield_skip_to_the_end: ;
+    #else
+        // Concurrency is now disabled in non .par LLDS grades.
+        // In those grades, there should not be any other Mercury contexts
+        // to run, so treating yield as a no-op should be acceptable.
+        //
+        // In .par LLDS grades, there could be other Mercury contexts,
+        // but ML_THREAD_CAN_SUSPEND is only defined in debugging or deep
+        // profiling grades, both of which are incompatible with .par.
+        #ifdef MR_THREAD_SAFE
+            #warning ""thread.yield not implemented properly in this grade""
+        #endif
+    #endif
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    yield(_IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    impure_yield,
+    [will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     System.Threading.Thread.Yield();
 ").
 
 :- pragma foreign_proc("Java",
-    yield(_IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    impure_yield,
+    [will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     java.lang.Thread.yield();
 ").
-
-yield(!IO).
 
 %---------------------------------------------------------------------------%
 %
