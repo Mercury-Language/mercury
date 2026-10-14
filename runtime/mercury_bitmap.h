@@ -20,8 +20,8 @@
 
 #define MR_copy_bitmap(dest, src)                                       \
     do {                                                                \
-        MR_BitmapPtr copy_dest = dest;                                  \
-        MR_ConstBitmapPtr copy_src = src;                               \
+        MR_BitmapPtr copy_dest = (dest);                                \
+        MR_ConstBitmapPtr copy_src = (src);                             \
         memcpy(copy_dest->elements, copy_src->elements,                 \
             MR_bitmap_length_in_bytes(copy_src->num_bits));             \
     } while (0)
