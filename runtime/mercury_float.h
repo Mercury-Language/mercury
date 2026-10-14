@@ -85,7 +85,7 @@
   #endif // MR_CONSERVATIVE_GC
 
   #ifdef MR_GNUC
-    #define MR_float_const(f) ({ static const MR_Float d = f; (MR_Word) &d; })
+    #define MR_float_const(f) ({ static const MR_Float d = (f); (MR_Word) &d; })
   #else
     #define MR_float_const(f) MR_float_to_word(f)   // inefficient
   #endif

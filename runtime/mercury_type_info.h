@@ -453,7 +453,7 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 #define MR_typeclass_info_num_methods(tci)                              \
     ((MR_Integer) MR_typeclass_info_base(tci)[4])
 #define MR_typeclass_info_class_method(tci, n)                          \
-    ((MR_Code *) MR_typeclass_info_base(tci)[(n+4)])
+    ((MR_Code *) MR_typeclass_info_base(tci)[((n)+4)])
 
 #define MR_typeclass_info_num_instance_type_vars(tci)                   \
     ( MR_typeclass_info_num_extra_instance_args(tci)                    \
@@ -1275,7 +1275,7 @@ struct MR_TypeCtorInfo_Struct {
 #define MR_type_ctor_rep_is_valid(rep_int)                                  \
     ((unsigned) (rep_int) <= (unsigned) MR_TYPECTOR_REP_UNKNOWN)
 #define MR_type_ctor_has_valid_rep(type_ctor_info)                          \
-    (MR_type_ctor_rep_is_valid(type_ctor_info->MR_type_ctor_rep_CAST_ME))
+    (MR_type_ctor_rep_is_valid((type_ctor_info)->MR_type_ctor_rep_CAST_ME))
 
 #define MR_type_ctor_rep(tci)                                               \
     ((MR_TypeCtorRep) ((tci)->MR_type_ctor_rep_CAST_ME))

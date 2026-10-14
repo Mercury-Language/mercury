@@ -59,9 +59,9 @@ static  MR_TypeClassDeclInfo    *MR_do_register_type_class_decl(
     && (tc1)->MR_type_ctor_arity == (tc2)->MR_type_ctor_arity )
 
 #define class_names_match(tc_id1, module_name, class_name, arity)       \
-    ( MR_streq(tc_id1->MR_tc_id_name, (class_name))                     \
-    && MR_streq(tc_id1->MR_tc_id_module_name, (module_name))            \
-    && tc_id1->MR_tc_id_arity == (arity))
+    ( MR_streq((tc_id1)->MR_tc_id_name, (class_name))                   \
+    && MR_streq((tc_id1)->MR_tc_id_module_name, (module_name))          \
+    && (tc_id1)->MR_tc_id_arity == (arity))
 
 #define class_names_match_id(tc_id1, tc_id2)                            \
     ( MR_streq((tc_id1)->MR_tc_id_name, (tc_id2)->MR_tc_id_name)        \
