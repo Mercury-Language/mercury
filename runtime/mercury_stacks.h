@@ -113,7 +113,7 @@
             threshold = (MR_Word *) MR_CONTEXT(MR_ctxt_nondetstack_zone)->    \
                 MR_zone_extend_threshold;                                     \
             new_maxfr = MR_maxfr + incr;                                      \
-            if (MR_maxfr < MR_CONTEXT(MR_ctxt_nondetstack_zone->MR_zone_min)  \
+            if (MR_maxfr < MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min  \
                 || new_maxfr > threshold)                                     \
             {                                                                 \
                 MR_save_registers();                                          \
