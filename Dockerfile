@@ -33,7 +33,7 @@ ARG MERCURY_DEV_TARGET
 ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE y
 
 # install packaged compiler for bootstrapping
-# first install curl and lsb-realse so we can add the public key for downloading
+# first install curl and lsb-release so we can add the public key for downloading
 # Mercury packages.
 # Then add the remote repository and install all packages required for building
 # the Mercury compiler from source.
@@ -66,11 +66,10 @@ RUN ( \
         ([ -f ./configure ] || ./prepare.sh) \
         && ./configure \
             --enable-libgrades=$MERCURY_DEV_LIBGRADES \
-            --with-default-grade=$MERCURY_DEFAULT_GRADE \
+            --with-default-grade=$MERCURY_DEV_DEFAULT_GRADE \
             --prefix=$MERCURY_DEV_PREFIX \
             --disable-symlinks \
         && make PARALLEL=$MERCURY_DEV_PARALLEL install \
-        && rm -fR ${MERCURY_BOOTSTRAP_TARGET} \
         && rm -fR $MERCURY_DEV_TARGET \
     )
 
