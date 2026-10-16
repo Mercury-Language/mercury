@@ -347,30 +347,3 @@ checked_strdupcat(const char *str, const char *suffix)
 }
 
 //---------------------------------------------------------------------------//
-
-#ifndef MR_HAVE_STRERROR
-
-// Apparently SunOS 4.1.3 doesn't have strerror()
-// (!%^&!^% non-ANSI systems, grumble...)
-//
-// This code is duplicated in runtime/mercury_prof.c.
-
-extern int sys_nerr;
-extern char *sys_errlist[];
-
-char *
-strerror(int errnum)
-{
-    if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
-        return sys_errlist[errnum];
-    } else {
-        static char buf[30];
-
-        sprintf(buf, "Error %d", errnum);
-        return buf;
-    }
-}
-
-#endif
-
-//---------------------------------------------------------------------------//
