@@ -3058,7 +3058,8 @@ mercury_runtime_terminate(void)
 void mercury_sys_init_wrapper_init(void);
 void mercury_sys_init_wrapper_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_wrapper_write_out_proc_statics(FILE *fp);
+void mercury_sys_init_wrapper_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp);
 #endif
 
 void
@@ -3078,7 +3079,8 @@ mercury_sys_init_wrapper_init_type_tables(void)
 
 #ifdef  MR_DEEP_PROFILING
 void
-mercury_sys_init_wrapper_write_out_proc_statics(FILE *fp)
+mercury_sys_init_wrapper_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp)
 {
     // No proc_statics to write out.
 }

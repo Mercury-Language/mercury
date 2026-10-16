@@ -872,7 +872,8 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mmos_module;
 void mercury_sys_init_mmos_modules_init(void);
 void mercury_sys_init_mmos_modules_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_mmos_modules_write_out_proc_statics(FILE *fp);
+void mercury_sys_init_mmos_modules_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp);
 #endif
 
 void mercury_sys_init_mmos_modules_init(void)
@@ -888,7 +889,8 @@ void mercury_sys_init_mmos_modules_init_type_tables(void)
 }
 
 #ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_mmos_modules_write_out_proc_statics(FILE *fp)
+void mercury_sys_init_mmos_modules_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp)
 {
     // No proc_statics to write out.
     // XXX We need to fix the deep profiling
