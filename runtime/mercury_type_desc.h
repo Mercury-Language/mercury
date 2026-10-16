@@ -154,7 +154,7 @@ extern  MR_bool         MR_pseudo_type_ctor_and_args(MR_PseudoTypeInfo
                             MR_TypeCtorDesc *type_ctor_desc_ptr,
                             MR_Word *arg_type_info_list_ptr);
 
-// ML_make_type(arity, type_ctor_info, arg_types_list):
+// MR_make_type(arity, type_ctor_info, arg_types_list):
 //
 // Construct and return a type_info for a type using the specified type_ctor
 // for the type constructor, and using the arguments specified in

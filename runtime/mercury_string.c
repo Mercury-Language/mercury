@@ -190,48 +190,48 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
                     dst[0] = '\\';
                     dst[1] = 'a';
                     dst += 2;
-                    break; 
+                    break;
                 case '\b':
                     dst[0] = '\\';
                     dst[1] = 'b';
                     dst += 2;
-                    break; 
+                    break;
                 case '\f':
                     dst[0] = '\\';
                     dst[1] = 'f';
                     dst += 2;
-                    break; 
+                    break;
                 case '\n':
                     dst[0] = '\\';
                     dst[1] = 'n';
                     dst += 2;
-                    break; 
+                    break;
                 case '\r':
                     dst[0] = '\\';
                     dst[1] = 'r';
                     dst += 2;
-                    break; 
+                    break;
                 case '\t':
                     dst[0] = '\\';
                     dst[1] = 't';
                     dst += 2;
-                    break; 
+                    break;
                 case '\v':
                     dst[0] = '\\';
                     dst[1] = 'v';
                     dst += 2;
-                    break; 
+                    break;
                 // See the comment above.
                 case '\x1B':
                     dst[0] = '\\';
                     dst[1] = 'e';
                     dst += 2;
-                    break; 
+                    break;
                 case '\"':
                     dst[0] = '\\';
                     dst[1] = '\"';
                     dst += 2;
-                    break; 
+                    break;
                 case '\\':
                     dst[0] = '\\';
                     dst[1] = '\\';
@@ -245,7 +245,7 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
                     } else {
                         dst += MR_utf8_encode(dst, ch);
                     }
-             }
+            }
         }
         dst[0] = '\"';
         dst[1] = '\0';

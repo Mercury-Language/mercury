@@ -176,7 +176,7 @@ typedef enum {
 #define MR_LONG_LVAL_R_REG_INT(n)                                           \
     (((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
 
-// MR_ShortLval is a MR_uint_least8_t which describes an location. This
+// MR_ShortLval is a MR_uint_least8_t which describes a location. This
 // includes lvals such as stack slots and general registers that have small
 // numbers, and special registers such as succip, hp, etc.
 //

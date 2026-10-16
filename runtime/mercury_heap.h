@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2006, 2010-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018-2019, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_heap.h - definitions for manipulating the Mercury heap.
@@ -401,7 +401,7 @@
 
     #define     MR_define_size_slot(ptag, new, size)                        \
                 do {                                                        \
-                    MR_field(ptag, new, -1) = size;                         \
+                    MR_field(ptag, new, -1) = (size);                       \
                 } while (0)
     #define     MR_copy_size_slot(nptag, new, optag, old)                   \
                 do {                                                        \

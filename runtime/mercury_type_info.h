@@ -1117,7 +1117,7 @@ typedef const MR_DuPtagLayout *MR_DuTypeLayout;
 
 // This type describes the function symbols in an enum type.
 //
-// An MR_EnumLayout points to an array of pointers to functor descriptors.
+// An MR_EnumTypeLayout points to an array of pointers to functor descriptors.
 // There is one pointer for each function symbol, and thus the size of
 // the array is given by the num_functors field of the type_ctor_info.
 // The array is ordered on the integer value by which the functor is
@@ -1133,7 +1133,7 @@ typedef MR_EnumFunctorDesc  **MR_EnumTypeLayout;
 
 // This type describes the function symbols in a foreign enum type.
 //
-// An MR_ForeignEnumLayout points to an array of pointers to functor
+// An MR_ForeignEnumTypeLayout points to an array of pointers to functor
 // descriptors. There is one pointer for each of the function symbols, and
 // thus the size of the array is given by the num_functors field of the
 // type_ctor_info. The array is ordered by declaration order.
@@ -1149,7 +1149,7 @@ typedef MR_ForeignEnumFunctorDesc **MR_ForeignEnumTypeLayout;
 
 // This type describes the single function symbol in a notag type.
 //
-// An MR_NotagLayout points to the one functor descriptor of the type.
+// An MR_NotagTypeLayout points to the one functor descriptor of the type.
 //
 // The intention is that if you have a word in a notag type that you want to
 // interpret, you look at the given functor descriptor.

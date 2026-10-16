@@ -222,22 +222,22 @@ MR_bool     MR_mdb_benchmark_silent = MR_FALSE;
 // Use readline() in the debugger even if the input stream is not a tty?
 MR_bool     MR_force_readline = MR_FALSE;
 
-// Low level debugging options.
+// Low-level debugging options.
 //
-// If MR_watch_addr is not NULL, then the some of the low level debugging
+// If MR_watch_addr is not NULL, then the some of the low-level debugging
 // messages will print the value it points to.
 //
-// If MR_watch_csd_addr is not NULL, then the some of the low level debugging
+// If MR_watch_csd_addr is not NULL, then the some of the low-level debugging
 // messages will print the MR_CallSiteDynamic structure it points to. Since
-// this structure is typically in memory that not part of the address space of
-// the program at startup, this printing will be inhibited until
+// this structure is typically in memory that is not part of the address space
+// of the program at startup, this printing will be inhibited until
 // MR_watch_csd_started is set to true, which will happen when you call a
 // procedure whose entry label matches the string in MR_watch_csd_start_name.
 //
 // If the low level debugging of calls is enabled, MR_lld_cur_call is the
 // sequence number of the last call executed by the program.
 //
-// Getting low level debugging messages from *every* call, *every* heap
+// Getting low-level debugging messages from *every* call, *every* heap
 // allocation etc usually results in an avalanche of data that buries the
 // information you are looking for, and often runs filesystems out of space.
 // Therefore we inhibit these messages unless any one of four conditions

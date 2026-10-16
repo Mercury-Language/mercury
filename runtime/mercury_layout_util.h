@@ -80,7 +80,7 @@ extern  MR_TypeInfoParams   MR_materialize_answer_block_type_params(
 extern  int MR_get_register_number_long(MR_LongLval locn);
 extern  int MR_get_register_number_short(MR_ShortLval locn);
 
-// Given an location either in a long or short form, return the value
+// Given a location either in a long or short form, return the value
 // at that location if possible. *succeeded will say whether the attempt
 // was successful.
 //
