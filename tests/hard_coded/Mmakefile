@@ -358,7 +358,6 @@ ORDINARY_PROGS = \
 	quoting_bug_test \
 	ra_list_test \
 	rational_test \
-	rational_zero_arithmetic \
 	rbtree_count \
 	read_binary_int16 \
 	read_binary_int32 \
@@ -837,6 +836,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		map_merge_test \
 		mutable_excp \
 		null_char \
+		rational_zero_arithmetic \
 		rotate_uint16 \
 		rotate_uint32 \
 		rotate_uint64 \
