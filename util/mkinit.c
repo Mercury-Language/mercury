@@ -938,7 +938,6 @@ usage(void)
     fputs("  -I dir:\tadd dir to the search path for init files\n", stderr);
     fputs("  -k:\t\tgenerate the .init for a library\n", stderr);
     fputs("  -s:\t\tgenerate a standalone runtime interface\n", stderr);
-    fputs("  -m:\t\t(error)\n", stderr);
     exit(EXIT_FAILURE);
 }
 
