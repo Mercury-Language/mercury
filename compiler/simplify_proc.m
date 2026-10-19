@@ -297,20 +297,21 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         ( CodeModel = model_det
         ; CodeModel = model_semi
         ),
-        ProcIsModelNon = no
+        InnerMostProcIsModelNon = no
     ;
         CodeModel = model_non,
-        ProcIsModelNon = yes(imp_whole_proc)
+        InnerMostProcIsModelNon = yes(imp_whole_proc)
     ),
     NumEnclosingBarriers = 0u,
     SwitchArmContext = [],
     NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
-        ProcIsModelNon, NumEnclosingBarriers, SwitchArmContext),
+        InnerMostProcIsModelNon, NumEnclosingBarriers, SwitchArmContext),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
 
+    AllowSplitSwitch = allow_splitting_switch_arms, % ZZZ
     proc_info_get_goal(!.ProcInfo, Goal0),
     simplify_top_level_goal(NestedContext0, InstMap0,
-        allow_splitting_switch_arms, Goal0, Goal1, Info0, Info1),
+        AllowSplitSwitch, Goal0, Goal1, Info0, Info1),
     % Get the list of diag_specs to print from the first invocation
     % of simplify_top_level_goal, ignoring any diag_specs added by any
     % second invocation below. Most of these would probably be duplicates
@@ -332,12 +333,14 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
             := do_not_warn_dodgy_simple_code,
         simplify_info_set_simplify_tasks(Tasks2, Info1, Info2),
         simplify_top_level_goal(NestedContext0, InstMap0,
-            allow_splitting_switch_arms, Goal1, Goal, Info2, Info)
+            AllowSplitSwitch, Goal1, Goal, Info2, Info)
     ),
     proc_info_set_goal(Goal, !ProcInfo),
 
     simplify_info_get_var_table(Info, VarTable0),
+    proc_info_set_var_table(VarTable0, !ProcInfo),
     simplify_info_get_rtti_varmaps(Info, RttiVarMaps0),
+    proc_info_set_rtti_varmaps(RttiVarMaps0, !ProcInfo),
     simplify_info_get_elim_vars(Info, ElimVarsLists0),
     % We sort the lists basically on the number of the first variable.
     list.sort(ElimVarsLists0, ElimVarsLists),
@@ -359,26 +362,30 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         proc_info_get_argmodes(!.ProcInfo, ArgModes),
         find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTable2,
             HeadVars, ArgModes, !ModuleInfo),
-        check_typeclass_records(!.ModuleInfo, PredId, ProcId,
-            PredInfo0, !.ProcInfo, VarTable2, RttiVarMaps0, !.Specs, _)
+        proc_info_set_var_table(VarTable2, !ProcInfo),
+
+        maybe_check_typeclass_records(PredId, ProcId,
+            PredInfo0, _, !.ProcInfo, _, !.ModuleInfo, _, !.Specs, _),
+        PredInfo1 = PredInfo0
     else
-        VarTable2 = VarTable1
+        proc_info_set_var_table(VarTable1, !ProcInfo),
+        PredInfo1 = PredInfo0
     ),
     simplify_info_get_simplify_tasks(Info, Tasks),
     MaybeDeleteDeadVars = Tasks ^ do_delete_dead_vars,
     (
-        MaybeDeleteDeadVars = do_not_delete_dead_vars,
-        VarTable = VarTable2,
-        RttiVarMaps = RttiVarMaps0
+        MaybeDeleteDeadVars = do_not_delete_dead_vars
     ;
         MaybeDeleteDeadVars = delete_dead_vars,
-        pred_info_get_exist_quant_tvars(PredInfo0, ExistQTVars),
-        % We only eliminate vars that cannot occur in RttiVarMaps0.
+        pred_info_get_exist_quant_tvars(PredInfo1, ExistQTVars),
+        % We only eliminate vars that cannot occur in RttiVarMaps1.
+        proc_info_get_var_table(!.ProcInfo, VarTable3),
+        proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps1),
         restrict_var_maps(ExistQTVars, HeadVars, Goal,
-            VarTable2, VarTable, RttiVarMaps0, RttiVarMaps)
+            VarTable3, VarTable, RttiVarMaps1, RttiVarMaps),
+        proc_info_set_var_table(VarTable, !ProcInfo),
+        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     ),
-    proc_info_set_var_table(VarTable, !ProcInfo),
-    proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
     simplify_info_get_has_parallel_conj(Info, HasParallelConj),
     proc_info_set_has_parallel_conj(HasParallelConj, !ProcInfo),

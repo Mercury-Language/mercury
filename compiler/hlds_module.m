@@ -626,6 +626,9 @@
     pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
 :- pred module_info_set_pred_proc_info(pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
+:- pred module_info_set_pred_proc_info(pred_id::in, proc_id::in,
+    pred_info::in, pred_info::out, proc_info::in,
+    module_info::in, module_info::out) is det.
 
 %---------------------%
 
@@ -1754,6 +1757,11 @@ module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
         PredInfo, ProcInfo, !MI).
 
 module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
+    module_info_set_pred_proc_info(PredId, ProcId,
+        PredInfo0, _, ProcInfo, !MI).
+
+module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, PredInfo, ProcInfo,
+        !MI) :-
     % XXX Should be pred_info_set_proc_info, which calls map.det_update.
     pred_info_get_proc_table(PredInfo0, Procs0),
     map.set(ProcId, ProcInfo, Procs0, Procs),

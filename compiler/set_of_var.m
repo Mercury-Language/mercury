@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -120,6 +120,11 @@
 :- pred fold(pred(var(T), Acc, Acc), set_of_var(T), Acc, Acc).
 :- mode fold(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode fold(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+
+:- pred fold2(pred(var(T), Acc1, Acc1, Acc2, Acc2), set_of_var(T),
+    Acc1, Acc1, Acc2, Acc2).
+:- mode fold2(in(pred(in, in, out, in, out) is det),
+    in, in, out, in, out) is det.
 
 :- pred fold_func((func(var(T), Acc) = Acc), set_of_var(T), Acc, Acc).
 :- mode fold_func(in((func(in, in) = out) is det), in, in, out) is det.
@@ -313,6 +318,9 @@ divide_by_set(DivideBySet, Set, InPart, OutPart) :-
 
 fold(P, Set, !Acc) :-
     sparse_bitset.foldl(P, Set, !Acc).                                % MODULE
+
+fold2(P, Set, !Acc1, !Acc2) :-
+    sparse_bitset.foldl2(P, Set, !Acc1, !Acc2).                       % MODULE
 
 fold_func(P, Set, !Acc) :-
     !:Acc = sparse_bitset.foldl(P, Set, !.Acc).                       % MODULE

@@ -194,7 +194,8 @@
     %
 :- type tci_var_to_constraint_map == map(prog_var, prog_constraint).
 
-    % This predicate is intended to be used *only* for HLDS dumps.
+    % This predicate was originally intended to be used only for HLDS dumps,
+    % but is now also used by simplify_polymorphism.m.
     %
 :- pred rtti_varmaps_components(rtti_varmaps::in,
     tvar_to_ti_locn_map::out, ti_var_to_type_map::out,

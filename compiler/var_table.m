@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022, 2024-2025 The Mercury team.
+% Copyright (C) 2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -209,10 +209,9 @@
 % Folds over var_tables.
 %
 
-    % This version is not yet needed.
-% :- pred foldl_var_table(
-%     pred(prog_var, var_table_entry, T, T)::in(pred(in, in, in, out) is det),
-%     var_table::in, T::in, T::out) is det.
+:- pred foldl_var_table(
+    pred(prog_var, var_table_entry, T, T)::in(pred(in, in, in, out) is det),
+    var_table::in, T::in, T::out) is det.
 
 :- pred foldl_var_table_values(
     pred(var_table_entry, T, T)::in(pred(in, in, out) is det),
@@ -529,8 +528,8 @@ var_table_optimize(!VarTable) :-
 
 %---------------------------------------------------------------------------%
 
-% foldl_var_table(PredKV, VarTable, !Acc) :-
-%     map.foldl(PredKV, VarTable ^ vt_map, !Acc).
+foldl_var_table(PredKV, VarTable, !Acc) :-
+    map.foldl(PredKV, VarTable ^ vt_map, !Acc).
 
 foldl_var_table_values(PredV, VarTable, !Acc) :-
     map.foldl_values(PredV, VarTable ^ vt_map, !Acc).
