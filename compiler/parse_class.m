@@ -101,8 +101,8 @@ parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 MaybeItemTypeClassInfo = ok1(ItemTypeClassInfo),
                 MaybeIOM = ok2(iom_item(item_typeclass(ItemTypeClassInfo)), [])
             ;
-                MaybeItemTypeClassInfo = error1(ErrWarnError),
-                MaybeIOM = error2(ErrWarnError)
+                MaybeItemTypeClassInfo = error1(ErrWarnSpecs),
+                MaybeIOM = error2(ErrWarnSpecs)
             )
         else
             parse_class_head(ModuleName, VarSet, ArgTerm, Context, SeqNum,
@@ -133,7 +133,7 @@ parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
 
 :- pred parse_non_empty_class(module_name::in, varset::in, term::in, term::in,
     prog_context::in, item_seq_num::in,
-    maybe1(item_typeclass_info, err_warn_error)::out) is det.
+    maybe1(item_typeclass_info, err_warn_specs)::out) is det.
 
 parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
         Context, SeqNum, MaybeItemTypeClassInfo) :-
@@ -443,7 +443,7 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     ).
 
 :- pred parse_class_decls(module_name::in, varset::in, term::in,
-    maybe1(list(class_decl), err_warn_error)::out) is det.
+    maybe1(list(class_decl), err_warn_specs)::out) is det.
 
 parse_class_decls(ModuleName, VarSet, DeclsTerm, MaybeClassDecls) :-
     ( if list_term_to_term_list(DeclsTerm, DeclTerms) then
@@ -478,8 +478,8 @@ parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 MaybeIOM =
                     ok2(iom_item(item_instance(ItemInstanceInfo)), WarnSpecs)
             ;
-                MaybeItemInstanceInfo = error2(ErrWarnError),
-                MaybeIOM = error2(ErrWarnError)
+                MaybeItemInstanceInfo = error2(ErrWarnSpecs),
+                MaybeIOM = error2(ErrWarnSpecs)
             )
         else
             parse_instance_name(ModuleName, TVarSet, ArgTerm,
@@ -817,8 +817,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 InstanceMethod = instance_method(MethodName, ProcDef, Context),
                 MaybeInstanceMethod = ok2(InstanceMethod, WarnSpecs)
             ;
-                MaybeClause = error2(ErrWarnError),
-                MaybeInstanceMethod = error2(ErrWarnError)
+                MaybeClause = error2(ErrWarnSpecs),
+                MaybeInstanceMethod = error2(ErrWarnSpecs)
             )
         )
     ).
@@ -1158,7 +1158,7 @@ classify_types_as_var_ground_or_neither(TVarSet, [Type0 | Types0],
     % If no error is found, return ok1 wrapped around the original elements.
     %
 :- pred find_errors_pr2(list(parse_result1(T))::in,
-    maybe1(list(T), err_warn_error)::out) is det.
+    maybe1(list(T), err_warn_specs)::out) is det.
 
 find_errors_pr2(Xs, Result) :-
     find_errors_pr2_loop(Xs, [], Results, [], ErrSpecs, [], WarnSpecs),

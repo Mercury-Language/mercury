@@ -678,8 +678,8 @@ parse_goal_not(GoalKind, ArgTerms, Context, ContextPieces, MaybeGoal,
             Goal = not_expr(Context, SubGoal),
             MaybeGoal = ok2(Goal, SubGoalWarnSpecs)
         ;
-            MaybeSubGoal = error2(ErrWarnError),
-            MaybeGoal = error2(ErrWarnError)
+            MaybeSubGoal = error2(ErrWarnSpecs),
+            MaybeGoal = error2(ErrWarnSpecs)
         )
     else
         string_goal_kind(Functor, GoalKind),
@@ -1173,14 +1173,14 @@ parse_goal_catch_any(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
                 MaybeGoal0 = ok2(Goal, GoalWarnSpecs),
                 MaybeGoal = ok2(Goal, CatchWarnSpecs ++ GoalWarnSpecs)
             ;
-                MaybeGoal0 = error2(ErrWarnError0),
-                add_warns_to_err_warn_error(ErrWarnError0, CatchWarnSpecs,
-                    ErrWarnError),
-                MaybeGoal = error2(ErrWarnError)
+                MaybeGoal0 = error2(ErrWarnSpecs0),
+                add_warns_to_err_warn_specs(ErrWarnSpecs0, CatchWarnSpecs,
+                    ErrWarnSpecs),
+                MaybeGoal = error2(ErrWarnSpecs)
             )
         ;
-            MaybeCatchAnyExpr = error2(ErrWarnError),
-            MaybeGoal = error2(ErrWarnError)
+            MaybeCatchAnyExpr = error2(ErrWarnSpecs),
+            MaybeGoal = error2(ErrWarnSpecs)
         )
     else
         Pieces = [words("Error: the")] ++
@@ -1429,8 +1429,8 @@ parse_goal_require_detism(GoalKind, ArgTerms, Context, ContextPieces,
             Goal = require_detism_expr(Context, Detism, SubGoal),
             MaybeGoal = ok2(Goal, SubGoalWarnSpecs)
         ;
-            MaybeSubGoal = error2(ErrWarnError),
-            MaybeGoal = error2(ErrWarnError)
+            MaybeSubGoal = error2(ErrWarnSpecs),
+            MaybeGoal = error2(ErrWarnSpecs)
         )
     else
         string_goal_kind(Functor, GoalKind),
@@ -1622,8 +1622,8 @@ parse_goal_event(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
                 MaybeGoal = error2({one_or_more(Spec, []), SubGoalWarnSpecs})
             )
         ;
-            MaybeSubGoal = error2(ErrWarnError),
-            MaybeGoal = error2(ErrWarnError)
+            MaybeSubGoal = error2(ErrWarnSpecs),
+            MaybeGoal = error2(ErrWarnSpecs)
         )
     else
         Spec = should_have_one_call_prefix(ContextPieces, Context, "event"),
@@ -1842,10 +1842,10 @@ parse_warnings(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
             WarnSpecs = HeadWarnSpecs ++ TailWarnSpecs,
             MaybeWarnings = ok2(Warnings, WarnSpecs)
         ;
-            MaybeTailWarnings = error2(ErrWarnError0),
-            add_warns_to_err_warn_error(ErrWarnError0, HeadWarnSpecs,
-                ErrWarnError),
-            MaybeWarnings = error2(ErrWarnError)
+            MaybeTailWarnings = error2(ErrWarnSpecs0),
+            add_warns_to_err_warn_specs(ErrWarnSpecs0, HeadWarnSpecs,
+                ErrWarnSpecs),
+            MaybeWarnings = error2(ErrWarnSpecs)
         )
     else
         TermStr = describe_error_term(VarSet, Term),
@@ -2546,8 +2546,8 @@ parse_catch_any_term(ArrowTerm, _Context, ContextPieces, MaybeCatchAny,
                 CatchAny = catch_any_expr(Var, Goal),
                 MaybeCatchAny = ok2(CatchAny, GoalWarnSpecs)
             ;
-                MaybeGoal = error2(ErrWarnError),
-                MaybeCatchAny = error2(ErrWarnError)
+                MaybeGoal = error2(ErrWarnSpecs),
+                MaybeCatchAny = error2(ErrWarnSpecs)
             )
         else
             varset.coerce(!.VarSet, VarSet0),
@@ -2594,10 +2594,10 @@ parse_catch_then_try_term_args(CatchTermArgs, MaybeCatchAnyExpr,
                 MaybeGoal0 = ok2(Goal, GoalWarnSpecs),
                 MaybeGoal = ok2(Goal, CatchWarnSpecs ++ GoalWarnSpecs)
             ;
-                MaybeGoal0 = error2(ErrWarnError0),
-                add_warns_to_err_warn_error(ErrWarnError0, CatchWarnSpecs,
-                    ErrWarnError),
-                MaybeGoal = error2(ErrWarnError)
+                MaybeGoal0 = error2(ErrWarnSpecs0),
+                add_warns_to_err_warn_specs(ErrWarnSpecs0, CatchWarnSpecs,
+                    ErrWarnSpecs),
+                MaybeGoal = error2(ErrWarnSpecs)
             )
         ;
             MaybeCatches = error2(ErrWarnSpecs),
@@ -2656,8 +2656,8 @@ parse_sub_catch_terms(Term, Context, ContextPieces, MaybeCatches, !VarSet) :-
             MaybeCatch = ok2(Catch, CatchWarnSpecs),
             MaybeCatches = ok2([Catch], CatchWarnSpecs)
         ;
-            MaybeCatch = error2(ErrWarnError),
-            MaybeCatches = error2(ErrWarnError)
+            MaybeCatch = error2(ErrWarnSpecs),
+            MaybeCatches = error2(ErrWarnSpecs)
         )
     ).
 
@@ -2675,8 +2675,8 @@ parse_catch_arrow_term(ArrowTerm, _Context, ContextPieces, MaybeCatch,
             Catch = catch_expr(PatternTerm, Goal),
             MaybeCatch = ok2(Catch, GoalWarnSpecs)
         ;
-            MaybeGoal = error2(ErrWarnError),
-            MaybeCatch = error2(ErrWarnError)
+            MaybeGoal = error2(ErrWarnSpecs),
+            MaybeCatch = error2(ErrWarnSpecs)
         )
     else
         varset.coerce(!.VarSet, ErrorVarSet),
@@ -3159,8 +3159,8 @@ parse_atomic_subgoals_as_list(Term, MaybeGoals, !VarSet) :-
             MaybeSubGoal = ok2(SubGoal, WarnSpecs),
             MaybeGoals = ok2([SubGoal], WarnSpecs)
         ;
-            MaybeSubGoal = error2(ErrWarnError),
-            MaybeGoals = error2(ErrWarnError)
+            MaybeSubGoal = error2(ErrWarnSpecs),
+            MaybeGoals = error2(ErrWarnSpecs)
         )
     ).
 

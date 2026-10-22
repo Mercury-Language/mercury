@@ -1904,13 +1904,13 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
                 MaybeIOM = ok2(iom_item(Item), [])
             ;
                 GoalWarnSpecs = [_ |  _],
-                ErrWarnError =
+                ErrWarnSpecs =
                     report_warning_in_promise(Context, GoalWarnSpecs),
-                MaybeIOM = error2(ErrWarnError)
+                MaybeIOM = error2(ErrWarnSpecs)
             )
         ;
-            MaybeGoal0 = error2(ErrWarnError),
-            MaybeIOM = error2(ErrWarnError)
+            MaybeGoal0 = error2(ErrWarnSpecs),
+            MaybeIOM = error2(ErrWarnSpecs)
         )
     else
         Pieces = [words("Error: a")] ++
@@ -1985,9 +1985,9 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
                 MaybeIOM = ok2(iom_item(Item), [])
             ;
                 GoalWarnSpecs = [_ | _],
-                ErrWarnError =
+                ErrWarnSpecs =
                     report_warning_in_promise(Context, GoalWarnSpecs),
-                MaybeIOM = error2(ErrWarnError)
+                MaybeIOM = error2(ErrWarnSpecs)
             )
         else
             (
@@ -2013,9 +2013,9 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
     ).
 
 :- func report_warning_in_promise(prog_context, list(warn_spec))
-    = err_warn_error.
+    = err_warn_specs.
 
-report_warning_in_promise(Context, GoalWarnSpecs) = ErrWarnError :-
+report_warning_in_promise(Context, GoalWarnSpecs) = ErrWarnSpecs :-
     Pieces = [words("Error: any")] ++
         color_as_subject([words("warning")]) ++
         [words("for the code inside a"),
@@ -2023,7 +2023,7 @@ report_warning_in_promise(Context, GoalWarnSpecs) = ErrWarnError :-
         words("makes that promise")] ++
         color_as_incorrect([words("invalid.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-    ErrWarnError = {one_or_more(Spec, []), GoalWarnSpecs}.
+    ErrWarnSpecs = {one_or_more(Spec, []), GoalWarnSpecs}.
 
 %---------------------------------------------------------------------------%
 

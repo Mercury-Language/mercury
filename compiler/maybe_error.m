@@ -117,14 +117,14 @@
     % - the presence of zero or more warnings.
     % The reason why we use tuples is that any readable function symbol
     % we could use would make the lines that construct errors too long.
-:- type err_warn_error == {one_or_more(err_spec), list(warn_spec)}.
+:- type err_warn_specs == {one_or_more(err_spec), list(warn_spec)}.
 
 :- type parse_result1(T) ==
-    maybe2(T, list(warn_spec), err_warn_error).
+    maybe2(T, list(warn_spec), err_warn_specs).
 :- type parse_result2(T1, T2) ==
-    maybe3(T1, T2, list(warn_spec), err_warn_error).
+    maybe3(T1, T2, list(warn_spec), err_warn_specs).
 :- type parse_result3(T1, T2, T3) ==
-    maybe4(T1, T2, T3, list(warn_spec), err_warn_error).
+    maybe4(T1, T2, T3, list(warn_spec), err_warn_specs).
 
 %---------------------%
 
@@ -155,23 +155,23 @@
     list(diag_spec).
 
 :- pred get_all_errors_warnings1(
-    maybe1(T1, err_warn_error)::in,
+    maybe1(T1, err_warn_specs)::in,
     list(err_spec)::out, list(warn_spec)::out) is det.
 
 :- pred get_all_errors_warnings2(
-    maybe2(T1, list(warn_spec), err_warn_error)::in,
+    maybe2(T1, list(warn_spec), err_warn_specs)::in,
     list(err_spec)::out, list(warn_spec)::out) is det.
 :- pred get_all_errors_warnings3(
-    maybe3(T1, T2, list(warn_spec), err_warn_error)::in,
+    maybe3(T1, T2, list(warn_spec), err_warn_specs)::in,
     list(err_spec)::out, list(warn_spec)::out) is det.
 :- pred get_all_errors_warnings4(
-    maybe4(T1, T2, T3, list(warn_spec), err_warn_error)::in,
+    maybe4(T1, T2, T3, list(warn_spec), err_warn_specs)::in,
     list(err_spec)::out, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred add_warns_to_err_warn_error(err_warn_error::in, list(warn_spec)::in,
-    err_warn_error::out) is det.
+:- pred add_warns_to_err_warn_specs(err_warn_specs::in, list(warn_spec)::in,
+    err_warn_specs::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -280,9 +280,9 @@ get_all_errors_warnings4(error4({OoMErrSpecs, WarnSpecs}),
 
 %---------------------%
 
-add_warns_to_err_warn_error(ErrWarnError0, NewWarnSpecs, ErrWarnError) :-
-    ErrWarnError0 = {OoMErrSpecs0, WarnSpecs0},
-    ErrWarnError = {OoMErrSpecs0, NewWarnSpecs ++ WarnSpecs0}.
+add_warns_to_err_warn_specs(ErrWarnSpecs0, NewWarnSpecs, ErrWarnSpecs) :-
+    ErrWarnSpecs0 = {OoMErrSpecs0, WarnSpecs0},
+    ErrWarnSpecs = {OoMErrSpecs0, NewWarnSpecs ++ WarnSpecs0}.
 
 %---------------------%
 
