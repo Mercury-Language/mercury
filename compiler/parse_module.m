@@ -572,7 +572,7 @@ parse_any_version_number_item(FileString, FileStringLen,
         FinalLookAhead = lookahead(ReadIOMResult),
         VersionNumberResult = vnr_ok(no_version_numbers)
     ;
-        ReadIOMResult = read_iom_ok(_IOMVarSet, _IOMTerm, IOM),
+        ReadIOMResult = read_iom_ok(_IOMVarSet, _IOMTerm, IOM, _WarnSpec),
         % If the term we have read in is a version number item, return it.
         % If the term is anything else, leave it in the input to be handled
         % later.
@@ -723,7 +723,8 @@ parse_int_file_section(FileString, FileStringLen,
         MaybeRawItemBlock = no,
         FinalLookAhead = no_lookahead
     ;
-        ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
+        ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM, WarnSpecs),
+        add_warnings(WarnSpecs, !Errors),
         (
             IOM = iom_marker_section(SectionKind, SectionContext,
                 _SectionSeqNum),
@@ -907,7 +908,8 @@ parse_src_file_components(FileString, FileStringLen,
             ItemSeqFinalLookAhead, FinalLookAhead, !ModuleComponents,
             !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn)
     ;
-        ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
+        ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM, WarnSpecs),
+        add_warnings(WarnSpecs, !Errors),
         (
             IOM = iom_marker_src_file(!:SourceFileName),
             parse_src_file_components(FileString, FileStringLen,
@@ -1308,7 +1310,8 @@ parse_first_module_decl(FileString, FileStringLen,
     read_term_to_iom_result(DummyDefaultModuleName, !.SourceFileName,
         FirstReadTerm, MaybeFirstIOM, !SeqNumCounter),
     (
-        MaybeFirstIOM = read_iom_ok(_FirstVarSet, FirstTerm, FirstIOM),
+        MaybeFirstIOM = read_iom_ok(_FirstVarSet, FirstTerm, FirstIOM,
+            _WarnSpecs),
         (
             FirstIOM = iom_marker_src_file(!:SourceFileName),
             (
@@ -1462,7 +1465,8 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                 !SourceFileName, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn)
         ;
-            ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
+            ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM, WarnSpecs),
+            add_warnings(WarnSpecs, !Errors),
             !:NumItemsLeft = !.NumItemsLeft - 1,
             (
                 ( IOM = iom_marker_module_start(_, _, _)
@@ -1570,7 +1574,7 @@ parse_next_item_or_marker(FileName, FileString, FileStringLen, ModuleName,
             % We have successfully read a term from the file string,
             % but could not parse it as an item or marker.
             % The error category is implicitly rme_could_not_parse_item.
-    ;       read_iom_ok(varset, term, item_or_marker).
+    ;       read_iom_ok(varset, term, item_or_marker, list(warn_spec)).
             % We have successfully read a term from the file string,
             % and parsed it as an item or marker.
 
@@ -1594,13 +1598,12 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
         ReadTermResult = term(VarSet, Term),
         counter.allocate(SeqNum, !SeqNumCounter),
         parse_item_or_marker(ModuleName, VarSet, Term, item_seq_num(SeqNum),
-            MaybeItemOrMarker, [], WarnSpecs),
+            MaybeItemOrMarker),
         (
-            MaybeItemOrMarker = ok1(ItemOrMarker),
-            % XXX DIAG_SPEC This ignores WarnSpecs.
-            ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker)
+            MaybeItemOrMarker = ok2(ItemOrMarker, WarnSpecs),
+            ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker, WarnSpecs)
         ;
-            MaybeItemOrMarker = error1(OoMErrSpecs),
+            MaybeItemOrMarker = error2({OoMErrSpecs, WarnSpecs}),
             ReadIOMResult = read_iom_parse_item_errors(VarSet, Term,
                 OoMErrSpecs, WarnSpecs)
         )
@@ -1696,7 +1699,7 @@ check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         add_warnings(WarnSpecs, !Errors),
         report_unexpected_term_at_end(FileKind, Term, !Errors)
     ;
-        IOMResult = read_iom_ok(_IOMVarSet, IOMTerm, _IOM),
+        IOMResult = read_iom_ok(_IOMVarSet, IOMTerm, _IOM, _WarnSpecs),
         report_unexpected_term_at_end(FileKind, IOMTerm, !Errors)
     ).
 

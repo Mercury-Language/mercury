@@ -43,10 +43,10 @@
     %
 :- pred parse_solver_type_defn_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, item_seq_num::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 :- pred parse_type_defn_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 
     % Parses the attributes in a "where" clause. It looks for and processes
     % only the attributes that can occur on foreign_type pragmas. This includes
@@ -113,7 +113,7 @@ parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 [words("should be followed by a type definition.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
@@ -151,7 +151,7 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_incorrect([words("should have just one argument,")]) ++
             [words("which should be the definition of a type."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 %---------------------------------------------------------------------------%
@@ -163,7 +163,7 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     %
 :- pred parse_du_type_defn(module_name::in, varset::in, term::in, term::in,
     prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 
 parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         IsSolverType, MaybeIOM) :-
@@ -175,12 +175,12 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             color_as_incorrect([words("a solver type"),
                 words("cannot have data constructors.")]) ++
             [nl],
-        SolverSpec = spec($pred, severity_error, phase_t2pt,
+        SolverErrSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), SolverPieces),
-        SolverSpecs = [SolverSpec]
+        SolverErrSpecs = [SolverErrSpec]
     ;
         IsSolverType = non_solver_type,
-        SolverSpecs = []
+        SolverErrSpecs = []
     ),
 
     ContextPieces =
@@ -215,7 +215,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             VarSet, WhereTerm, MaybeWhere)
     ),
     ( if
-        SolverSpecs = [],
+        SolverErrSpecs = [],
         MaybeTypeCtorAndArgs = ok2(TypeSymName, Params),
         MaybeSuperType0 = ok1(MaybeSuperType),
         MaybeOneOrMoreCtors = ok1(OneOrMoreCtors),
@@ -229,12 +229,12 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         OneOrMoreCtors = one_or_more(HeadCtor, TailCtors),
         Ctors = [HeadCtor | TailCtors],
         process_du_ctors(Params, VarSet, BodyTerm, Ctors,
-            [], ErrorSpecs0),
+            [], ErrSpecs0),
         (
             MaybeSuperType = subtype_of(SuperType),
             check_subtype(VarSet, Context, TypeSymName, Params, OneOrMoreCtors,
                 MaybeCanonical, MaybeDirectArgIs, SuperType, SuperTypeContext,
-                TypeDefn, ErrorSpecs0, ErrorSpecs, RecoverableSpecs)
+                TypeDefn, ErrSpecs0, ErrSpecs, RecoverableSpecs)
         ;
             MaybeSuperType = not_a_subtype,
             DetailsDu = type_details_du(OneOrMoreCtors, MaybeCanonical,
@@ -243,15 +243,15 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             (
                 MaybeDirectArgIs = yes(DirectArgCtors),
                 check_direct_arg_ctors(Ctors, DirectArgCtors, BodyTerm,
-                    ErrorSpecs0, ErrorSpecs)
+                    ErrSpecs0, ErrSpecs)
             ;
                 MaybeDirectArgIs = no,
-                ErrorSpecs = ErrorSpecs0
+                ErrSpecs = ErrSpecs0
             ),
             RecoverableSpecs = []
         ),
         (
-            ErrorSpecs = [],
+            ErrSpecs = [],
             varset.coerce(VarSet, TypeVarSet),
             ItemTypeDefn = item_type_defn_info(TypeSymName, Params, TypeDefn,
                 TypeVarSet, Context, SeqNum),
@@ -264,19 +264,19 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 OoMRecoverableSpecs = one_or_more(HeadSpec, TailSpecs),
                 IOM = iom_item_and_err_specs(Item, OoMRecoverableSpecs)
             ),
-            MaybeIOM = ok1(IOM)
+            MaybeIOM = ok2(IOM, [])
         ;
-            ErrorSpecs = [HeadSpec | TailSpecs],
-            MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
+            ErrSpecs = [HeadErrSpec | TailErrSpecs],
+            MaybeIOM = error2({one_or_more(HeadErrSpec, TailErrSpecs), []})
         )
     else
-        Specs = SolverSpecs ++
+        ErrSpecs = SolverErrSpecs ++
             get_any_errors2(MaybeTypeCtorAndArgs) ++
             get_any_errors1(MaybeSuperType0) ++
             get_any_errors1(MaybeOneOrMoreCtors) ++
             get_any_errors3(MaybeWhere),
-        det_list_to_one_or_more(Specs, OoMSpecs),
-        MaybeIOM = error1(OoMSpecs)
+        det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+        MaybeIOM = error2({OoMErrSpecs, []})
     ).
 
 %---------------------%
@@ -906,13 +906,13 @@ check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
     %
 :- pred parse_eqv_type_defn(module_name::in, varset::in, term::in, term::in,
     prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 
 parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         IsSolverType, MaybeIOM) :-
     (
         IsSolverType = non_solver_type,
-        SolverSpecs = []
+        SolverErrSpecs = []
     ;
         IsSolverType = solver_type,
         SolverPieces = [words("Error:")] ++
@@ -920,9 +920,9 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             color_as_incorrect([words("cannot be defined"),
                 words("to be equivalent to another type.")]) ++
             [nl],
-        SolverSpec = spec($pred, severity_error, phase_t2pt,
+        SolverErrSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), SolverPieces),
-        SolverSpecs = [SolverSpec]
+        SolverErrSpecs = [SolverErrSpec]
     ),
     HeadContextPieces =
         cord.from_list([words("On the left hand side of type definition:")]),
@@ -933,31 +933,31 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     parse_type(allow_ho_inst_info, VarSet, BodyContextPieces, BodyTerm,
         MaybeType),
     ( if
-        SolverSpecs = [],
+        SolverErrSpecs = [],
         MaybeNameAndParams = ok2(Name, ParamTVars),
         MaybeType = ok1(Type)
     then
         varset.coerce(VarSet, TVarSet),
         check_no_free_body_vars(TVarSet, ParamTVars, Type,
-            get_term_context(BodyTerm), FreeSpecs),
+            get_term_context(BodyTerm), FreeErrSpecs),
         (
-            FreeSpecs = [],
+            FreeErrSpecs = [],
             TypeDefn = parse_tree_eqv_type(DetailsEqv),
             DetailsEqv = type_details_eqv(Type),
             ItemTypeDefn = item_type_defn_info(Name, ParamTVars, TypeDefn,
                 TVarSet, Context, SeqNum),
             Item = item_type_defn(ItemTypeDefn),
-            MaybeIOM = ok1(iom_item(Item))
+            MaybeIOM = ok2(iom_item(Item), [])
         ;
-            FreeSpecs = [HeadSpec | TailSpecs],
-            MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
+            FreeErrSpecs = [HeadErrSpec | TailErrSpecs],
+            MaybeIOM = error2({one_or_more(HeadErrSpec, TailErrSpecs), []})
         )
     else
-        Specs = SolverSpecs ++
+        ErrSpecs = SolverErrSpecs ++
             get_any_errors2(MaybeNameAndParams) ++
             get_any_errors1(MaybeType),
-        det_list_to_one_or_more(Specs, OoMSpecs),
-        MaybeIOM = error1(OoMSpecs)
+        det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+        MaybeIOM = error2({OoMErrSpecs, []})
     ).
 
 %---------------------------------------------------------------------------%
@@ -973,7 +973,7 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     %
 :- pred parse_where_block_type_defn(module_name::in, varset::in, term::in,
     term::in, prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 
 parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
         Context, SeqNum, IsSolverType, MaybeIOM) :-
@@ -986,8 +986,8 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
         parse_type_decl_where_term(solver_type, ModuleName, SeqNum,
             VarSet, BodyTerm, MaybeWhere),
         (
-            MaybeWhere = error3(Specs),
-            MaybeIOM = error1(Specs)
+            MaybeWhere = error3(OoMErrSpecs),
+            MaybeIOM = error2({OoMErrSpecs, []})
         ;
             MaybeWhere = ok3(MaybeSolverTypeDetails, MaybeCanonical,
                 MaybeDirectArgCtors),
@@ -1000,7 +1000,7 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(HeadTerm), Pieces),
-                MaybeIOM = error1(one_or_more(Spec, []))
+                MaybeIOM = error2({one_or_more(Spec, []), []})
             ;
                 MaybeDirectArgCtors = no,
                 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
@@ -1012,7 +1012,7 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
 
 :- pred parse_where_type_is_abstract(module_name::in, varset::in,
     term::in, term::in, prog_context::in, item_seq_num::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 
 parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
         Context, SeqNum, MaybeIOM) :-
@@ -1097,17 +1097,18 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
         ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,
             TypeVarSet, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
-        MaybeIOM = ok1(iom_item(Item))
+        MaybeIOM = ok2(iom_item(Item), [])
     else
-        Specs = get_any_errors2(MaybeNameParams) ++
+        ErrSpecs = get_any_errors2(MaybeNameParams) ++
             get_any_errors1(MaybeTypeDefn),
-        det_list_to_one_or_more(Specs, OoMSpecs),
-        MaybeIOM = error1(OoMSpecs)
+        det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+        MaybeIOM = error2({OoMErrSpecs, []})
     ).
 
 :- pred parse_solver_type_base(module_name::in, varset::in, term::in,
     maybe(solver_type_details)::in, maybe_canonical::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    parse_result1(item_or_marker)::out) is det.
 
 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         MaybeSolverTypeDetails, MaybeCanonical, Context, SeqNum, MaybeIOM) :-
@@ -1118,15 +1119,15 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         MaybeNameParams),
     (
         MaybeSolverTypeDetails = yes(_),
-        SolverSpecs = []
+        SolverErrSpecs = []
     ;
         MaybeSolverTypeDetails = no,
         Pieces = [words("Solver type with")] ++
             color_as_incorrect([words("no solver_type_details.")]) ++
             [nl],
-        SolverSpec = spec($pred, severity_error, phase_t2pt,
+        SolverErrSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), Pieces),
-        SolverSpecs = [SolverSpec]
+        SolverErrSpecs = [SolverErrSpec]
     ),
     ( if
         MaybeNameParams = ok2(_SymName, ParamTVars0),
@@ -1134,14 +1135,14 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
     then
         RepType = SolverTypeDetails0 ^ std_representation_type,
         check_no_free_body_vars(TVarSet, ParamTVars0, RepType, Context,
-            FreeSpecs)
+            FreeErrSpecs)
     else
-        FreeSpecs = []
+        FreeErrSpecs = []
     ),
     ( if
         MaybeNameParams = ok2(SymName, ParamTVars),
         MaybeSolverTypeDetails = yes(SolverTypeDetails),
-        FreeSpecs = []
+        FreeErrSpecs = []
     then
         TypeDefn = parse_tree_solver_type(DetailsSolver),
         DetailsSolver =
@@ -1149,11 +1150,12 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         ItemTypeDefn = item_type_defn_info(SymName, ParamTVars, TypeDefn,
             TVarSet, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
-        MaybeIOM = ok1(iom_item(Item))
+        MaybeIOM = ok2(iom_item(Item), [])
     else
-        Specs = SolverSpecs ++ get_any_errors2(MaybeNameParams) ++ FreeSpecs,
-        det_list_to_one_or_more(Specs, OoMSpecs),
-        MaybeIOM = error1(OoMSpecs)
+        ErrSpecs = SolverErrSpecs
+            ++ get_any_errors2(MaybeNameParams) ++ FreeErrSpecs,
+        det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+        MaybeIOM = error2({OoMErrSpecs, []})
     ).
 
 %---------------------------------------------------------------------------%
@@ -1163,7 +1165,7 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
 
 :- pred parse_abstract_type_defn(module_name::in, varset::in, term::in,
     prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 
 parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         IsSolverType, MaybeIOM) :-
@@ -1172,8 +1174,8 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
     parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
         MaybeTypeCtorAndArgs),
     (
-        MaybeTypeCtorAndArgs = error2(Specs),
-        MaybeIOM = error1(Specs)
+        MaybeTypeCtorAndArgs = error2(OoMErrSpecs),
+        MaybeIOM = error2({OoMErrSpecs, []})
     ;
         MaybeTypeCtorAndArgs = ok2(Name, Params),
         varset.coerce(VarSet, TypeVarSet),
@@ -1191,7 +1193,7 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,
             TypeVarSet, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
-        MaybeIOM = ok1(iom_item(Item))
+        MaybeIOM = ok2(iom_item(Item), [])
     ).
 
 %---------------------------------------------------------------------------%

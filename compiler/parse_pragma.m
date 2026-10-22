@@ -33,7 +33,8 @@
     % a pragma item, and it may not even be an item.
     %
 :- pred parse_pragma(module_name::in, varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    parse_result1(item_or_marker)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -80,9 +81,15 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
         ( if
             parse_named_pragma(ModuleName, VarSet, PragmaTerm,
                 PragmaName, PragmaArgTerms, PragmaContext, SeqNum,
-                MaybeIOMPrime)
+                MaybeIOM0)
         then
-            MaybeIOM = MaybeIOMPrime
+            (
+                MaybeIOM0 = ok1(IOM),
+                MaybeIOM = ok2(IOM, [])
+            ;
+                MaybeIOM0 = error1(OoMErrSpecs),
+                MaybeIOM = error2({OoMErrSpecs, []})
+            )
         else
             Pieces = [words("Error:")] ++
                 color_as_subject([quote(PragmaName)]) ++
@@ -90,11 +97,11 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
                 color_as_incorrect([words("not a recognized pragma name.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeIOM = error1(one_or_more(Spec, []))
+            MaybeIOM = error2({one_or_more(Spec, []), []})
         )
     else
         Spec = report_unrecognized_pragma_form(Context),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 :- pred parse_named_pragma(module_name::in, varset::in, term::in,

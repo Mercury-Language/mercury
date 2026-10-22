@@ -31,7 +31,8 @@
     % Parse ":- type_representation(...)" items.
     %
 :- pred parse_type_repn_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, parse_result1(item_or_marker)::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -146,13 +147,13 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             ItemRepnInfo = item_type_repn_info(TypeCtorSymName, TypeArgVars,
                 Repn, TVarSet, Context, SeqNum),
             Item = item_type_repn(ItemRepnInfo),
-            MaybeIOM = ok1(iom_item(Item))
+            MaybeIOM = ok2(iom_item(Item), [])
         else
-            Specs =
+            ErrSpecs =
                 get_any_errors2(MaybeTypeSymNameAndArgs) ++
                 get_any_errors1(MaybeRepn),
-            det_list_to_one_or_more(Specs, OoMSpecs),
-            MaybeIOM = error1(OoMSpecs)
+            det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+            MaybeIOM = error2({OoMErrSpecs, []})
         )
     else
         Pieces = [words("Error: a"),
@@ -160,7 +161,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             words("should have two arguments: the type,"),
             words("and a description of its representation."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 %-----------------------------------------------------------------------------e

@@ -30,24 +30,26 @@
     % Parse a `:- inst <InstDefn>.' declaration.
     %
 :- pred parse_inst_defn_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    parse_result1(item_or_marker)::out) is det.
 
     % Parse an `:- abstract_inst <AbstractInstDefn>.' declaration.
     %
 :- pred parse_abstract_inst_defn_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, item_seq_num::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 
     % Parse a `:- mode <ModeDefn>.' declaration.
     %
 :- pred parse_mode_defn(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    parse_result1(item_or_marker)::out) is det.
 
     % Parse an `:- abstract_mode <AbstractModeDefn>.' declaration.
     %
 :- pred parse_abstract_mode_defn_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, item_seq_num::in,
-    maybe1(item_or_marker)::out) is det.
+    parse_result1(item_or_marker)::out) is det.
 
 %-----------------------------------------------------------------------------e
 
@@ -101,7 +103,7 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(InstDefnTerm), Pieces),
-            MaybeIOM = error1(one_or_more(Spec, []))
+            MaybeIOM = error2({one_or_more(Spec, []), []})
         )
     else
         Pieces = [words("Error: an")] ++
@@ -109,11 +111,12 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_incorrect([words("should have just one argument,")]) ++
             [words("which should be the definition of an inst."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 :- pred parse_inst_defn_eqv(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    parse_result1(item_or_marker)::out) is det.
 
 parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM) :-
@@ -128,7 +131,7 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 TypeSymName, TypeArity)
         then
             MaybeForType = yes(type_ctor(TypeSymName, TypeArity)),
-            ForTypeSpecs = []
+            ForTypeErrSpecs = []
         else
             MaybeForType = no,
             ForTypeTermStr = describe_error_term(VarSet, ForTypeTerm),
@@ -137,26 +140,27 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 [words("got")] ++
                 color_as_incorrect([quote(ForTypeTermStr), suffix(".")]) ++
                 [nl],
-            ForTypeSpec = spec($pred, severity_error, phase_t2pt,
+            ForTypeErrSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ForTypeTerm), ForTypePieces),
-            ForTypeSpecs = [ForTypeSpec]
+            ForTypeErrSpecs = [ForTypeErrSpec]
         )
     else
         NameTerm = HeadTerm,
         MaybeForType = no,
-        ForTypeSpecs = []
+        ForTypeErrSpecs = []
     ),
     parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
         ContextPieces, NameTerm, MaybeSymNameAndArgs),
     (
-        MaybeSymNameAndArgs = error2(OoMSymNameAndArgSpecs),
-        append_one_or_more_list(OoMSymNameAndArgSpecs, ForTypeSpecs, OoMSpecs),
-        MaybeIOM = error1(OoMSpecs)
+        MaybeSymNameAndArgs = error2(OoMSymNameAndArgErrSpecs),
+        append_one_or_more_list(OoMSymNameAndArgErrSpecs, ForTypeErrSpecs,
+            OoMErrSpecs),
+        MaybeIOM = error2({OoMErrSpecs, []})
     ;
         MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
 
         HeadTermContext = get_term_context(HeadTerm),
-        check_user_inst_name(SymName, HeadTermContext, NameSpecs),
+        check_user_inst_name(SymName, HeadTermContext, NameErrSpecs),
         check_inst_mode_defn_args("an", "inst definition", VarSet,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
         NamedContextPieces = cord.from_list(
@@ -165,8 +169,8 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         parse_inst(no_allow_constrained_inst_var(wnciv_eqv_inst_defn_rhs),
             VarSet, NamedContextPieces, BodyTerm, MaybeInst),
         ( if
-            NameSpecs = [],
-            ForTypeSpecs = [],
+            NameErrSpecs = [],
+            ForTypeErrSpecs = [],
             MaybeInstArgVars = ok1(InstArgVars),
             MaybeInst = ok1(Inst)
         then
@@ -176,14 +180,14 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 MaybeForType, MaybeAbstractInstDefn, InstVarSet,
                 Context, SeqNum),
             Item = item_inst_defn(ItemInstDefn),
-            MaybeIOM = ok1(iom_item(Item))
+            MaybeIOM = ok2(iom_item(Item), [])
         else
-            Specs = NameSpecs
-                ++ ForTypeSpecs
+            ErrSpecs = NameErrSpecs
+                ++ ForTypeErrSpecs
                 ++ get_any_errors1(MaybeInstArgVars)
                 ++ get_any_errors1(MaybeInst),
-            det_list_to_one_or_more(Specs, OoMSpecs),
-            MaybeIOM = error1(OoMSpecs)
+            det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+            MaybeIOM = error2({OoMErrSpecs, []})
         )
     ).
 
@@ -195,16 +199,16 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
         parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
             ContextPieces, HeadTerm, MaybeNameAndArgs),
         (
-            MaybeNameAndArgs = error2(Specs),
-            MaybeIOM = error1(Specs)
+            MaybeNameAndArgs = error2(OoMErrSpecs),
+            MaybeIOM = error2({OoMErrSpecs, []})
         ;
             MaybeNameAndArgs = ok2(SymName, ArgTerms),
             HeadTermContext = get_term_context(HeadTerm),
-            check_user_inst_name(SymName, HeadTermContext, NameSpecs),
+            check_user_inst_name(SymName, HeadTermContext, NameErrSpecs),
             check_inst_mode_defn_args("an", "abstract_inst definition", VarSet,
                 ArgTerms, no, MaybeInstArgVars),
             ( if
-                NameSpecs = [],
+                NameErrSpecs = [],
                 MaybeInstArgVars = ok1(InstArgVars)
             then
                 varset.coerce(VarSet, InstVarSet),
@@ -214,11 +218,11 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
                     MaybeForType, MaybeAbstractInstDefn, InstVarSet,
                     Context, SeqNum),
                 Item = item_inst_defn(ItemInstDefn),
-                MaybeIOM = ok1(iom_item(Item))
+                MaybeIOM = ok2(iom_item(Item), [])
             else
-                Specs = NameSpecs ++ get_any_errors1(MaybeInstArgVars),
-                det_list_to_one_or_more(Specs, OoMSpecs),
-                MaybeIOM = error1(OoMSpecs)
+                ErrSpecs = NameErrSpecs ++ get_any_errors1(MaybeInstArgVars),
+                det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+                MaybeIOM = error2({OoMErrSpecs, []})
             )
         )
     ;
@@ -230,7 +234,7 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
             color_as_incorrect([words("should have exactly one argument.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 %---------------------------------------------------------------------------%
@@ -241,12 +245,12 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
         ContextPieces, HeadTerm, MaybeSymNameAndArgs),
     (
-        MaybeSymNameAndArgs = error2(Specs),
-        MaybeIOM = error1(Specs)
+        MaybeSymNameAndArgs = error2(OoMErrSpecs),
+        MaybeIOM = error2({OoMErrSpecs, []})
     ;
         MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
         HeadTermContext = get_term_context(HeadTerm),
-        check_user_mode_name(SymName, HeadTermContext, NameSpecs),
+        check_user_mode_name(SymName, HeadTermContext, NameErrSpecs),
         check_inst_mode_defn_args("a", "mode definition", VarSet,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
         NamedContextPieces = cord.from_list(
@@ -255,7 +259,7 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         parse_mode(no_allow_constrained_inst_var(wnciv_mode_defn_rhs), VarSet,
             NamedContextPieces, BodyTerm, MaybeMode),
         ( if
-            NameSpecs = [],
+            NameErrSpecs = [],
             MaybeInstArgVars = ok1(InstArgVars),
             MaybeMode = ok1(Mode)
         then
@@ -264,13 +268,13 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             ItemModeDefn = item_mode_defn_info(SymName, InstArgVars,
                 MaybeAbstractModeDefn, InstVarSet, Context, SeqNum),
             Item = item_mode_defn(ItemModeDefn),
-            MaybeIOM = ok1(iom_item(Item))
+            MaybeIOM = ok2(iom_item(Item), [])
         else
-            Specs = NameSpecs ++
+            ErrSpecs = NameErrSpecs ++
                 get_any_errors1(MaybeInstArgVars) ++
                 get_any_errors1(MaybeMode),
-            det_list_to_one_or_more(Specs, OoMSpecs),
-            MaybeIOM = error1(OoMSpecs)
+            det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+            MaybeIOM = error2({OoMErrSpecs, []})
         )
     ).
 
@@ -282,16 +286,16 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
         parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
             ContextPieces, HeadTerm, MaybeSymNameAndArgs),
         (
-            MaybeSymNameAndArgs = error2(Specs),
-            MaybeIOM = error1(Specs)
+            MaybeSymNameAndArgs = error2(OoMErrSpecs),
+            MaybeIOM = error2({OoMErrSpecs, []})
         ;
             MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
             HeadTermContext = get_term_context(HeadTerm),
-            check_user_mode_name(SymName, HeadTermContext, NameSpecs),
+            check_user_mode_name(SymName, HeadTermContext, NameErrSpecs),
             check_inst_mode_defn_args("an", "abstract_mode definition", VarSet,
                 ArgTerms, no, MaybeInstArgVars),
             ( if
-                NameSpecs = [],
+                NameErrSpecs = [],
                 MaybeInstArgVars = ok1(InstArgVars)
             then
                 varset.coerce(VarSet, InstVarSet),
@@ -299,11 +303,11 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
                 ItemModeDefn = item_mode_defn_info(SymName, InstArgVars,
                     MaybeAbstractModeDefn, InstVarSet, Context, SeqNum),
                 Item = item_mode_defn(ItemModeDefn),
-                MaybeIOM = ok1(iom_item(Item))
+                MaybeIOM = ok2(iom_item(Item), [])
             else
-                Specs = NameSpecs ++ get_any_errors1(MaybeInstArgVars),
-                det_list_to_one_or_more(Specs, OoMSpecs),
-                MaybeIOM = error1(OoMSpecs)
+                ErrSpecs = NameErrSpecs ++ get_any_errors1(MaybeInstArgVars),
+                det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+                MaybeIOM = error2({OoMErrSpecs, []})
             )
         )
     ;
@@ -315,7 +319,7 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
             color_as_incorrect([words("should have exactly one argument.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 %-----------------------------------------------------------------------------e

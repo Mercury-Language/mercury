@@ -28,13 +28,16 @@
 :- import_module varset.
 
 :- pred parse_initialise_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    parse_result1(item_or_marker)::out) is det.
 
 :- pred parse_finalise_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    parse_result1(item_or_marker)::out) is det.
 
 :- pred parse_mutable_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    parse_result1(item_or_marker)::out) is det.
 
 :- type mutable_locn
     --->    mutable_locn_item
@@ -78,8 +81,8 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
     ( if ArgTerms = [Term] then
         parse_sym_name_maybe_arity(VarSet, Term, MaybeSymNameMaybeArity),
         (
-            MaybeSymNameMaybeArity = error1(Specs),
-            MaybeIOM = error1(Specs)
+            MaybeSymNameMaybeArity = error1(OoMErrSpecs),
+            MaybeIOM = error2({OoMErrSpecs, []})
         ;
             MaybeSymNameMaybeArity = ok1(SymNameMaybeArity),
             (
@@ -92,7 +95,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     color_as_incorrect([quote(TermStr), suffix(".")]) ++ [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeIOM = error1(one_or_more(Spec, []))
+                MaybeIOM = error2({one_or_more(Spec, []), []})
             ;
                 SymNameMaybeArity = sym_name_with_arity(SymName, UserArity),
                 UserArity = user_arity(UserArityInt),
@@ -100,7 +103,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     ItemInitialise = item_initialise_info(SymName,
                         UserArity, item_origin_user, Context, SeqNum),
                     Item = item_initialise(ItemInitialise),
-                    MaybeIOM = ok1(iom_item(Item))
+                    MaybeIOM = ok2(iom_item(Item), [])
                 else
                     TermStr = describe_error_term(VarSet, Term),
                     Pieces = [words("Error:"), decl("initialise"),
@@ -111,7 +114,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
-                    MaybeIOM = error1(one_or_more(Spec, []))
+                    MaybeIOM = error2({one_or_more(Spec, []), []})
                 )
             )
         )
@@ -122,7 +125,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_correct([quote(":- initialise pred_name/pred_arity.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 %---------------------------------------------------------------------------%
@@ -132,8 +135,8 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
     ( if ArgTerms = [Term] then
         parse_sym_name_maybe_arity(VarSet, Term, MaybeSymNameMaybeArity),
         (
-            MaybeSymNameMaybeArity = error1(Specs),
-            MaybeIOM = error1(Specs)
+            MaybeSymNameMaybeArity = error1(OoMErrSpecs),
+            MaybeIOM = error2({OoMErrSpecs, []})
         ;
             MaybeSymNameMaybeArity = ok1(SymNameMaybeArity),
             (
@@ -147,7 +150,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeIOM = error1(one_or_more(Spec, []))
+                MaybeIOM = error2({one_or_more(Spec, []), []})
             ;
                 SymNameMaybeArity = sym_name_with_arity(SymName, UserArity),
                 UserArity = user_arity(UserArityInt),
@@ -155,7 +158,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     ItemFinalise = item_finalise_info(SymName, UserArity,
                         item_origin_user, Context, SeqNum),
                     Item = item_finalise(ItemFinalise),
-                    MaybeIOM = ok1(iom_item(Item))
+                    MaybeIOM = ok2(iom_item(Item), [])
                 else
                     TermStr = describe_error_term(VarSet, Term),
                     Pieces = [words("Error:"), decl("finalise"),
@@ -166,7 +169,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
-                    MaybeIOM = error1(one_or_more(Spec, []))
+                    MaybeIOM = error2({one_or_more(Spec, []), []})
                 )
             )
         )
@@ -176,7 +179,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_correct([quote(":- finalise pred_name/pred_arity.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error2({one_or_more(Spec, []), []})
     ).
 
 %---------------------------------------------------------------------------%
@@ -186,10 +189,10 @@ parse_mutable_item(ModuleName, VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
         mutable_locn_item, MaybeItemMutableInfo),
     (
         MaybeItemMutableInfo = ok1(ItemMutableInfo),
-        MaybeIOM = ok1(iom_item(item_mutable(ItemMutableInfo)))
+        MaybeIOM = ok2(iom_item(item_mutable(ItemMutableInfo)), [])
     ;
-        MaybeItemMutableInfo = error1(Specs),
-        MaybeIOM = error1(Specs)
+        MaybeItemMutableInfo = error1(OoMErrSpecs),
+        MaybeIOM = error2({OoMErrSpecs, []})
     ).
 
 %---------------------------------------------------------------------------%

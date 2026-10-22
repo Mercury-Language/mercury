@@ -40,7 +40,7 @@
 
 :- pred parse_dcg_clause(maybe(module_name)::in, varset::in,
     term::in, term::in, prog_context::in, item_seq_num::in,
-    maybe1(item_clause_info, err_warn_error)::out) is det.
+    parse_result1(item_clause_info)::out) is det.
 
     % parse_dcg_pred_goal(GoalTerm, MaybeGoal, DCGVar0, DCGVar, !VarSet):
     %
@@ -50,6 +50,8 @@
 :- pred parse_dcg_pred_goal(term::in, cord(format_piece)::in,
     parse_result1(goal)::out, prog_var::out, prog_var::out,
     prog_varset::in, prog_varset::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -100,14 +102,14 @@ parse_dcg_clause(MaybeModuleName, VarSet0, DCG_HeadTerm, DCG_BodyTerm,
             term.variable(DCGVar, Context)],
         ItemClause = item_clause_info(pf_predicate, SymName, ArgTerms,
             ProgVarSet, MaybeBodyGoal, Context, SeqNum),
-        MaybeClause = ok1(ItemClause)
+        MaybeClause = ok2(ItemClause, [])
     ;
         MaybeFunctor = error2(OoMFunctorErrSpecs),
         get_all_errors_warnings2(MaybeBodyGoal,
             BodyGoalErrSpecs, BodyGoalWarnSpecs),
         append_one_or_more_list(OoMFunctorErrSpecs, BodyGoalErrSpecs,
             OoMErrSpecs),
-        MaybeClause = error1({OoMErrSpecs, BodyGoalWarnSpecs})
+        MaybeClause = error2({OoMErrSpecs, BodyGoalWarnSpecs})
     ).
 
 %---------------------------------------------------------------------------%
