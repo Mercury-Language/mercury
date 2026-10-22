@@ -1327,9 +1327,9 @@ Warning options
         clauses and/or foreign_proc pragmas) of the named predicates and/or
         functions to be intermingled with each other, but not with those or any
         other predicates or functions. This option may be specified more than
-        once, with each option value specifying a distinct set of predicates
-        and/or function names that may be intermingled. Each name must uniquely
-        specify a predicate or a function.
+        once, with each option value specifying a distinct set of names that
+        may be intermingled. Each name must uniquely specify a predicate or a
+        function.
 
   Warnings about language changes
 

@@ -3020,9 +3020,8 @@ optdb(oc_warn_style_ctg_c, allow_non_contiguity_for,   accumulating([]),
         w("and/or functions to be intermingled with each other, but not"),
         w("with those or any other predicates or functions. This option"),
         w("may be specified more than once, with each option value"),
-        w("specifying a distinct set of predicates and/or function names"),
-        w("that may be intermingled. Each name must uniquely specify"),
-        w("a predicate or a function.")])).
+        w("specifying a distinct set of names that may be intermingled."),
+        w("Each name must uniquely specify a predicate or a function.")])).
 
 % Warnings about language changes.
 
