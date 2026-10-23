@@ -86,9 +86,32 @@ static  MR_Integer  MR_max_total_zone_size_gross = 0;
 
 static  void    MR_setup_redzones(MR_MemoryZone *zone);
 
-static  void    *MR_alloc_zone_memory(size_t size);
-static  void    *MR_realloc_zone_memory(void *old_base, size_t copy_size,
-                    size_t new_size);
+// Allocate memory to be used for a zone.
+// On success, *base_alloc will contain the address of the allocated memory,
+// and *base will contain an address aligned to a page boundary (except in the
+// fallback malloc implementation).
+// On failure, both *base_alloc and *base will be set to NULL.
+static  void    MR_alloc_zone_memory(size_t size,
+                    void **base_alloc,
+                    MR_Word **base);
+// Reallocate memory for a zone. old_base_alloc and old_base must contain
+// the addresses previously returned by MR_alloc_zone_memory or a previous
+// reallocation.
+// On success, *new_base_alloc will contain the address of the newly allocated
+// memory, and *base will contain an address aligned to a page boundary (except
+// in the fallback malloc implementation). The first copy_size bytes starting
+// at old_base will be copied to the new memory region starting at *new_base.
+// On failure, *new_base_alloc and *new_base will be set to NULL.
+static  void    MR_realloc_zone_memory(
+                  void *old_base_alloc,
+                  MR_Word *old_base,
+                  size_t copy_size,
+                  size_t new_size,
+                  void **new_base_alloc,
+                  MR_Word **new_base);
+// Deallocate memory for a zone. base_alloc must contain an allocated address
+// previously returned by MR_alloc_zone_memory or MR_realloc_zone_memory.
+static void     MR_dealloc_zone_memory(void *base_alloc);
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -109,130 +132,233 @@ MR_protect_pages(void *addr, size_t size, int prot_flags)
 
 #if defined(MR_CONSERVATIVE_GC)
 
-static void *
-MR_alloc_zone_memory(size_t size)
+static void
+MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
 {
-    MR_Word *ptr;
+    void        *alloc_ptr;
+    uintptr_t   addr;
+    size_t      alloc_size;
 
-    ptr = GC_MALLOC_UNCOLLECTABLE(size);
+    // For the common 4096 byte page size, avoid extra allocation, relying on
+    // the alignment of Boehm GC allocations. In other cases, allocate enough
+    // extra space to align the address to a page boundary. The alignment is
+    // required for memory protection, which works in terms of pages.
+    if (MR_page_size == 4096) {
+        alloc_size = size;
+    } else {
+        assert(size <= SIZE_MAX - (MR_page_size - 1));
+        alloc_size = size + MR_page_size - 1;
+    }
+
+    alloc_ptr = GC_MALLOC_UNCOLLECTABLE(alloc_size);
+    if (alloc_ptr == NULL) {
+        *base_alloc = NULL;
+        *base_aligned = NULL;
+        return;
+    }
+
+    addr = (uintptr_t) alloc_ptr;
+    if (MR_page_size == 4096) {
+        assert(addr % MR_page_size == 0);
+    } else {
+        assert(addr <= UINTPTR_MAX - (MR_page_size - 1));
+        addr = MR_round_up(addr, MR_page_size);
+    }
+
+    assert(addr % MR_page_size == 0);
+    assert(addr >= (uintptr_t) alloc_ptr);
+    assert(addr - (uintptr_t) alloc_ptr <= alloc_size - size);
+
+    *base_alloc = alloc_ptr;
+    *base_aligned = (void *) addr;
+
     // Mark the memory zone as being allocated by the Mercury runtime.
-    // We do not use a helper function like MR_GC_malloc_uncollectable_attrib
-    // as that returns an offset pointer which can interfere with memory page
-    // protection. The first word will be within the redzone so it will not be
-    // clobbered later.
-
-    *ptr = (MR_Word) MR_ALLOC_SITE_RUNTIME;
-    return ptr;
-}
-
-static void *
-MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
-{
-    void    *ptr;
-
-    ptr = GC_MALLOC_UNCOLLECTABLE(new_size);
-    (void) MR_memcpy(ptr, old_base, copy_size);
-    GC_free(old_base);
-    return ptr;
+    // It is possible that the first word will be clobbered later, too bad.
+    *((MR_Word *) *base_alloc) = (MR_Word) MR_ALLOC_SITE_RUNTIME;
 }
 
 static void
-MR_dealloc_zone_memory(void *base, size_t size)
+MR_realloc_zone_memory(
+    void *old_base_alloc,
+    MR_Word *old_base_aligned,
+    size_t copy_size,
+    size_t new_size,
+    void **new_base_alloc,
+    MR_Word **new_base_aligned)
 {
-    (void) size;
-    GC_free(base);
+    assert(copy_size <= new_size);
+
+    MR_alloc_zone_memory(new_size, new_base_alloc, new_base_aligned);
+    if (*new_base_aligned == NULL) {
+        return;
+    }
+
+    (void) MR_memcpy(*new_base_aligned, old_base_aligned, copy_size);
+
+    GC_free(old_base_alloc);
 }
 
-#elif defined(MR_HAVE_POSIX_MEMALIGN_XXX)
+static void
+MR_dealloc_zone_memory(void *base_alloc)
+{
+    GC_free(base_alloc);
+}
 
-static void *
-MR_alloc_zone_memory(size_t size)
+#elif defined(MR_HAVE_POSIX_MEMALIGN)
+
+static void
+MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
 {
     void    *ptr;
     int     res;
 
     res = posix_memalign(&ptr, MR_unit, size);
     if (res != 0) {
-        return NULL;
+        *base_alloc = NULL;
+        *base_aligned = NULL;
+        return;
     }
 
-    return ptr;
+    *base_alloc = ptr;
+    *base_aligned = (MR_Word *) ptr;
 }
 
-static void *
-MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
+static void
+MR_realloc_zone_memory(
+    void *old_base_alloc,
+    MR_Word *old_base_aligned,
+    size_t copy_size,
+    size_t new_size,
+    void **new_base_alloc,
+    MR_Word **new_base_aligned)
 {
     void    *ptr;
     int     res;
 
     res = posix_memalign(&ptr, MR_unit, new_size);
     if (res != 0) {
-        return NULL;
+        *new_base_alloc = NULL;
+        *new_base_aligned = NULL;
+        return;
     }
 
-    (void) MR_memcpy(ptr, old_base, copy_size);
-    free(old_base);
-    return ptr;
+    (void) MR_memcpy(ptr, old_base_aligned, copy_size);
+
+    free(old_base_alloc);
+
+    *new_base_alloc = ptr;
+    *new_base_aligned = (MR_Word *) ptr;
 }
 
 static void
-MR_dealloc_zone_memory(void *base, size_t size)
+MR_dealloc_zone_memory(void *base_alloc)
 {
-    (void) size;
-    free(base);
+    free(base_alloc);
 }
 
 #elif defined(MR_HAVE_MEMALIGN)
 
-static void *
-MR_alloc_zone_memory(size_t size)
+static void
+MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
 {
-    return memalign(MR_unit, size);
+    void    *ptr;
+
+    ptr = memalign(MR_unit, size);
+    if (ptr == NULL) {
+        *base_alloc = NULL;
+        *base_aligned = NULL;
+        return;
+    }
+
+    *base_alloc = ptr;
+    *base_aligned = (MR_Word *) ptr;
 }
 
-static void *
-MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
+static void
+MR_realloc_zone_memory(
+    void *old_base_alloc,
+    MR_Word *old_base_aligned,
+    size_t copy_size,
+    size_t new_size,
+    void **new_base_alloc,
+    MR_Word **new_base_aligned)
 {
     void    *ptr;
 
     ptr = memalign(MR_unit, new_size);
-    (void) MR_memcpy(ptr, old_base, copy_size);
+    if (ptr == NULL) {
+        *new_base_alloc = NULL;
+        *new_base_aligned = NULL;
+        return;
+    }
+
+    (void) MR_memcpy(ptr, old_base_aligned, copy_size);
+
     // We should call free(old_base) here. However, there is no guarantee that
     // the system supports the freeing of memory allocated with memalign via
     // calls to free(). We therefore don't free old_base. This is why we prefer
     // posix_memalign if it is available.
 
-    return ptr;
+    *new_base_alloc = ptr;
+    *new_base_aligned = (MR_Word *) ptr;
 }
 
 static void
-MR_dealloc_zone_memory(void *base, size_t size)
+MR_dealloc_zone_memory(void *base_alloc)
 {
-    // See above about calling free(base) here.
-    (void) base;
-    (void) size;
+    // See above about calling free(base_alloc) here.
+    (void) base_alloc;
 }
 
 #else
 
-static void *
-MR_alloc_zone_memory(size_t size)
+static void
+MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base)
 {
-    return malloc(size);
-}
+    void    *ptr;
 
-static void *
-MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
-{
-    // The copying is done by realloc.
-    return realloc(old_base, new_size);
+    ptr = malloc(size);
+    if (ptr == NULL) {
+        *base_alloc = NULL;
+        *base = NULL;
+        return;
+    }
+
+    // malloc does not guarantee page alignment. This code path is not really
+    // intended to be used, and will not work with memory protection.
+    *base_alloc = ptr;
+    *base = (MR_Word *) ptr;
 }
 
 static void
-MR_dealloc_zone_memory(void *base, size_t size)
+MR_realloc_zone_memory(
+    void *old_base_alloc,
+    MR_Word *old_base,
+    size_t copy_size,
+    size_t new_size,
+    void **new_base_alloc,
+    MR_Word **new_base)
 {
-    (void) size;
-    free(base);
+    void    *ptr;
+
+    // The copying is done by realloc.
+    ptr = realloc(old_base_alloc, new_size);
+    if (ptr == NULL) {
+        *new_base_alloc = NULL;
+        *new_base = NULL;
+        return;
+    }
+
+    // realloc does not guarantee page alignment. This code path is not really
+    // intended to be used, and will not work with memory protection.
+    *new_base_alloc = ptr;
+    *new_base = (MR_Word *) ptr;
+}
+
+static void
+MR_dealloc_zone_memory(void *base_alloc)
+{
+    free(base_alloc);
 }
 
 #endif
@@ -420,8 +546,7 @@ MR_free_zone(MR_MemoryZone *zone)
     MR_UNLOCK(&memory_zones_stats_lock, "MR_free_zone");
 #endif
 
-    MR_dealloc_zone_memory(zone->MR_zone_bottom,
-        ((char *) zone->MR_zone_top) - ((char *) zone->MR_zone_bottom));
+    MR_dealloc_zone_memory(zone->MR_zone_bottom_alloc);
 }
 
 static void
@@ -552,6 +677,7 @@ static MR_MemoryZone *
 MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
 {
     MR_MemoryZone   *zone;
+    void            *base_alloc;
     MR_Word         *base;
     size_t          total_size;
 
@@ -585,7 +711,7 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
     MR_UNLOCK(&memory_zones_stats_lock, "MR_create_new_zone");
 #endif
 
-    base = (MR_Word *) MR_alloc_zone_memory(total_size);
+    MR_alloc_zone_memory(total_size, &base_alloc, &base);
     if (base == NULL) {
         MR_fatal_error("Unable to allocate memory for zone");
     }
@@ -611,6 +737,7 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
     zone->MR_zone_handler = NULL;
 #endif // MR_CHECK_OVERFLOW_VIA_MPROTECT
 
+    zone->MR_zone_bottom_alloc = base_alloc;
     zone->MR_zone_bottom = base;
 
     zone->MR_zone_top = (MR_Word *) ((char *) base + total_size);
@@ -627,8 +754,10 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
 MR_Integer
 MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
 {
-    void            *old_base;
-    void            *new_base;
+    void            *old_base_alloc;
+    MR_Word         *old_base;
+    void            *new_base_alloc;
+    MR_Word         *new_base;
     size_t          offset;
     size_t          copy_size;
     size_t          new_total_size;
@@ -653,6 +782,7 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     new_total_size = new_size + MR_unit;
 #endif
 
+    old_base_alloc = zone->MR_zone_bottom_alloc;
     old_base = zone->MR_zone_bottom;
     copy_size = zone->MR_zone_end - zone->MR_zone_bottom;
     offset = zone->MR_zone_min - zone->MR_zone_bottom;
@@ -680,7 +810,8 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     }
 #endif  // MR_CHECK_OVERFLOW_VIA_MPROTECT
 
-    new_base = MR_realloc_zone_memory(old_base, copy_size, new_size);
+    MR_realloc_zone_memory(old_base_alloc, old_base, copy_size, new_size,
+        &new_base_alloc, &new_base);
     if (new_base == NULL) {
         MR_fatal_error("unable to reallocate memory zone: %s#%"
                 MR_INTEGER_LENGTH_MODIFIER "d",
@@ -694,6 +825,7 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     base_incr = (MR_Integer) new_base - (MR_Integer) old_base;
 
     zone->MR_zone_desired_size = new_size;
+    zone->MR_zone_bottom_alloc = new_base_alloc;
     zone->MR_zone_bottom = new_base;
     zone->MR_zone_top = (MR_Word *) ((char *) new_base + new_total_size);
     zone->MR_zone_min = (MR_Word *) ((char *) new_base + offset);

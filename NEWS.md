@@ -1994,6 +1994,9 @@ Changes to the Mercury implementation
 
 * We have upgraded the bundled Boehm GC to v8.2.12 and libatomic_ops to v7.8.4.
 
+* We have fixed a memory protection issue affecting systems using page sizes
+  greater than 4 KiB (e.g. macOS/ARM64).
+
 Portability improvements
 ------------------------
 

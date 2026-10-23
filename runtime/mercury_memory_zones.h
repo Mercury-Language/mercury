@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2002, 2004-2006, 2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2022, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_memory_zones.h
@@ -59,8 +59,14 @@ typedef MR_bool     MR_ZoneHandler(MR_Word *addr, MR_MemoryZone *zone,
 //          The desired size of the redzone in kilobytes. The actual size
 //          may be larger due to roundups.
 //
-// bottom   The address of the bottom of the allocated area
-//          (should be on a page boundary).
+// bottom_alloc
+//          The address of the bottom of the allocated area.
+//          (May NOT be on a page boundary.)
+//
+// bottom
+//          The address of bottom of the allocated area, possibly rounded
+//          up to a page boundary. (It MUST be aligned to a page boundary
+//          if memory protection is enabled.)
 //
 // top      The address one word past the top of the allocated area
 //          (should be on a page boundary).
@@ -111,6 +117,7 @@ struct MR_MemoryZone_Struct {
 #endif
     size_t                  MR_zone_desired_size;
     size_t                  MR_zone_redzone_size;
+    void                    *MR_zone_bottom_alloc;
     MR_Word                 *MR_zone_bottom;
     MR_Word                 *MR_zone_top;
     MR_Word                 *MR_zone_min;
