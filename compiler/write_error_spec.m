@@ -1382,7 +1382,7 @@ mark_in_work_as_done(Done0, Done, InWork0, InWork) :-
             % it would have been glued to its end, and the InWorkTextKind0
             % would have been changed to in_work_text_is_plain. So the
             % ssc_unit preceding it would be a color change. We want
-            % the suffix to be printed immediately after thet color change.
+            % the suffix to be printed immediately after that color change.
             Done1 = Done0
         ),
         cord.snoc(ssc_str(InWorkText0), Done1, Done)
@@ -1440,7 +1440,7 @@ add_paragraph(Para, !Paras) :-
     then
         true
     else
-        !:Paras = snoc(!.Paras, Para)
+        cord.snoc(Para, !Paras)
     ).
 
 :- pred break_into_words(string::in,
