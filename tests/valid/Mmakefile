@@ -141,6 +141,8 @@ OTHER_PROGS = \
 	bug544 \
 	bug572 \
 	bug586 \
+	bug6 \
+	bug6_full \
 	bug85 \
 	builtin_false \
 	call_failure \
