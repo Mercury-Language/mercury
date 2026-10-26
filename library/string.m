@@ -3143,12 +3143,18 @@ length(S) = L :-
     Length = Str.length();
 ").
 
-length(Str, Len) :-
-    to_code_unit_list(Str, CodeList),
-    list.length(CodeList, Len0),
-    Len = unsafe_promise_unique(Len0).
+% NOTE This definition make sense in logic, but not in practice.
+% This is because the to_code_unit_list predicate *calls* count_code_units,
+% and count_code_units calls length, which means that this definition
+% is guaranteed to end up as an infinite recursion.
+%
+% length(Str, Len) :-
+%     to_code_unit_list(Str, CodeList),
+%     list.length(CodeList, Len0),
+%     Len = unsafe_promise_unique(Len0).
 
-count_code_units(Str) = length(Str).
+count_code_units(Str) = Length :-
+    length(Str, Length).
 
 count_code_units(Str, Length) :-
     length(Str, Length).
