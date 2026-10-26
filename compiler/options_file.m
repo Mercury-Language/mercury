@@ -633,6 +633,11 @@ include_context_msg(FileName - Context) = Msg :-
     % character, return its contents as a list of lines, and process *that*
     % without worrying about I/O errors.
     %
+    % XXX Unfortunately, we *would* still have to worry about the fact that
+    % include directives would effectively replace a single line containing
+    % that directive in one options file with the entire contents of the
+    % options file that is being included.
+    %
 :- pred read_options_lines(search_info::in, incl_stack::in,
     io.text_input_stream::in, file_name::in, int::in,
     env_optfile_variables::in, env_optfile_variables::out,
