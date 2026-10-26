@@ -625,9 +625,13 @@ include_context_msg(FileName - Context) = Msg :-
 %---------------------------------------------------------------------------%
 
     % NOTE: It would be nice if we could just use io.read_file_as_string here,
-    % because it would avoid the need to check for error when reading in
+    % because it would avoid the need to check for errors when reading in
     % *every* *single* *character*. Unfortunately, we cannot, because
     % that predicate does not work for stdin.
+    %
+    % XXX However, we *could* simply read in the whole file character by
+    % character, return its contents as a list of lines, and process *that*
+    % without worrying about I/O errors.
     %
 :- pred read_options_lines(search_info::in, incl_stack::in,
     io.text_input_stream::in, file_name::in, int::in,
@@ -700,7 +704,17 @@ read_options_lines(SearchInfo, InclStack0, InStream, FileName, LineNumber0,
     int::in, int::out, parse_result(list(char))::out, io::di, io::uo) is det.
 
 read_options_line(InStream, FileName, !LineNumber, Result, !IO) :-
-    io.ignore_whitespace(InStream, SpaceResult, !IO),
+    % NOTE It would be nice if we could just
+    %
+    % - call io.read_line to get the contents of a line;
+    % - ignore any comments in that line;
+    % - expand any escape sequences in that line; and then
+    % - recursive to process any remaining lines.
+    %
+    % Unfortunately, when a backslash escapes a newline character,
+    % the processing of the two lines on either side of that newline
+    % CANNOT be independent.
+    ignore_non_nl_whitespace(InStream, SpaceResult, !IO),
     (
         SpaceResult = ok,
         read_options_line_loop(InStream, FileName, !LineNumber, [],
@@ -712,6 +726,34 @@ read_options_line(InStream, FileName, !LineNumber, Result, !IO) :-
         SpaceResult = error(Error),
         Spec = io_error_to_parse_error(FileName, !.LineNumber, Error),
         Result = pr_error(Spec)
+    ).
+
+    % XXX Should this be in library/io.m next to ignore_whitespace?
+    %
+:- pred ignore_non_nl_whitespace(io.text_input_stream::in, io.result::out,
+    io::di, io::uo) is det.
+
+ignore_non_nl_whitespace(Stream, Result, !IO) :-
+    read_char(Stream, CharResult, !IO),
+    (
+        CharResult = error(Error),
+        Result = error(Error)
+    ;
+        CharResult = eof,
+        Result = eof
+    ;
+        CharResult = ok(Char),
+        ( if char.is_whitespace(Char) then
+            ( if Char = '\n' then
+                putback_char(Stream, Char, !IO),
+                Result = ok
+            else
+                ignore_whitespace(Stream, Result, !IO)
+            )
+        else
+            putback_char(Stream, Char, !IO),
+            Result = ok
+        )
     ).
 
     % If we find an I/O error while reading the line, return pr_error(...).

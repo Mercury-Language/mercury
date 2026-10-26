@@ -1,3 +1,6 @@
 # References to undefined variables.
 MCFLAGS-list += $(TYPE_SPEC_FLAGS)
+
+# Test whether $X is reported as being on line 5 or 6.
+# Until 2026 oct 26, we reported 5, due to the blank line being uncounted.
 MCFLAGS-list += $X
