@@ -377,14 +377,14 @@ format_inst_name_nl(MaybeUseErrorMsgInst, Lang, InstSizeLimit, InstName,
             expand_named_insts, uod_developer(TVarSet),
             fixed_short_inst, ShortInstPrefix, ShortInstSuffix,
             LongInstPrefix, LongInstSuffix, InstName),
-        InstNameLines = error_pieces_to_std_lines(InstNamePieces),
+        InstNameLines = format_pieces_to_std_lines(InstNamePieces),
         ( if do_lines_fit_in_n_code_points(80, InstNameLines) then
-            ShortInstNameStr = error_lines_to_one_line_string(InstNameLines),
+            ShortInstNameStr = diag_lines_to_one_line_string(InstNameLines),
             string.builder.format("%s\n", [s(ShortInstNameStr)], !State)
         else
             Prefix = "",
             LongInstNameStr =
-                error_lines_to_multi_line_string(Prefix, InstNameLines),
+                diag_lines_to_multi_line_string(Prefix, InstNameLines),
             string.builder.format("%s", [s(LongInstNameStr)], !State)
         )
     ).
@@ -409,13 +409,13 @@ format_inst_entry(MaybeUseErrorMsgInst, Lang, InstSizeLimit, Inst, !State) :-
             expand_named_insts, uod_developer(TVarSet), fixed_short_inst,
             ShortInstPrefix, ShortInstSuffix,
             LongInstPrefix, LongInstSuffix, Inst),
-        InstLines = error_pieces_to_std_lines(InstPieces),
+        InstLines = format_pieces_to_std_lines(InstPieces),
         ( if do_lines_fit_in_n_code_points(80, InstLines) then
-            ShortInstStr = error_lines_to_one_line_string(InstLines),
+            ShortInstStr = diag_lines_to_one_line_string(InstLines),
             string.builder.format("%s\n", [s(ShortInstStr)], !State)
         else
             Prefix = "",
-            LongInstStr = error_lines_to_multi_line_string(Prefix, InstLines),
+            LongInstStr = diag_lines_to_multi_line_string(Prefix, InstLines),
             string.builder.format("%s", [s(LongInstStr)], !State)
         )
     ).

@@ -760,14 +760,14 @@ new_var_inst_msg_to_string(InfoGoal, IndentStr, Var - Inst) = Str :-
         ShortInstPrefix, ShortInstSuffix,
         LongInstPrefix, LongInstSuffix, Inst),
 
-    InstLines = error_pieces_to_std_lines(InstPieces),
+    InstLines = format_pieces_to_std_lines(InstPieces),
     ( if do_lines_fit_in_n_code_points(40, InstLines) then
-        ShortInstStr = error_lines_to_one_line_string(InstLines),
+        ShortInstStr = diag_lines_to_one_line_string(InstLines),
         string.format("%s%%   %s -> %s\n",
             [s(IndentStr), s(VarStr), s(ShortInstStr)], Str)
     else
         Prefix = IndentStr ++ "%   ",
-        LongInstStr = error_lines_to_multi_line_string(Prefix, InstLines),
+        LongInstStr = diag_lines_to_multi_line_string(Prefix, InstLines),
         string.format("%s%%   %s ->\n%s",
             [s(IndentStr), s(VarStr), s(LongInstStr)], Str)
     ).

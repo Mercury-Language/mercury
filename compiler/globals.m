@@ -297,7 +297,7 @@
     % reported.
     %
     % An entry with the empty string as the key applies to every file.
-:- type limit_error_contexts_map == map(string, list(line_number_range)).
+:- type limit_diag_contexts_map == map(string, list(line_number_range)).
 
 %---------------------%
 
@@ -368,8 +368,8 @@
 :- pred convert_env_type(string::in, env_type::out) is semidet.
 :- pred convert_ssdb_trace_level(string::in, bool::in, ssdb_trace_level::out)
     is semidet.
-:- pred convert_limit_error_contexts(list(string)::in, list(string)::out,
-    limit_error_contexts_map::out) is det.
+:- pred convert_limit_diag_contexts(list(string)::in, list(string)::out,
+    limit_diag_contexts_map::out) is det.
 
 %---------------------%
 
@@ -403,7 +403,7 @@
 :- pred globals_init(option_table::in, option_table::in, opt_tuple::in,
     op_mode::in, maybe(feedback_info)::in, file_install_cmd::in,
     trace_suppress_items::in, reuse_strategy::in,
-    limit_error_contexts_map::in, linked_target_ext_info_map::in,
+    limit_diag_contexts_map::in, linked_target_ext_info_map::in,
     c_compiler_type::in, csharp_compiler_type::in,
     static_or_shared::in, static_or_shared::in, set(static_or_shared)::in,
     maybe_stdlib_grades::in, compilation_target::in, subdir_setting::in,
@@ -423,8 +423,8 @@
 :- pred get_maybe_stdlib_grades(globals::in, maybe_stdlib_grades::out) is det.
 :- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
 :- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
-:- pred get_limit_error_contexts_map(globals::in,
-    limit_error_contexts_map::out) is det.
+:- pred get_limit_diag_contexts_map(globals::in,
+    limit_diag_contexts_map::out) is det.
 :- pred get_linked_target_ext_map(globals::in,
     linked_target_ext_info_map::out) is det.
 :- pred get_grade_dir(globals::in, string::out) is det.
@@ -833,17 +833,16 @@ convert_ssdb_trace_level("none", _, ssdb_none).
 convert_ssdb_trace_level("shallow", _, ssdb_shallow).
 convert_ssdb_trace_level("deep", _, ssdb_deep).
 
-convert_limit_error_contexts(Options, BadOptions, Map) :-
-    convert_limit_error_contexts_acc(Options, [], RevBadOptions,
-        map.init, Map),
+convert_limit_diag_contexts(Options, BadOptions, Map) :-
+    convert_limit_diag_contexts_acc(Options, [], RevBadOptions, map.init, Map),
     list.reverse(RevBadOptions, BadOptions).
 
-:- pred convert_limit_error_contexts_acc(list(string)::in,
+:- pred convert_limit_diag_contexts_acc(list(string)::in,
     list(string)::in, list(string)::out,
-    limit_error_contexts_map::in, limit_error_contexts_map::out) is det.
+    limit_diag_contexts_map::in, limit_diag_contexts_map::out) is det.
 
-convert_limit_error_contexts_acc([], !RevBadOptions, !Map).
-convert_limit_error_contexts_acc([Option | Options], !RevBadOptions, !Map) :-
+convert_limit_diag_contexts_acc([], !RevBadOptions, !Map).
+convert_limit_diag_contexts_acc([Option | Options], !RevBadOptions, !Map) :-
     string.to_char_list(Option, OptionChars),
     % Break up the option at the last colon.
     % If there is no colon, the filename will be empty, and the line number
@@ -864,7 +863,7 @@ convert_limit_error_contexts_acc([Option | Options], !RevBadOptions, !Map) :-
     else
         !:RevBadOptions = [Option | !.RevBadOptions]
     ),
-    convert_limit_error_contexts_acc(Options, !RevBadOptions, !Map).
+    convert_limit_diag_contexts_acc(Options, !RevBadOptions, !Map).
 
 :- pred find_file_name_and_line_range_chars(list(char)::in,
     list(char)::in, list(char)::out, list(char)::out) is det.
@@ -905,7 +904,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
     --->    read_only_globals(
                 rog_trace_suppress_items        :: trace_suppress_items,
                 rog_reuse_strategy              :: reuse_strategy,
-                rog_limit_error_contexts_map    :: limit_error_contexts_map,
+                rog_limit_diag_contexts_map     :: limit_diag_contexts_map,
                 rog_linked_target_ext_map       :: linked_target_ext_info_map,
                 rog_grade_dir                   :: string,
                 rog_c_compiler_type             :: c_compiler_type
@@ -1004,8 +1003,8 @@ get_trace_suppress(Globals, X) :-
     X = Globals ^ g_read_only ^ rog_trace_suppress_items.
 get_reuse_strategy(Globals, X) :-
     X = Globals ^ g_read_only ^ rog_reuse_strategy.
-get_limit_error_contexts_map(Globals, X) :-
-    X = Globals ^ g_read_only ^ rog_limit_error_contexts_map.
+get_limit_diag_contexts_map(Globals, X) :-
+    X = Globals ^ g_read_only ^ rog_limit_diag_contexts_map.
 get_linked_target_ext_map(Globals, X) :-
     X = Globals ^ g_read_only ^ rog_linked_target_ext_map.
 get_grade_dir(Globals, X) :-

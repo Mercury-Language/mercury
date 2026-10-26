@@ -963,7 +963,7 @@ desc_pred_decl_item_numbers(PredItemNumbers, PredDescStr) :-
     PredItemNumbers = pred_decl_item_numbers(_, PredInfo, _, _),
     PredPieces = describe_one_pred_info_name(no, should_not_module_qualify,
         [], PredInfo),
-    PredDescStr = error_pieces_to_one_line_string(PredPieces).
+    PredDescStr = format_pieces_to_one_line_string(PredPieces).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.style_checks.

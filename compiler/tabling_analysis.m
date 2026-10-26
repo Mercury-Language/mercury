@@ -994,7 +994,7 @@ output_proc_names(Stream, ModuleInfo, SCC, !IO) :-
 
 output_proc_name(Stream, Moduleinfo, PPId, !IO) :-
    Pieces = describe_qual_proc_name(Moduleinfo, PPId),
-   Str = error_pieces_to_one_line_string(Pieces),
+   Str = format_pieces_to_one_line_string(Pieces),
    io.format(Stream, "\t%s\n", [s(Str)], !IO).
 
 %----------------------------------------------------------------------------%

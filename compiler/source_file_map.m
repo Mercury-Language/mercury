@@ -282,8 +282,8 @@ lookup_module_source_file(ModuleName, FileName, !IO) :-
                 suffix(","), words("is recorded in Mercury.options"),
                 words("as containing a different module, namely"),
                 qual_sym_name(Other), suffix("."), nl],
-            ErrorLines = error_pieces_to_std_lines(Pieces),
-            ErrorStr = error_lines_to_multi_line_string("", ErrorLines),
+            ErrorLines = format_pieces_to_std_lines(Pieces),
+            ErrorStr = diag_lines_to_multi_line_string("", ErrorLines),
             % XXX Instead of printing ErrorStr as an abort message,
             % we should return it to our caller, and have it print it
             % together with any other diagnostics it has accumulated.

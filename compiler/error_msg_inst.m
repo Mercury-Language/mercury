@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015, 2024-2025 The Mercury team.
+% Copyright (C) 2015, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -210,7 +210,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
     InlineSuffixPieces = [],
     inst_to_pieces(Info, inline_pieces, Inst, InlineSuffixPieces,
         InlinePieces, Expansions0, _InlineExpansions),
-    InlineStr = error_pieces_to_one_line_string(InlinePieces),
+    InlineStr = format_pieces_to_one_line_string(InlinePieces),
     % We could base the decision on whether to put the inst inline
     % on criteria other than its length, such as
     %
@@ -260,7 +260,7 @@ error_msg_inst_name(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
     InlineSuffixPieces = [],
     inst_name_to_pieces(Info, inline_pieces, InstName, InlineSuffixPieces,
         InlinePieces, Expansions0, _InlineExpansions),
-    InlineStr = error_pieces_to_one_line_string(InlinePieces),
+    InlineStr = format_pieces_to_one_line_string(InlinePieces),
     % We could base the decision on whether to put the inst inline
     % on criteria other than its length, such as
     %

@@ -149,28 +149,28 @@
     % Display the given error message, without a context and with standard
     % indentation.
     %
-:- pred write_error_pieces_plain(io.text_output_stream::in, globals::in,
+:- pred write_format_pieces_plain(io.text_output_stream::in, globals::in,
     list(format_piece)::in, io::di, io::uo) is det.
-:- pragma obsolete(pred(write_error_pieces_plain/5)).
+:- pragma obsolete(pred(write_format_pieces_plain/5)).
 
-    % write_error_pieces(Globals, Context, Indent, Pieces):
+    % write_format_pieces(Globals, Context, Indent, Pieces):
     %
     % Display `Pieces' as the error message, with `Context' as a context
     % and indent by `Indent'.
     %
-:- pred write_error_pieces(io.text_output_stream::in, globals::in,
+:- pred write_format_pieces(io.text_output_stream::in, globals::in,
     prog_context::in, indent::in, list(format_piece)::in,
     io::di, io::uo) is det.
-:- pragma obsolete(pred(write_error_pieces/7)).
+:- pragma obsolete(pred(write_format_pieces/7)).
 
-:- pred write_error_pieces_maybe_with_context(io.text_output_stream::in,
+:- pred write_format_pieces_maybe_with_context(io.text_output_stream::in,
     globals::in, maybe(prog_context)::in, indent::in, list(format_piece)::in,
     io::di, io::uo) is det.
-:- pragma obsolete(pred(write_error_pieces_maybe_with_context/7)).
+:- pragma obsolete(pred(write_format_pieces_maybe_with_context/7)).
 
 %---------------------------------------------------------------------------%
 
-:- type error_line.
+:- type diag_line.
 
     % Convert the given list of pieces to an abstract representation
     % of the lines of output it corresponds to. The caller can then
@@ -179,52 +179,53 @@
     %   of characters, using do_lines_fit_in_n_code_points, and
     % - convert the lines either
     %   - to a string containing a single line of text
-    %     using error_lines_to_one_line_string, or
+    %     using diag_lines_to_one_line_string, or
     %   - to a string containing one line of text for each abstract line
-    %     using error_lines_to_multi_line_string.
+    %     using diag_lines_to_multi_line_string.
     %
 
-:- func error_pieces_to_std_lines(list(format_piece)) = list(error_line).
+:- func format_pieces_to_std_lines(list(format_piece)) = list(diag_line).
 
     % Succeed if and only if the contents of the given lines, if appended
     % with a space between each pair of successive lines, would fit
     % in the given number of characters.
     %
-:- pred do_lines_fit_in_n_code_points(int::in, list(error_line)::in)
+:- pred do_lines_fit_in_n_code_points(int::in, list(diag_line)::in)
     is semidet.
 
     % Convert the given abstract representation of lines to either
     % a string containing a single line of text, or a string containing
     % one line of text per abstract line.
     %
-:- func error_lines_to_one_line_string(list(error_line)) = string.
-:- func error_lines_to_multi_line_string(string, list(error_line)) = string.
+:- func diag_lines_to_one_line_string(list(diag_line)) = string.
+:- func diag_lines_to_multi_line_string(string, list(diag_line)) = string.
 
 %---------------------%
 
-    % These two functions do (almost) the same job as write_error_pieces,
+    % These two functions do (almost) the same job as write_format_pieces,
     % but return the resulting string instead of printing it out.
     %
-    % error_pieces_to_one_line_string returns the string on one single line,
+    % format_pieces_to_one_line_string returns the string on one single line,
     % without a final newline. This is good for inputs that are known to be
     % short by construction, as well as in cases where we use its output
     % if it is short enough, but switch to doing something else if it is not.
     %
-    % error_pieces_to_multi_line_string preserves both the line structure
-    % and the indentation structure of the output that write_error_pieces
+    % format_pieces_to_multi_line_string preserves both the line structure
+    % and the indentation structure of the output that write_format_pieces
     % would generate. The first argument is a prefix that the caller can
     % specify for every one of the lines in the output. The intended use case
     % is the printing of e.g. insts in goals' instmap_deltas in HLDS dumps.
     %
     % NOTE If your intention is to generate a single line of output
     % if the input pieces are short enough, and several lines of output if
-    % they are not, then you are better of calling error_pieces_to_std_lines,
+    % they are not, then you are better of calling format_pieces_to_std_lines,
     % then do_lines_fit_in_n_code_points, and then (depending on the success
-    % or failure of that test) either error_lines_to_one_line_string or
-    % error_lines_to_multi_line_string.
+    % or failure of that test) either diag_lines_to_one_line_string or
+    % diag_lines_to_multi_line_string.
     %
-:- func error_pieces_to_one_line_string(list(format_piece)) = string.
-:- func error_pieces_to_multi_line_string(string, list(format_piece)) = string.
+:- func format_pieces_to_one_line_string(list(format_piece)) = string.
+:- func format_pieces_to_multi_line_string(string, list(format_piece))
+    = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -307,8 +308,8 @@ write_diag_spec(Stream, Globals, Spec, !IO) :-
 write_diag_specs(Stream, Globals, Specs0, !IO) :-
     standardize_diag_specs(Specs0, StdSpecs),
     globals.get_options(Globals, OptionTable),
-    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
-    sort_and_write_std_diag_specs(Stream, OptionTable, LimitErrorContextsMap,
+    globals.get_limit_diag_contexts_map(Globals, LimitDiagContextsMap),
+    sort_and_write_std_diag_specs(Stream, OptionTable, LimitDiagContextsMap,
         StdSpecs, !IO).
 
 write_oom_diag_specs(Stream, Globals, OoMSpecs, !IO) :-
@@ -318,25 +319,25 @@ write_oom_diag_specs(Stream, Globals, OoMSpecs, !IO) :-
 
 write_diag_specs_opt_table(Stream, OptionTable, Specs, !IO) :-
     standardize_diag_specs(Specs, StdSpecs),
-    getopt.lookup_accumulating_option(OptionTable, limit_error_contexts,
-        LimitErrorContexts),
+    getopt.lookup_accumulating_option(OptionTable, limit_diag_contexts,
+        LimitDiagContexts),
     % There is nothing we can usefully do about _BadOptions.
-    convert_limit_error_contexts(LimitErrorContexts, _BadOptions,
-        LimitErrorContextsMap),
-    sort_and_write_std_diag_specs(Stream, OptionTable, LimitErrorContextsMap,
+    convert_limit_diag_contexts(LimitDiagContexts, _BadOptions,
+        LimitDiagContextsMap),
+    sort_and_write_std_diag_specs(Stream, OptionTable, LimitDiagContextsMap,
         StdSpecs, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred sort_and_write_std_diag_specs(io.text_output_stream::in,
-    option_table::in, limit_error_contexts_map::in, list(std_diag_spec)::in,
+    option_table::in, limit_diag_contexts_map::in, list(std_diag_spec)::in,
     io::di, io::uo) is det.
 
-sort_and_write_std_diag_specs(Stream, OptionTable, LimitErrorContextsMap,
+sort_and_write_std_diag_specs(Stream, OptionTable, LimitDiagContextsMap,
         StdSpecs, !IO) :-
     sort_std_diag_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs),
     ColorDb = init_color_db(OptionTable),
-    getopt.lookup_maybe_int_option(OptionTable, max_error_line_width,
+    getopt.lookup_maybe_int_option(OptionTable, max_diag_line_width,
         MaybeMaxWidth),
     % We keep a record of the set of already-printed verbose_once components
     % only during the invocation of a single call to write_error_specs,
@@ -352,19 +353,19 @@ sort_and_write_std_diag_specs(Stream, OptionTable, LimitErrorContextsMap,
     % write_error_specs, in practice, this won't happen.
     set.init(AlreadyPrintedVerbose0),
     list.foldl2(
-        do_write_diag_spec(Stream, OptionTable, LimitErrorContextsMap,
+        do_write_diag_spec(Stream, OptionTable, LimitDiagContextsMap,
             ColorDb, MaybeMaxWidth),
         SortedStdSpecs, AlreadyPrintedVerbose0, _AlreadyPrintedVerbose, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred do_write_diag_spec(io.text_output_stream::in, option_table::in,
-    limit_error_contexts_map::in, color_db::in, maybe(int)::in,
+    limit_diag_contexts_map::in, color_db::in, maybe(int)::in,
     std_diag_spec::in,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-do_write_diag_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
+do_write_diag_spec(Stream, OptionTable, LimitDiagContextsMap, ColorDb,
         MaybeMaxWidth, StdSpec, !AlreadyPrintedVerbose, !IO) :-
     StdSpec = gen_spec(Id, Severity, _Phase, StdMsgs1),
     severity_to_maybe_actual_severity(OptionTable, Severity,
@@ -376,7 +377,7 @@ do_write_diag_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
         MaybeActualSeverity = yes(ActualSeverity),
         % We do print StdSpec.
         maybe_add_diag_spec_id_std(OptionTable, Id, StdMsgs1, StdMsgs),
-        collect_msgs(OptionTable, LimitErrorContextsMap, StdMsgs,
+        collect_msgs(OptionTable, LimitDiagContextsMap, StdMsgs,
             treat_as_first, cord.init, AllMsgsCord,
             do_not_print_spec, MaybePrintSpec,
             !.AlreadyPrintedVerbose, UpdatedAlreadyPrintedVerbose, !IO),
@@ -429,7 +430,7 @@ do_write_diag_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
 
 :- type already_printed_verbose == set(list(format_piece)).
 
-:- pred collect_msgs(option_table::in, limit_error_contexts_map::in,
+:- pred collect_msgs(option_table::in, limit_diag_contexts_map::in,
     list(std_diag_msg)::in, maybe_treat_as_first::in,
     cord(msg_pieces)::in, cord(msg_pieces)::out,
     maybe_print_spec::in, maybe_print_spec::out,
@@ -438,7 +439,7 @@ do_write_diag_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
 
 collect_msgs(_, _, [], _,
         !MsgsCord, !MaybePrintSpec, !AlreadyPrintedVerbose, !IO).
-collect_msgs(OptionTable, LimitErrorContextsMap, [StdMsg | StdMsgs], !.First,
+collect_msgs(OptionTable, LimitDiagContextsMap, [StdMsg | StdMsgs], !.First,
         !MsgsCord, !MaybePrintSpec, !AlreadyPrintedVerbose, !IO) :-
     StdMsg = gen_msg(MaybeContext, TreatAsFirst, ExtraIndent, StdComponents),
     Indent = ExtraIndent * indent2_increment,
@@ -452,7 +453,7 @@ collect_msgs(OptionTable, LimitErrorContextsMap, [StdMsg | StdMsgs], !.First,
     collect_msg_components(OptionTable, StdComponents,
         cord.init, PiecesCord, !AlreadyPrintedVerbose, !IO),
     Pieces = cord.list(PiecesCord),
-    should_this_msg_be_printed(LimitErrorContextsMap, !.First, Indent,
+    should_this_msg_be_printed(LimitDiagContextsMap, !.First, Indent,
         MaybeContext, Pieces, PrintOrNot, !IO),
     (
         PrintOrNot = do_not_print(MaybeMsgPieces),
@@ -468,7 +469,7 @@ collect_msgs(OptionTable, LimitErrorContextsMap, [StdMsg | StdMsgs], !.First,
         !:MaybePrintSpec = do_print_spec
     ),
     !:First = do_not_treat_as_first,
-    collect_msgs(OptionTable, LimitErrorContextsMap, StdMsgs, !.First,
+    collect_msgs(OptionTable, LimitDiagContextsMap, StdMsgs, !.First,
         !MsgsCord, !MaybePrintSpec, !AlreadyPrintedVerbose, !IO).
 
 %---------------------------------------------------------------------------%
@@ -529,22 +530,22 @@ collect_msg_components(OptionTable, [Component | Components],
 
 %---------------------------------------------------------------------------%
 
-write_error_pieces_plain(Stream, Globals, Pieces, !IO) :-
-    write_error_pieces_maybe_with_context(Stream, Globals, no,
+write_format_pieces_plain(Stream, Globals, Pieces, !IO) :-
+    write_format_pieces_maybe_with_context(Stream, Globals, no,
         0u, Pieces, !IO).
 
 %---------------------%
 
-write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO) :-
-    write_error_pieces_maybe_with_context(Stream, Globals, yes(Context),
+write_format_pieces(Stream, Globals, Context, Indent, Pieces, !IO) :-
+    write_format_pieces_maybe_with_context(Stream, Globals, yes(Context),
         Indent, Pieces, !IO).
 
 %---------------------%
 
-write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
+write_format_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
         Pieces, !IO) :-
-    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
-    should_this_msg_be_printed(LimitErrorContextsMap, treat_as_first, Indent,
+    globals.get_limit_diag_contexts_map(Globals, LimitDiagContextsMap),
+    should_this_msg_be_printed(LimitDiagContextsMap, treat_as_first, Indent,
         MaybeContext, Pieces, PrintOrNot, !IO),
     (
         PrintOrNot = do_not_print(_)
@@ -552,7 +553,7 @@ write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
         PrintOrNot = do_print(MsgPieces),
         globals.get_options(Globals, OptionTable),
         ColorDb = init_color_db(OptionTable),
-        getopt.lookup_maybe_int_option(OptionTable, max_error_line_width,
+        getopt.lookup_maybe_int_option(OptionTable, max_diag_line_width,
             MaybeMaxWidth),
         write_msg_pieces(Stream, ColorDb, MaybeMaxWidth, MsgPieces, !IO)
     ).
@@ -578,11 +579,11 @@ write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
             % for *that* is whether we printed at least one msg_pieces or not.
     ;       do_print(msg_pieces).
 
-:- pred should_this_msg_be_printed(limit_error_contexts_map::in,
+:- pred should_this_msg_be_printed(limit_diag_contexts_map::in,
     maybe_treat_as_first::in, uint::in, maybe(prog_context)::in,
     list(format_piece)::in, print_or_not::out, io::di, io::uo) is det.
 
-should_this_msg_be_printed(LimitErrorContextsMap, TreatAsFirst, Indent,
+should_this_msg_be_printed(LimitDiagContextsMap, TreatAsFirst, Indent,
         MaybeContext, Pieces, PrintOrNot, !IO) :-
     (
         Pieces = [],
@@ -605,13 +606,13 @@ should_this_msg_be_printed(LimitErrorContextsMap, TreatAsFirst, Indent,
             Context = context(FileName, LineNumber),
             ( if
                 (
-                    map.search(LimitErrorContextsMap, FileName,
+                    map.search(LimitDiagContextsMap, FileName,
                         LineNumberRanges),
                     line_number_is_in_a_range(LineNumberRanges, LineNumber)
                         = no
                 ;
                     % The entry for the empty filename applies to all files.
-                    map.search(LimitErrorContextsMap, "", LineNumberRanges),
+                    map.search(LimitDiagContextsMap, "", LineNumberRanges),
                     line_number_is_in_a_range(LineNumberRanges, LineNumber)
                         = no
                 )
@@ -685,14 +686,15 @@ write_msg_pieces(Stream, ColorDb, MaybeMaxWidth, MsgPieces, !IO) :-
 %
 % Oversee the whole process of converting
 %
-% - format pieces to paragraphs
+% - format pieces to words
+% - words to paragraphs
 % - paragraphs to lines
 % - lines to joined_up lines.
 %
 
 :- pred convert_pieces_to_lines(color_db::in, maybe(int)::in, string::in,
     maybe_treat_as_first::in, indent::in, list(format_piece)::in,
-    string::out, list(error_line)::out) is det.
+    string::out, list(diag_line)::out) is det.
 
 convert_pieces_to_lines(ColorDb, MaybeMaxWidth, ContextStr, TreatAsFirst,
         FixedIndent, Pieces, PrefixStr, Lines) :-
@@ -1129,7 +1131,7 @@ add_word_to_cord(Word, !CaseChange, !WordsCord) :-
                 int,
 
                 % See the documentation of the line_paren field
-                % in the error_line type. It has the same meaning here,
+                % in the diag_line type. It has the same meaning here,
                 % except it applies only to the last line of the paragraph.
                 paren_status
             ).
@@ -1498,8 +1500,8 @@ find_word_end(String, Cur, WordEnd) :-
     --->    line_end_reset_nothing
     ;       line_end_reset_color.
 
-:- type error_line
-    --->    error_line(
+:- type diag_line
+    --->    diag_line(
                 % This will be AvailLen, the total number of code points
                 % available on the line after the context and the fixed indent.
                 %
@@ -1579,7 +1581,7 @@ find_word_end(String, Cur, WordEnd) :-
     % at least one line.
     %
 :- pred divide_paragraphs_into_lines(int::in, maybe_treat_as_first::in,
-    indent::in, list(paragraph)::in, list(error_line)::out,
+    indent::in, list(paragraph)::in, list(diag_line)::out,
     color_stack::in) is det.
 
 divide_paragraphs_into_lines(AvailLen, TreatAsFirst, CurIndent, Paras,
@@ -1612,7 +1614,7 @@ divide_paragraphs_into_lines(AvailLen, TreatAsFirst, CurIndent, Paras,
             % would be drastic. Adding this warning to the output should grab
             % just as much attention, but it also allows the problem to be
             % addressed at a time chosen by the programmer.
-            WarningLine = error_line(AvailLen, CurIndent,
+            WarningLine = diag_line(AvailLen, CurIndent,
                 "WARNING: NEGATIVE INDENT", 0,
                 line_end_reset_nothing, ColorStack0, ColorStack0, paren_none),
             FirstParaWarningLines = [WarningLine],
@@ -1620,7 +1622,7 @@ divide_paragraphs_into_lines(AvailLen, TreatAsFirst, CurIndent, Paras,
         ),
 
         ( if NumBlankLines > 0 then
-            BlankLine = error_line(AvailLen, CurIndent, "", 0,
+            BlankLine = diag_line(AvailLen, CurIndent, "", 0,
                 line_end_reset_nothing, ColorStack0, ColorStack0, paren_none),
             list.duplicate(NumBlankLines, BlankLine, FirstParaBlankLines)
         else
@@ -1640,14 +1642,14 @@ divide_paragraphs_into_lines(AvailLen, TreatAsFirst, CurIndent, Paras,
             LineWordsStr = string.append_list(LineWords),
             (
                 RestWords = [],
-                CurLine = error_line(AvailLen, CurIndent, LineWordsStr,
+                CurLine = diag_line(AvailLen, CurIndent, LineWordsStr,
                     LineWordsLen, LineEndReset, ColorStack0, ColorStack1,
                     ParaParen),
                 FirstParaLines = [CurLine],
                 ColorStackNext = ColorStack1
             ;
                 RestWords = [FirstRestWord | LaterRestWords],
-                CurLine = error_line(AvailLen, CurIndent, LineWordsStr,
+                CurLine = diag_line(AvailLen, CurIndent, LineWordsStr,
                     LineWordsLen, LineEndReset, ColorStack0, ColorStack1,
                     paren_none),
                 group_nonfirst_line_words(AvailLen,
@@ -1663,7 +1665,7 @@ divide_paragraphs_into_lines(AvailLen, TreatAsFirst, CurIndent, Paras,
     ).
 
 :- pred group_nonfirst_line_words(int::in, ssc_unit::in, list(ssc_unit)::in,
-    indent::in, paren_status::in, list(error_line)::out,
+    indent::in, paren_status::in, list(diag_line)::out,
     color_stack::in, color_stack::out) is det.
 
 group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
@@ -1674,13 +1676,13 @@ group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
     LineWordsStr = string.append_list(LineWords),
     (
         RestWords = [],
-        Line = error_line(AvailLen, Indent, LineWordsStr, LineWordsLen,
+        Line = diag_line(AvailLen, Indent, LineWordsStr, LineWordsLen,
             EndLineReset, ColorStack0, ColorStack1, LastParen),
         Lines = [Line],
         ColorStack = ColorStack1
     ;
         RestWords = [FirstRestWord | LaterRestWords],
-        Line = error_line(AvailLen, Indent, LineWordsStr, LineWordsLen,
+        Line = diag_line(AvailLen, Indent, LineWordsStr, LineWordsLen,
             EndLineReset, ColorStack0, ColorStack1, paren_none),
         group_nonfirst_line_words(AvailLen, FirstRestWord, LaterRestWords,
             Indent, LastParen, RestLines, ColorStack1, ColorStack),
@@ -2008,12 +2010,12 @@ top_color_to_string(ColorStack) = Str :-
     % This predicate is the top level loop. All calls to it, including
     % recursive calls, are outside of all parentheses.
     %
-:- pred try_to_join_lp_to_rp_lines(list(error_line)::in,
-    list(error_line)::out) is det.
+:- pred try_to_join_lp_to_rp_lines(list(diag_line)::in,
+    list(diag_line)::out) is det.
 
 try_to_join_lp_to_rp_lines([], []).
 try_to_join_lp_to_rp_lines([HeadLine0 | TailLines0], Lines) :-
-    HeadLine0 = error_line(_AvailLen, _HeadIndent, _HeadLineWords,
+    HeadLine0 = diag_line(_AvailLen, _HeadIndent, _HeadLineWords,
         _HeadLineWordsLen, _LineEndReset, _HeadStartCS, _HeadEndCS, HeadParen),
     (
         ( HeadParen = paren_none
@@ -2050,20 +2052,19 @@ try_to_join_lp_to_rp_lines([HeadLine0 | TailLines0], Lines) :-
     % documented in the comment on try_to_join_lp_to_rp_lines, and
     % join the lines involved, if this is possible.
     %
-:- pred find_matching_rp_and_maybe_join(error_line::in,
-    list(error_line)::in, list(error_line)::out, list(error_line)::out)
-    is semidet.
+:- pred find_matching_rp_and_maybe_join(diag_line::in, list(diag_line)::in,
+    list(diag_line)::out, list(diag_line)::out) is semidet.
 
 find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
         LeftOverLines) :-
-    LPLine = error_line(AvailLen, LPIndent, LPLineWordsStr,
+    LPLine = diag_line(AvailLen, LPIndent, LPLineWordsStr,
         LPLineWordsLen, LPLineEndReset, LPStartCS, LPEndCS, LPParen),
     expect(unify(LPParen, paren_lp_end), $pred, "LPParen != paren_lp_end"),
     ( if
         find_matching_rp(TailLines0, cord.init, MidLinesCord, 0, MidLinesLen,
             RPLine, LeftOverLinesPrime)
     then
-        RPLine = error_line(_, _RPIndent, RPLineWordsStr, RPLineWordsLen,
+        RPLine = diag_line(_, _RPIndent, RPLineWordsStr, RPLineWordsLen,
             RPLineEndReset, RPStartCS, RPEndCS, RPParen),
         expect(unify(LPEndCS, RPStartCS), $pred, "LPEndCS != RPStartCS"),
         MidLines = cord.list(MidLinesCord),
@@ -2092,7 +2093,7 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
             else
                 LPRPLineEndReset = line_end_reset_color
             ),
-            ReplacementLine = error_line(AvailLen, LPIndent,
+            ReplacementLine = diag_line(AvailLen, LPIndent,
                 ReplacementLineStr, TotalLpRpLen, LPRPLineEndReset,
                 LPStartCS, RPEndCS, RPParen),
             ReplacementLines = [ReplacementLine]
@@ -2120,15 +2121,15 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
     % Also, return in !:MidLinesLen by the total length of the lines
     % in !:MidLinesCord.
     %
-:- pred find_matching_rp(list(error_line)::in,
-    cord(error_line)::in, cord(error_line)::out,
-    int::in, int::out, error_line::out, list(error_line)::out) is semidet.
+:- pred find_matching_rp(list(diag_line)::in,
+    cord(diag_line)::in, cord(diag_line)::out,
+    int::in, int::out, diag_line::out, list(diag_line)::out) is semidet.
 
 find_matching_rp([], !MidLinesCord, !MidLinesLen, _, _) :-
     fail.
 find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
         RPLine, LeftOverLines) :-
-    HeadLine0 = error_line(_HeadAvailLen, _HeadIndent, _HeadLineWordsStr,
+    HeadLine0 = diag_line(_HeadAvailLen, _HeadIndent, _HeadLineWordsStr,
         HeadLineWordsLen, _HeadLineEndReset, _HeadStartCS, _HeadEndCS,
         HeadParen),
     (
@@ -2251,13 +2252,13 @@ color_to_string(SetOrReset) = Str :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-error_pieces_to_std_lines(Pieces) = Lines :-
+format_pieces_to_std_lines(Pieces) = Lines :-
     convert_pieces_to_lines(no_color_db, yes(80), "",
         treat_as_first, 0u, Pieces, _, Lines).
 
 do_lines_fit_in_n_code_points(_Max, []).
 do_lines_fit_in_n_code_points(Max, [Line1 | Lines2plus]) :-
-    LineLen1 = error_line_len(Line1),
+    LineLen1 = diag_line_len(Line1),
     MaxLeft = Max - LineLen1,
     MaxLeft >= 0,
     (
@@ -2268,10 +2269,10 @@ do_lines_fit_in_n_code_points(Max, [Line1 | Lines2plus]) :-
     ).
 
 :- pred do_spaces_lines_fit_in_n_code_points(int::in,
-    error_line::in, list(error_line)::in) is semidet.
+    diag_line::in, list(diag_line)::in) is semidet.
 
 do_spaces_lines_fit_in_n_code_points(Max, Line1, Lines2plus) :-
-    LineLen1 = error_line_len(Line1),
+    LineLen1 = diag_line_len(Line1),
     % The -1 accounts for the space before Line1.
     MaxLeft = Max - 1 - LineLen1,
     MaxLeft >= 0,
@@ -2282,17 +2283,17 @@ do_spaces_lines_fit_in_n_code_points(Max, Line1, Lines2plus) :-
         do_spaces_lines_fit_in_n_code_points(MaxLeft, Line2, Lines3plus)
     ).
 
-:- func error_line_len(error_line) = int.
+:- func diag_line_len(diag_line) = int.
 
-error_line_len(Line) = LineLen :-
-    Line = error_line(_AvailLen, _LineIndent, _LineWordsStr, LineWordsLen,
+diag_line_len(Line) = LineLen :-
+    Line = diag_line(_AvailLen, _LineIndent, _LineWordsStr, LineWordsLen,
         _LineEndReset, _StartCS, _EndCS, _LineParen),
     LineLen = LineWordsLen.
 
 %---------------------%
 
 :- pred write_msg_lines(io.text_output_stream::in, string::in, string::in,
-    list(error_line)::in, io::di, io::uo) is det.
+    list(diag_line)::in, io::di, io::uo) is det.
 
 write_msg_lines(_Stream, _, _, [], !IO).
 write_msg_lines(Stream, PrefixStr, NoSpaceContextStr, [Line | Lines], !IO) :-
@@ -2300,7 +2301,7 @@ write_msg_lines(Stream, PrefixStr, NoSpaceContextStr, [Line | Lines], !IO) :-
     write_msg_lines(Stream, PrefixStr, NoSpaceContextStr, Lines, !IO).
 
 :- pred write_msg_line(io.text_output_stream::in, string::in, string::in,
-    error_line::in, io::di, io::uo) is det.
+    diag_line::in, io::di, io::uo) is det.
 
 write_msg_line(Stream, PrefixStr, NoSpaceContextStr, Line, !IO) :-
     LineWordsStr = convert_line_words_to_string(Line),
@@ -2321,30 +2322,30 @@ write_msg_line(Stream, PrefixStr, NoSpaceContextStr, Line, !IO) :-
 
 %---------------------%
 
-error_lines_to_one_line_string(Lines) = Str :-
+diag_lines_to_one_line_string(Lines) = Str :-
     LineStrs = list.map(convert_line_words_to_string, Lines),
     Str = string.join_list(" ", LineStrs).
 
-error_lines_to_multi_line_string(Prefix, Lines) = Str :-
+diag_lines_to_multi_line_string(Prefix, Lines) = Str :-
     LineStrs = list.map(convert_line_and_nl_to_string(Prefix), Lines),
     string.append_list(LineStrs, Str).
 
 %---------------------%
 
-error_pieces_to_one_line_string(Pieces) = Str :-
-    Lines = error_pieces_to_std_lines(Pieces),
-    Str = error_lines_to_one_line_string(Lines).
+format_pieces_to_one_line_string(Pieces) = Str :-
+    Lines = format_pieces_to_std_lines(Pieces),
+    Str = diag_lines_to_one_line_string(Lines).
 
-error_pieces_to_multi_line_string(Prefix, Pieces) = Str :-
-    Lines = error_pieces_to_std_lines(Pieces),
-    Str = error_lines_to_multi_line_string(Prefix, Lines).
+format_pieces_to_multi_line_string(Prefix, Pieces) = Str :-
+    Lines = format_pieces_to_std_lines(Pieces),
+    Str = diag_lines_to_multi_line_string(Prefix, Lines).
 
 %---------------------%
 
-:- func convert_line_words_to_string(error_line) = string.
+:- func convert_line_words_to_string(diag_line) = string.
 
 convert_line_words_to_string(Line) = Str :-
-    Line = error_line(_AvailLen, _LineIndent, LineWordsStr, _LineWordsLen,
+    Line = diag_line(_AvailLen, _LineIndent, LineWordsStr, _LineWordsLen,
         LineEndReset, StartColorStack, EndColorStack, _LineParen),
     ( if LineWordsStr = "" then
         Str = ""
@@ -2370,10 +2371,10 @@ convert_line_words_to_string(Line) = Str :-
         Str = StartColorStr ++ LineWordsStr ++ EndColorResetStr
     ).
 
-:- func convert_line_and_nl_to_string(string, error_line) = string.
+:- func convert_line_and_nl_to_string(string, diag_line) = string.
 
 convert_line_and_nl_to_string(Prefix, Line) = Str :-
-    Line = error_line(_AvailLen, LineIndent, RawLineWordsStr, _LineWordsLen,
+    Line = diag_line(_AvailLen, LineIndent, RawLineWordsStr, _LineWordsLen,
         _LineEndReset, _StartColorStack, _EndColorStack, _LineParen),
     ( if RawLineWordsStr = "" then
         % Don't include the indent.
@@ -2507,7 +2508,7 @@ pop_stack_ignore_empty(Stack0, Stack) :-
     % We need this into to print out diagnostics about bad color schemes
     % only if a non-bad color scheme could have had an effect.
     %
-    % Note that calls to the various versions of write_error_pieces,
+    % Note that calls to the various versions of write_format_pieces,
     % which do not pass a full diag_spec to this module, do not count here.
     % This is because they have been obsolete since *before* we supported
     % colors, and therefore don't contain anything that a color scheme

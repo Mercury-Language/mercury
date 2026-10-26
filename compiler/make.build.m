@@ -312,7 +312,7 @@ close_module_error_stream_handle_errors(ProgressStream, Globals,
     (
         ErrorLinesResult = ok(ErrorLines),
         globals.lookup_maybe_int_option(Globals,
-            output_compile_error_lines, MaybeLinesToWrite),
+            output_compile_diag_lines, MaybeLinesToWrite),
         with_locked_stdout(Info,
             copy_selected_output_lines(ErrorLines, MaybeLinesToWrite,
                 ErrorFileName, ProgressStream),

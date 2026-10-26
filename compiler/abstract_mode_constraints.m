@@ -460,20 +460,20 @@ dump_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
     (
         Constraint = mc_disj(Constraints),
         Context = context(Annotation),
-        write_error_pieces(OutputStream, Globals, Context, Indent,
+        write_format_pieces(OutputStream, Globals, Context, Indent,
             [words("disj(")], !IO),
         dump_constraints(OutputStream, Globals, VarSet, Indent + 1u,
             Annotation, Constraints, !IO),
-        write_error_pieces(OutputStream, Globals, Context, Indent,
+        write_format_pieces(OutputStream, Globals, Context, Indent,
             [words(") end disj")], !IO)
     ;
         Constraint = mc_conj(Constraints),
         Context = context(Annotation),
-        write_error_pieces(OutputStream, Globals, Context, Indent,
+        write_format_pieces(OutputStream, Globals, Context, Indent,
             [words("conj(")], !IO),
         dump_constraints(OutputStream, Globals, VarSet, Indent + 1u,
             Annotation, Constraints, !IO),
-        write_error_pieces(OutputStream, Globals, Context, Indent,
+        write_format_pieces(OutputStream, Globals, Context, Indent,
             [words(") end conj")], !IO)
     ;
         Constraint = mc_atomic(AtomicConstraint),
@@ -494,20 +494,20 @@ dump_var_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
         mc_var_list_to_string(VarSet, [X], VarName),
         mc_var_val_to_string(Val, ValString),
         Context = context(Annotation),
-        write_error_pieces(OutputStream, Globals, Context, Indent,
+        write_format_pieces(OutputStream, Globals, Context, Indent,
             [words(VarName ++ " = " ++ ValString)], !IO)
     ;
         Constraint = equivalent(Xs),
         mc_var_list_to_string(VarSet, Xs, VarsString),
         Context = context(Annotation),
-        write_error_pieces(OutputStream, Globals, Context, Indent,
+        write_format_pieces(OutputStream, Globals, Context, Indent,
             [words("equivalent(" ++ VarsString ++ ")")], !IO)
     ;
         Constraint = implies(X, Y),
         mc_var_list_to_string(VarSet, [X], XName),
         mc_var_list_to_string(VarSet, [Y], YName),
         Context = context(Annotation),
-        write_error_pieces(OutputStream, Globals, Context, Indent,
+        write_format_pieces(OutputStream, Globals, Context, Indent,
             [words(XName ++ " -> " ++ YName)], !IO)
     ;
         Constraint = equiv_disj(X, Xs),
@@ -515,19 +515,22 @@ dump_var_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
         mc_var_list_to_string(VarSet, Xs, XsString),
         Context = context(Annotation),
         Pieces = [words(XName ++ " <-> disj(" ++ XsString ++ ")")],
-        write_error_pieces(OutputStream, Globals, Context, Indent, Pieces, !IO)
+        write_format_pieces(OutputStream, Globals, Context, Indent,
+            Pieces, !IO)
     ;
         Constraint = at_most_one(Xs),
         mc_var_list_to_string(VarSet, Xs, XsString),
         Pieces = [words("at_most_one(" ++ XsString ++ ")")],
         Context = context(Annotation),
-        write_error_pieces(OutputStream, Globals, Context, Indent, Pieces, !IO)
+        write_format_pieces(OutputStream, Globals, Context, Indent,
+            Pieces, !IO)
     ;
         Constraint = exactly_one(Xs),
         mc_var_list_to_string(VarSet, Xs, XsString),
         Pieces = [words("exactly_one(" ++ XsString ++ ")")],
         Context = context(Annotation),
-        write_error_pieces(OutputStream, Globals, Context, Indent, Pieces, !IO)
+        write_format_pieces(OutputStream, Globals, Context, Indent,
+            Pieces, !IO)
     ).
 
     % mc_var_list_to_string(VarSet, MCVars, MCVarsString):

@@ -377,7 +377,7 @@
     ;       very_verbose_pred_ids
     ;       statistics
     ;       verbose_make
-    ;       output_compile_error_lines
+    ;       output_compile_diag_lines
     ;       verbose_recompilation
     ;       find_all_recompilation_reasons
     ;       verbose_commands
@@ -386,8 +386,8 @@
     % Diagnostics control.
     ;       verbose_errors
     ;       reverse_error_order
-    ;       max_error_line_width
-    ;       limit_error_contexts
+    ;       max_diag_line_width
+    ;       limit_diag_contexts
     ;       error_files_in_subdir
     ;       std_int_file_not_written_msgs
     ;       typecheck_ambiguity_warn_limit
@@ -2349,12 +2349,13 @@ optdb(oc_verbosity, verbose_make,                      bool(yes),
     help("verbose-make", [
         w("Disable messages about the progress of builds when using"),
         code("mmc --make", ".")])).
-optdb(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100)),
-    arg_help("output-compile-error-lines", "N", [
+optdb(oc_verbosity, output_compile_diag_lines,         maybe_int(yes(100)),
+    alt_arg_help("output-compile-diag-lines",
+            ["output-compile-error-lines"], "N", [
         w("With"), opt("--make", ","),
         w("output the first"), arg("N"), w("lines of the"),
         file(".err"), w("file after compiling a module (default: 100)."),
-        w("Specifying"), opt("--no-output-compile-error-lines"),
+        w("Specifying"), opt("--no-output-compile-diag-lines"),
         w("removes the limit.")])).
 optdb(oc_verbosity, verbose_recompilation,             bool(no),
     priv_help("verbose-recompilation", [
@@ -2390,22 +2391,23 @@ optdb(oc_diag_gen,  reverse_error_order,               bool(no),
         w("Print error messages in descending order of their line numbers,"),
         w("instead of the usual ascending order. This is useful if you want"),
         w("to work on the last errors in a file first.")])).
-optdb(oc_diag_gen,  max_error_line_width,              maybe_int(yes(79)),
-    arg_help("max-error-line-width", "N", [
-        w("Set the maximum width of an error message line to"),
+optdb(oc_diag_gen,  max_diag_line_width,               maybe_int(yes(79)),
+    alt_arg_help("max-diag-line-width", ["max-error-line-width"], "N", [
+        w("Set the maximum width of an diagnostic message line to"),
         arg("N"), w("characters"),
         w("(unless a long single word forces the line over this limit)."),
-        w("Specifying"), opt("--no-max-error-line-width"),
+        w("Specifying"), opt("--no-max-diag-line-width"),
         w("removes the limit.")])).
-optdb(oc_diag_gen,  limit_error_contexts,              accumulating([]),
-    arg_help("limit-error-contexts",
+optdb(oc_diag_gen,  limit_diag_contexts,               accumulating([]),
+    alt_arg_help("limit-diag-contexts", ["limit-error-contexts"],
             "filename:minline1-maxline1,minline2-maxline2", [
-        w("Print errors and warnings for the named file only when their"),
-        w("line number is in one of the specified ranges."),
+        w("Print diagnostic messages such as errors and warnings"),
+        w("for the named file only when their line number"),
+        w("is in one of the specified ranges."),
         w("The minimum or maximum line number in each range may be omitted,"),
         w("in which case the range has no lower or upper bound respectively."),
-        w("Multiple"), opt("--limit-error-context"), w("options accumulate."),
-        w("If more than one"), opt("--limit-error-contexts"),
+        w("Multiple"), opt("--limit-diag-context"), w("options accumulate."),
+        w("If more than one"), opt("--limit-diag-contexts"),
         w("option is given for the same file,"),
         w("only the last one will have an effect."),
         w("If the file name and colon are missing, the limit will apply"),

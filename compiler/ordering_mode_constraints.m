@@ -719,13 +719,13 @@ dump_pred_goal_paths(OutputStream, ModuleInfo, PredId, !IO) :-
 
     % Start with a blank line.
     module_info_get_globals(ModuleInfo, Globals),
-    write_error_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
+    write_format_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
 
     PredHeaderFormat = [words("Goal paths for")] ++
         describe_one_pred_info_name(no, should_module_qualify, [], PredInfo) ++
         [suffix("."), nl],
 
-    write_error_pieces_plain(OutputStream, Globals, PredHeaderFormat, !IO),
+    write_format_pieces_plain(OutputStream, Globals, PredHeaderFormat, !IO),
 
     (
         ProcIds = [],
@@ -753,7 +753,7 @@ dump_pred_goal_paths(OutputStream, ModuleInfo, PredId, !IO) :-
 dump_proc_goal_paths(OutputStream, Globals, ProcTable, ProcId, !IO) :-
     ProcIdString = string.from_int(proc_id_to_int(ProcId)),
     ProcHeaderFormat = [words("mode"), words(ProcIdString), suffix(":")],
-    write_error_pieces_plain(OutputStream, Globals, ProcHeaderFormat, !IO),
+    write_format_pieces_plain(OutputStream, Globals, ProcHeaderFormat, !IO),
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
     Indent = 0u,
@@ -774,7 +774,7 @@ dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO) :-
     GoalId = goal_info_get_goal_id(GoalInfo),
     GoalId = goal_id(GoalIdNum),
     GoalIdPieces = [words(string.uint_to_string(GoalIdNum)), nl],
-    write_error_pieces_maybe_with_context(OutputStream, Globals, no, Indent,
+    write_format_pieces_maybe_with_context(OutputStream, Globals, no, Indent,
         GoalIdPieces, !IO),
 
     % Dump the goal paths for each subgoal in GoalExpr at SubGoalIndent,

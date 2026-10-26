@@ -37,7 +37,7 @@
     c_compiler_type::out, csharp_compiler_type::out,
     reuse_strategy::out,
     maybe(feedback_info)::out, env_type::out, env_type::out, env_type::out,
-    limit_error_contexts_map::out, linked_target_ext_info_map::out,
+    limit_diag_contexts_map::out, linked_target_ext_info_map::out,
     list(diag_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -511,10 +511,10 @@ check_hlds_dump_options(!OptionTable, !Specs) :-
     ).
 
 :- pred check_diagnostics_options(option_table::in,
-    limit_error_contexts_map::out,
+    limit_diag_contexts_map::out,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
-check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
+check_diagnostics_options(OptionTable, LimitDiagContextsMap, !Specs) :-
     lookup_int_option(OptionTable, warn_incomplete_switch_threshold,
         IncompleteSwitchThreshold),
     ( if
@@ -530,22 +530,22 @@ check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
         add_error(phase_options, IncompleteSwitchThresholdSpec, !Specs)
     ),
 
-    lookup_accumulating_option(OptionTable, limit_error_contexts,
-        LimitErrorContextsOptionStrs),
-    convert_limit_error_contexts(LimitErrorContextsOptionStrs,
-        BadLimitErrorContextsOptions, LimitErrorContextsMap),
+    lookup_accumulating_option(OptionTable, limit_diag_contexts,
+        LimitDiagContextsOptionStrs),
+    convert_limit_diag_contexts(LimitDiagContextsOptionStrs,
+        BadLimitDiagContextsOptions, LimitDiagContextsMap),
     (
-        BadLimitErrorContextsOptions = []
+        BadLimitDiagContextsOptions = []
     ;
-        BadLimitErrorContextsOptions = [BadLimitErrorContextsOption],
+        BadLimitDiagContextsOptions = [BadLimitDiagContextsOption],
         LECSpec =
-            [words("Invalid argument"), quote(BadLimitErrorContextsOption),
+            [words("Invalid argument"), quote(BadLimitDiagContextsOption),
             words("to the"), quote("--limit-error-contexts"),
             words("option."), nl],
         add_error(phase_options, LECSpec, !Specs)
     ;
-        BadLimitErrorContextsOptions = [_, _ | _],
-        BadPieces = quote_list_to_pieces("or", BadLimitErrorContextsOptions),
+        BadLimitDiagContextsOptions = [_, _ | _],
+        BadPieces = quote_list_to_pieces("or", BadLimitDiagContextsOptions),
         LECSpec =
             [words("Invalid arguments")] ++ BadPieces ++
             [words("to the"), quote("--limit-error-contexts"),

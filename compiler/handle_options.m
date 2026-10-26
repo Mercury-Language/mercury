@@ -192,7 +192,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
             TraceLevel, TraceSuppress, SSTraceLevel,
             MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
             ReuseStrategy, MaybeFeedbackInfo,
-            HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
+            HostEnvType, SystemEnvType, TargetEnvType, LimitDiagContextsMap,
             LinkExtMap, !:Specs, !IO),
         % Shared libraries always use `--linkage shared'.
         % Apply this implication here, since it hurts nothing and avoids
@@ -265,7 +265,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 Linkage, MercuryLinkage, LibraryInstallLinkages,
                 ReuseStrategy, MaybeFeedbackInfo,
                 HostEnvType, SystemEnvType, TargetEnvType,
-                LimitErrorContextsMap, LinkExtMap, !Specs, Globals, !IO)
+                LimitDiagContextsMap, LinkExtMap, !Specs, Globals, !IO)
         else
             generate_default_globals(ProgressStream, DefaultOptionTable,
                 Globals, !IO)
@@ -317,7 +317,7 @@ convert_library_install_linkages([Str | Strs],
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     static_or_shared::in, static_or_shared::in, set(static_or_shared)::in,
     reuse_strategy::in, maybe(feedback_info)::in,
-    env_type::in, env_type::in, env_type::in, limit_error_contexts_map::in,
+    env_type::in, env_type::in, env_type::in, limit_diag_contexts_map::in,
     linked_target_ext_info_map::in,
     list(diag_spec)::in, list(diag_spec)::out,
     globals::out, io::di, io::uo) is det.
@@ -328,7 +328,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         Linkage, MercuryLinkage, LibLinkages, ReuseStrategy, MaybeFeedbackInfo,
-        HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
+        HostEnvType, SystemEnvType, TargetEnvType, LimitDiagContextsMap,
         LinkExtMap, !Specs, !:Globals, !IO) :-
     OptTuple0 = !.OptTuple,
     OT_AllowInlining0 =             OptTuple0 ^ ot_allow_inlining,
@@ -395,7 +395,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     % the options from which the subdir setting is computed.
     globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode,
         MaybeFeedbackInfo, FileInstallCmd, TraceSuppress, ReuseStrategy,
-        LimitErrorContextsMap, LinkExtMap, C_CompilerType, CSharp_CompilerType,
+        LimitDiagContextsMap, LinkExtMap, C_CompilerType, CSharp_CompilerType,
         Linkage, MercuryLinkage, LibLinkages, MaybeStdLibGrades, Target,
         use_cur_dir, WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,

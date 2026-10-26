@@ -922,7 +922,7 @@ format_dependency_scc(ModuleInfo, SCC, !State) :-
 format_dependency_proc(Prefix, ModuleInfo, PredProcId, !State) :-
     PredProcId = proc(PredId, ProcId),
     Pieces = describe_unqual_proc_name(ModuleInfo, PredProcId),
-    Desc = error_pieces_to_one_line_string(Pieces),
+    Desc = format_pieces_to_one_line_string(Pieces),
 
     string.builder.format("%% %spred %d proc %d, %s\n",
         [s(Prefix), i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId)),

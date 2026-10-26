@@ -131,7 +131,7 @@ check_determinism_of_proc(ProgressStream, PredProcId, !ModuleInfo, !Specs) :-
     trace [compiletime(flag("debug-check-detism-progress")), io(!IO)] (
         PredModePieces = describe_one_proc_name_maybe_argmodes(!.ModuleInfo,
             output_mercury, no, should_not_module_qualify, [], PredProcId),
-        PredStr = error_pieces_to_one_line_string(PredModePieces),
+        PredStr = format_pieces_to_one_line_string(PredModePieces),
         io.format(ProgressStream, "check_determinism_of_proc %s\n",
             [s(PredStr)], !IO)
     ),
@@ -174,7 +174,7 @@ check_determinism_of_imported_proc(ProgressStream, ModuleInfo, PredProcId,
     trace [compiletime(flag("debug-check-detism-progress")), io(!IO)] (
         PredModePieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
             output_mercury, no, should_not_module_qualify, [], PredProcId),
-        PredStr = error_pieces_to_one_line_string(PredModePieces),
+        PredStr = format_pieces_to_one_line_string(PredModePieces),
         io.format(ProgressStream, "check_determinism_of_imported_proc %s\n",
             [s(PredStr)], !IO)
     ),

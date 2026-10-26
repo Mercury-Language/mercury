@@ -535,10 +535,10 @@ pretty_print_pred_constraints(OutputStream, ModuleInfo, ConstraintVarSet,
     module_info_get_globals(ModuleInfo, Globals),
 
     % Start with a blank line.
-    write_error_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
+    write_format_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    write_error_pieces_plain(OutputStream, Globals,
+    write_format_pieces_plain(OutputStream, Globals,
         [words("Constraints for")] ++
         describe_one_pred_info_name(no, should_module_qualify, [], PredInfo) ++
         [suffix(":")], !IO),
@@ -565,12 +565,12 @@ pretty_print_proc_constraints(OutputStream, ModuleInfo, ConstraintVarSet,
     module_info_get_globals(ModuleInfo, Globals),
 
     % Start with a blank line.
-    write_error_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
+    write_format_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
 
     PredProcId = proc(PredId, ProcId),
     ProcNamePieces = describe_one_proc_name(ModuleInfo, no,
         should_module_qualify, PredProcId),
-    write_error_pieces_plain(OutputStream, Globals,
+    write_format_pieces_plain(OutputStream, Globals,
         ProcNamePieces ++ [suffix(":")], !IO),
     ProcSpecAnnConstraints =
         proc_specific_annotated_constraints(ProcId, PredConstraints),

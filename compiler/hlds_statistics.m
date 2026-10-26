@@ -103,7 +103,7 @@ write_proc_stats_for_pred(OutStream, Msg, ModuleInfo, PredId - PredInfo,
 write_proc_stats_for_proc(OutStream, Msg, ModuleInfo,
         PredId, ProcId - ProcInfo, !IO) :-
     NamePieces = describe_unqual_proc_name(ModuleInfo, proc(PredId, ProcId)),
-    Name = error_pieces_to_one_line_string(NamePieces),
+    Name = format_pieces_to_one_line_string(NamePieces),
 
     proc_info_get_goal(ProcInfo, Goal),
     UsedVars0 = set_tree234.init,

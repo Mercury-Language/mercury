@@ -786,11 +786,13 @@ Verbosity options
     --no-verbose-make
         Disable messages about the progress of builds when using `mmc --make'.
 
+    --output-compile-diag-lines <N>
+    --no-output-compile-diag-lines
     --output-compile-error-lines <N>
     --no-output-compile-error-lines
         With `--make', output the first <N> lines of the `.err' file after
         compiling a module (default: 100). Specifying
-        `--no-output-compile-error-lines' removes the limit.
+        `--no-output-compile-diag-lines' removes the limit.
 
     PRIVATE OPTION
     --verbose-recompilation
@@ -824,21 +826,26 @@ Diagnostics options
         of the usual ascending order. This is useful if you want to work on the
         last errors in a file first.
 
+    --max-diag-line-width <N>
+    --no-max-diag-line-width
     --max-error-line-width <N>
     --no-max-error-line-width
-        Set the maximum width of an error message line to <N> characters
+        Set the maximum width of an diagnostic message line to <N> characters
         (unless a long single word forces the line over this limit). Specifying
-        `--no-max-error-line-width' removes the limit.
+        `--no-max-diag-line-width' removes the limit.
 
+    --limit-diag-contexts filename:minline1-maxline1,minline2-maxline2
+    --no-limit-diag-contexts
     --limit-error-contexts filename:minline1-maxline1,minline2-maxline2
     --no-limit-error-contexts
-        Print errors and warnings for the named file only when their line
-        number is in one of the specified ranges. The minimum or maximum line
-        number in each range may be omitted, in which case the range has no
-        lower or upper bound respectively. Multiple `--limit-error-context'
-        options accumulate. If more than one `--limit-error-contexts' option is
-        given for the same file, only the last one will have an effect. If the
-        file name and colon are missing, the limit will apply to all files.
+        Print diagnostic messages such as errors and warnings for the named
+        file only when their line number is in one of the specified ranges. The
+        minimum or maximum line number in each range may be omitted, in which
+        case the range has no lower or upper bound respectively. Multiple
+        `--limit-diag-context' options accumulate. If more than one
+        `--limit-diag-contexts' option is given for the same file, only the
+        last one will have an effect. If the file name and colon are missing,
+        the limit will apply to all files.
 
     --error-files-in-subdir
         This option causes `mmc --make' to put `.err' files into the `Mercury'

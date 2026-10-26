@@ -747,7 +747,7 @@ generate_and_add_stub_clause(ModuleInfo, PredId, !PredInfo) :-
             _ClausesRep, _ItemNumbers, _ForeignClauses, _SyntaxErrors),
         PredPieces = describe_one_pred_name(ModuleInfo, no,
             should_module_qualify, [], PredId),
-        PredName = error_pieces_to_one_line_string(PredPieces),
+        PredName = format_pieces_to_one_line_string(PredPieces),
         HeadVars = proc_arg_vector_to_list(ArgVec),
         pred_info_get_arg_types(!.PredInfo, ArgTypes),
         vartypes_from_corresponding_lists(HeadVars, ArgTypes, VarTypes1),
