@@ -288,7 +288,21 @@
 % line context/position pairs. However, while we have optimizations
 % that eliminate the overhead of generic calls in *most* cases, we cannot
 % (yet) ensure the elimination of this overhead in *all* cases.
-%
+
+%---------------------%
+
+% A note about tail recursion: none of the three predicates that build
+% token lists do so in a tail-recursive manner. I (zs) tried to change
+% the one used by the compiler (linestr_get_token_list_max) into tail
+% recursive code (by building up a list of tokens in reverse, and
+% unreversing it at the end), but the result was a roughly 2 percent
+% slowdown. The benchmark was "mmc --generate-dependencies mercury_compile.m",
+% which is probably the compiler invocation that spends the highest fraction
+% of its time on lexical analysis. The cause of the slowdown is almost
+% certainly to the extra memory allocation required by the final unreverse.
+
+%---------------------%
+
 % A note about the use of subtypes: we represent tokens using three types,
 % namely raw_token, non_id_token and token itself. The differences are
 %
@@ -323,6 +337,8 @@
 % any io_error tokens, since they do not do I/O. We *could* express this fact
 % using another subtype, but only at the cost of returning a token list
 % that uses a different type from the get_* predicates.
+
+%---------------------------------------------------------------------------%
 
 get_token_list(Tokens, !IO) :-
     io.input_stream(Stream, !IO),
