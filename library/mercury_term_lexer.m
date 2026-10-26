@@ -257,9 +257,10 @@
 % - one that reads data from a fixed string, marking each position
 %   in the string using two values, of types "line_context" and line_posn".
 %
-% In each such group of three predicates, the first version (in both
-% the above list and historically) has no prefix. The second has the prefix
-% "string_", while the third has the prefix "linestr_".
+% In each such group of three predicates, the first version
+% (in both the above list and in terms of history) had no prefix,
+% but now has the prefix "io_". The second has the prefix "string_",
+% while the third has the prefix "linestr_".
 %
 % We can't write the io.state version in terms of the string versions
 % because we don't know how many characters to read from the input stream
@@ -325,19 +326,25 @@
 
 get_token_list(Tokens, !IO) :-
     io.input_stream(Stream, !IO),
-    get_token_list(Stream, Tokens, !IO).
+    io_get_token_list(Stream, Tokens, !IO).
 
 get_token_list(Stream, Tokens, !IO) :-
+    io_get_token_list(Stream, Tokens, !IO).
+
+:- pred io_get_token_list(io.text_input_stream::in, token_list::out,
+    io::di, io::uo) is det.
+
+io_get_token_list(Stream, Tokens, !IO) :-
     % We build the tokens up as lists of characters in reverse order.
     % When we get to the end of each token, we call rev_char_list_to_string/2
     % to convert that representation into a string.
-    get_token(Stream, not_past_ws, Token, Context, !IO),
-    get_token_list_loop(Stream, Token, Context, Tokens, !IO).
+    io_get_token(Stream, not_past_ws, Token, Context, !IO),
+    io_get_token_list_loop(Stream, Token, Context, Tokens, !IO).
 
-:- pred get_token_list_loop(io.text_input_stream::in, raw_token::in,
+:- pred io_get_token_list_loop(io.text_input_stream::in, raw_token::in,
     token_context::in, token_list::out, io::di, io::uo) is det.
 
-get_token_list_loop(Stream, Token0, Context0, Tokens, !IO) :-
+io_get_token_list_loop(Stream, Token0, Context0, Tokens, !IO) :-
     (
         Token0 = eof,
         Tokens = token_nil
@@ -349,9 +356,9 @@ get_token_list_loop(Stream, Token0, Context0, Tokens, !IO) :-
         Tokens = token_cons(coerce(Token0), Context0, token_nil)
     ;
         Token0 = integer_dot(Integer),
-        get_context(Stream, Context1, !IO),
-        get_dot(Stream, Token1, !IO),
-        get_token_list_loop(Stream, Token1, Context1, Tokens1, !IO),
+        io_get_context(Stream, Context1, !IO),
+        io_get_dot(Stream, Token1, !IO),
+        io_get_token_list_loop(Stream, Token1, Context1, Tokens1, !IO),
         Tokens = token_cons(
             integer(base_10, Integer, signed, size_word) : token,
             Context0, Tokens1)
@@ -373,8 +380,8 @@ get_token_list_loop(Stream, Token0, Context0, Tokens, !IO) :-
         ; Token0 = comma
         ; Token0 = ht_sep
         ),
-        get_token(Stream, not_past_ws, Token1, Context1, !IO),
-        get_token_list_loop(Stream, Token1, Context1, Tokens1, !IO),
+        io_get_token(Stream, not_past_ws, Token1, Context1, !IO),
+        io_get_token_list_loop(Stream, Token1, Context1, Tokens1, !IO),
         Tokens = token_cons(coerce(Token0), Context0, Tokens1)
     ).
 
@@ -479,31 +486,31 @@ string_get_token_list(String, Tokens, !Posn) :-
     % If passed `past_ws' then we have already scanned past
     % some whitespace, so '(' gets scanned as `open' rather than `open_ct'.
     %
-    % get_token must be inlined into execute_get_token_action so that
+    % io_get_token must be inlined into execute_io_get_token_action so that
     % the recursive call can be compiled to a loop on backends that cannot
     % eliminate tail calls in general.
     %
-:- pred get_token(io.text_input_stream::in, scanned_past_whitespace::in,
+:- pred io_get_token(io.text_input_stream::in, scanned_past_whitespace::in,
     raw_token::out, token_context::out, io::di, io::uo) is det.
-:- pragma inline(pred(get_token/6)).
+:- pragma inline(pred(io_get_token/6)).
 
-get_token(Stream, ScannedPastWhiteSpace, Token, Context, !IO) :-
+io_get_token(Stream, ScannedPastWhiteSpace, Token, Context, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        get_context(Stream, Context, !IO),
+        io_get_context(Stream, Context, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        get_context(Stream, Context, !IO),
+        io_get_context(Stream, Context, !IO),
         Token = eof
     ;
         Result = ok,
         ( if lookup_token_action(Char, Action) then
-            execute_get_token_action(Stream, Char, Action,
+            execute_io_get_token_action(Stream, Char, Action,
                 ScannedPastWhiteSpace, Token, Context, !IO)
         else
-            get_context(Stream, Context, !IO),
+            io_get_context(Stream, Context, !IO),
             Token = junk(Char)
         )
     ).
@@ -514,7 +521,7 @@ get_token(Stream, ScannedPastWhiteSpace, Token, Context, !IO) :-
 % to the !Posn version of execute_get_token_action (which could thus be
 % deleted), all the calls to string_get_token are self-tail-recursive,
 % with one exception: the call from string_get_token. Given this fact,
-% unlike get_token, this call should not be inlined: the elimination
+% unlike io_get_token, this call should not be inlined: the elimination
 % of the overhead of one call would be outweighed by the pollution
 % of the instruction cache.
 % :- pragma inline(string_get_token/7).
@@ -534,7 +541,7 @@ string_get_token(String, Len, ScannedPastWhiteSpace,
             % with both calls inlined and then Action being optimized away
             % through deforestation, saving the second switch.
             %
-            % Note that get_token, the !IO variant of the predicate,
+            % Note that io_get_token, the !IO variant of the predicate,
             % cannot use this approach, because the switch in
             % lookup_token_action is incomplete, and we cannot update !IO
             % in the arms of such switches.
@@ -730,10 +737,10 @@ linestr_get_token(String, Len, ScannedPastWhiteSpace,
             %       Action, ScannedPastWhiteSpace, Token, Context,
             %       !LineContext, !LinePosn)
             %
-            % with both calls inlined and then Action being optimized away
+            % with both calls inlined, and then Action being optimized away
             % through deforestation, saving the second switch.
             %
-            % Note that get_token, the !IO variant of the predicate,
+            % Note that io_get_token, the !IO variant of the predicate,
             % cannot use this approach, because the switch in
             % lookup_token_action is incomplete, and we cannot update !IO
             % in the arms of such switches.
@@ -1075,11 +1082,11 @@ lookup_token_action(Char, Action) :-
 :- type maybe_have_valid_token
     --->    maybe_have_valid_token(token_context).
 
-:- pred have_token(io.text_input_stream::in, maybe_have_valid_token::out,
+:- pred io_have_token(io.text_input_stream::in, maybe_have_valid_token::out,
     io::di, io::uo) is det.
 
-have_token(Stream, maybe_have_valid_token(Context), !IO) :-
-    get_context(Stream, Context, !IO).
+io_have_token(Stream, maybe_have_valid_token(Context), !IO) :-
+    io_get_context(Stream, Context, !IO).
 
 :- pred string_have_token(posn::in, maybe_have_valid_token::out) is det.
 
@@ -1111,80 +1118,80 @@ have_token_with_context(maybe_have_valid_token(Context), Context) :-
     % it should be treated. Note that inlining this predicate does not
     % significantly affect performance.
     %
-:- pred execute_get_token_action(io.text_input_stream::in, char::in,
+:- pred execute_io_get_token_action(io.text_input_stream::in, char::in,
     get_token_action::in, scanned_past_whitespace::in, raw_token::out,
     token_context::out, io::di, io::uo) is det.
 % :- pragma inline(execute_get_token_action/8).
 
-execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
+execute_io_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
         Token, Context, !IO) :-
     (
         Action = action_whitespace,
-        get_token(Stream, past_ws, Token, Context, !IO)
+        io_get_token(Stream, past_ws, Token, Context, !IO)
     ;
         Action = action_alpha_upper_uscore,
-        get_context(Stream, Context, !IO),
-        get_variable(Stream, [Char], Token, !IO)
+        io_get_context(Stream, Context, !IO),
+        io_get_variable(Stream, [Char], Token, !IO)
     ;
         Action = action_alpha_lower,
-        get_context(Stream, Context, !IO),
-        get_name(Stream, [Char], Token, !IO)
+        io_get_context(Stream, Context, !IO),
+        io_get_name(Stream, [Char], Token, !IO)
     ;
         Action = action_zero,
-        get_context(Stream, Context, !IO),
-        get_zero(Stream, Token, !IO)
+        io_get_context(Stream, Context, !IO),
+        io_get_zero(Stream, Token, !IO)
     ;
         Action = action_nonzero_digit,
-        get_context(Stream, Context, !IO),
-        get_number(Stream, last_digit_is_not_underscore, [Char], Token, !IO)
+        io_get_context(Stream, Context, !IO),
+        io_get_number(Stream, last_digit_is_not_underscore, [Char], Token, !IO)
     ;
         Action = action_special_token,
-        get_context(Stream, Context, !IO),
+        io_get_context(Stream, Context, !IO),
         handle_special_token(Char, ScannedPastWhiteSpace, Token0),
         Token = coerce(Token0)
     ;
         Action = action_dot,
-        get_context(Stream, Context, !IO),
-        get_dot(Stream, Token, !IO)
+        io_get_context(Stream, Context, !IO),
+        io_get_dot(Stream, Token, !IO)
     ;
         Action = action_quote,
-        get_context(Stream, Context, !IO),
-        start_quoted_name(Stream, Char, [], Token, !IO)
+        io_get_context(Stream, Context, !IO),
+        io_start_quoted_name(Stream, Char, [], Token, !IO)
     ;
         (
             Action = action_percent,
-            skip_to_eol(Stream, Token0, HaveToken0, !IO)
+            io_skip_to_eol(Stream, Token0, HaveToken0, !IO)
         ;
             Action = action_slash,
-            get_slash(Stream, Token0, HaveToken0, !IO)
+            io_get_slash(Stream, Token0, HaveToken0, !IO)
         ),
         ( if have_token_with_context(HaveToken0, Context0) then
             Token = Token0,
             Context = Context0
         else
-            get_token(Stream, past_ws, Token, Context, !IO)
+            io_get_token(Stream, past_ws, Token, Context, !IO)
         )
     ;
         Action = action_hash,
-        get_source_line_number(Stream, [], Token0, HaveToken0, !IO),
+        io_get_source_line_number(Stream, [], Token0, HaveToken0, !IO),
         ( if have_token_with_context(HaveToken0, Context0) then
             Token = Token0,
             Context = Context0
         else
-            get_token(Stream, not_past_ws, Token, Context, !IO)
+            io_get_token(Stream, not_past_ws, Token, Context, !IO)
         )
     ;
         Action = action_backquote,
-        get_context(Stream, Context, !IO),
+        io_get_context(Stream, Context, !IO),
         Token = name("`")
     ;
         Action = action_dollar,
-        get_context(Stream, Context, !IO),
-        get_implementation_defined_literal_rest(Stream, Token, !IO)
+        io_get_context(Stream, Context, !IO),
+        io_get_implementation_defined_literal_rest(Stream, Token, !IO)
     ;
         Action = action_graphic_token,
-        get_context(Stream, Context, !IO),
-        get_graphic(Stream, [Char], Token, !IO)
+        io_get_context(Stream, Context, !IO),
+        io_get_graphic(Stream, [Char], Token, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1231,10 +1238,10 @@ special_token(';', name(";")).
 
 %---------------------------------------------------------------------------%
 
-:- pred get_dot(io.text_input_stream::in, raw_token::out,
+:- pred io_get_dot(io.text_input_stream::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_dot(Stream, Token, !IO) :-
+io_get_dot(Stream, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1248,7 +1255,7 @@ get_dot(Stream, Token, !IO) :-
             io.putback_char(Stream, Char, !IO),
             Token = end
         else if graphic_token_char(Char) then
-            get_graphic(Stream, [Char, '.'], Token, !IO)
+            io_get_graphic(Stream, [Char, '.'], Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = name(".")
@@ -1318,18 +1325,18 @@ whitespace_after_dot(Char) :-
 % Comments.
 %
 
-:- pred skip_to_eol(io.text_input_stream::in, raw_token::out,
+:- pred io_skip_to_eol(io.text_input_stream::in, raw_token::out,
     maybe_have_valid_token::out, io::di, io::uo) is det.
 
-skip_to_eol(Stream, Token, HaveToken, !IO) :-
+io_skip_to_eol(Stream, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        have_token(Stream, HaveToken, !IO),
+        io_have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        have_token(Stream, HaveToken, !IO),
+        io_have_token(Stream, HaveToken, !IO),
         Token = eof
     ;
         Result = ok,
@@ -1337,7 +1344,7 @@ skip_to_eol(Stream, Token, HaveToken, !IO) :-
             do_not_have_token(Token0, HaveToken),
             Token = coerce(Token0)
         else
-            skip_to_eol(Stream, Token, HaveToken, !IO)
+            io_skip_to_eol(Stream, Token, HaveToken, !IO)
         )
     ).
 
@@ -1379,29 +1386,29 @@ linestr_skip_to_eol(String, Len, Token, HaveToken, !LineContext, !LinePosn) :-
 
 %---------------------%
 
-:- pred get_slash(io.text_input_stream::in, raw_token::out,
+:- pred io_get_slash(io.text_input_stream::in, raw_token::out,
     maybe_have_valid_token::out, io::di, io::uo) is det.
 
-get_slash(Stream, Token, HaveToken, !IO) :-
+io_get_slash(Stream, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        have_token(Stream, HaveToken, !IO),
+        io_have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        have_token(Stream, HaveToken, !IO),
+        io_have_token(Stream, HaveToken, !IO),
         Token = name("/")
     ;
         Result = ok,
         ( if Char = ('*') then
-            get_comment(Stream, Token, HaveToken, !IO)
+            io_get_comment(Stream, Token, HaveToken, !IO)
         else if graphic_token_char(Char) then
-            get_graphic(Stream, [Char, '/'], Token, !IO),
-            have_token(Stream, HaveToken, !IO)
+            io_get_graphic(Stream, [Char, '/'], Token, !IO),
+            io_have_token(Stream, HaveToken, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            have_token(Stream, HaveToken, !IO),
+            io_have_token(Stream, HaveToken, !IO),
             Token = name("/")
         )
     ).
@@ -1457,25 +1464,25 @@ linestr_get_slash(String, Len, LineContext0, LinePosn0, Token, HaveToken,
 
 %---------------------%
 
-:- pred get_comment(io.text_input_stream::in, raw_token::out,
+:- pred io_get_comment(io.text_input_stream::in, raw_token::out,
     maybe_have_valid_token::out, io::di, io::uo) is det.
 
-get_comment(Stream, Token, HaveToken, !IO) :-
+io_get_comment(Stream, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        have_token(Stream, HaveToken, !IO),
+        io_have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        have_token(Stream, HaveToken, !IO),
+        io_have_token(Stream, HaveToken, !IO),
         Token = error("unterminated '/*' comment")
     ;
         Result = ok,
         ( if Char = ('*') then
-            get_comment_after_star(Stream, Token, HaveToken, !IO)
+            io_get_comment_after_star(Stream, Token, HaveToken, !IO)
         else
-            get_comment(Stream, Token, HaveToken, !IO)
+            io_get_comment(Stream, Token, HaveToken, !IO)
         )
     ).
 
@@ -1522,19 +1529,19 @@ linestr_get_comment(String, Len, LineContext0, LinePosn0, Token, HaveToken,
 
 %---------------------%
 
-:- pred get_comment_after_star(io.text_input_stream::in, raw_token::out,
+:- pred io_get_comment_after_star(io.text_input_stream::in, raw_token::out,
     maybe_have_valid_token::out, io::di, io::uo) is det.
 
-get_comment_after_star(Stream, Token, HaveToken, !IO) :-
+io_get_comment_after_star(Stream, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error),
-        have_token(Stream, HaveToken, !IO)
+        io_have_token(Stream, HaveToken, !IO)
     ;
         Result = eof,
         Token = error("unterminated '/*' comment"),
-        have_token(Stream, HaveToken, !IO)
+        io_have_token(Stream, HaveToken, !IO)
     ;
         Result = ok,
         ( if Char = ('/') then
@@ -1542,14 +1549,15 @@ get_comment_after_star(Stream, Token, HaveToken, !IO) :-
             do_not_have_token(Token0, HaveToken),
             Token = coerce(Token0)
         else if Char = ('*') then
-            get_comment_after_star(Stream, Token, HaveToken, !IO)
+            io_get_comment_after_star(Stream, Token, HaveToken, !IO)
         else
-            get_comment(Stream, Token, HaveToken, !IO)
+            io_get_comment(Stream, Token, HaveToken, !IO)
         )
     ).
 
 :- pred string_get_comment_after_star(string::in, int::in, posn::in,
-    non_id_token::out, maybe_have_valid_token::out, posn::in, posn::out) is det.
+    non_id_token::out, maybe_have_valid_token::out,
+    posn::in, posn::out) is det.
 
 string_get_comment_after_star(String, Len, Posn0, Token, HaveToken, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
@@ -1600,14 +1608,14 @@ linestr_get_comment_after_star(String, Len, LineContext0, LinePosn0,
 % Quoted names and quoted strings.
 %
 
-:- pred start_quoted_name(io.text_input_stream::in, char::in, list(char)::in,
-    raw_token::out, io::di, io::uo) is det.
+:- pred io_start_quoted_name(io.text_input_stream::in, char::in,
+    list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-start_quoted_name(Stream, QuoteChar, RevChars0, Token, !IO) :-
-    get_quoted_name(Stream, QuoteChar, RevChars0, Token0, !IO),
+io_start_quoted_name(Stream, QuoteChar, RevChars0, Token, !IO) :-
+    io_get_quoted_name(Stream, QuoteChar, RevChars0, Token0, !IO),
     ( if Token0 = error(_) then
         % Skip to the end of the string or name.
-        start_quoted_name(Stream, QuoteChar, RevChars0, _, !IO),
+        io_start_quoted_name(Stream, QuoteChar, RevChars0, _, !IO),
         Token = Token0
     else if Token0 = eof then
         Token = error("unterminated quote")
@@ -1660,10 +1668,10 @@ linestr_start_quoted_name(String, Len, QuoteChar, RevChars0,
 
 %---------------------%
 
-:- pred get_quoted_name(io.text_input_stream::in, char::in, list(char)::in,
+:- pred io_get_quoted_name(io.text_input_stream::in, char::in, list(char)::in,
     raw_token::out, io::di, io::uo) is det.
 
-get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO) :-
+io_get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1674,12 +1682,13 @@ get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     ;
         Result = ok,
         ( if Char = QuoteChar then
-            get_quoted_name_quote(Stream, QuoteChar, !.RevChars, Token, !IO)
+            io_get_quoted_name_quote(Stream, QuoteChar, !.RevChars, Token, !IO)
         else if Char = ('\\') then
-            get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO)
+            io_get_quoted_name_escape(Stream, QuoteChar, !.RevChars,
+                Token, !IO)
         else
             !:RevChars = [Char | !.RevChars],
-            get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
+            io_get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         )
     ).
 
@@ -1739,10 +1748,10 @@ linestr_get_quoted_name(String, Len, QuoteChar, !.RevChars,
 
 %---------------------%
 
-:- pred get_quoted_name_quote(io.text_input_stream::in, char::in,
+:- pred io_get_quoted_name_quote(io.text_input_stream::in, char::in,
     list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-get_quoted_name_quote(Stream, QuoteChar, !.RevChars, Token, !IO) :-
+io_get_quoted_name_quote(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1755,7 +1764,7 @@ get_quoted_name_quote(Stream, QuoteChar, !.RevChars, Token, !IO) :-
         Result = ok,
         ( if Char = QuoteChar then
             !:RevChars = [Char | !.RevChars],
-            get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
+            io_get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             finish_quoted_name(QuoteChar, !.RevChars, Token0),
@@ -1828,10 +1837,10 @@ finish_quoted_name(QuoteChar, RevChars, Token) :-
 
 %---------------------%
 
-:- pred get_quoted_name_escape(io.text_input_stream::in, char::in,
+:- pred io_get_quoted_name_escape(io.text_input_stream::in, char::in,
     list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO) :-
+io_get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1842,27 +1851,30 @@ get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     ;
         Result = ok,
         ( if Char = '\n' then
-            get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
+            io_get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         else if Char = '\r' then
             % Files created on Windows may have an extra return character.
-            get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO)
+            io_get_quoted_name_escape(Stream, QuoteChar, !.RevChars,
+                Token, !IO)
         else if escape_char(Char, EscapedChar) then
             !:RevChars = [EscapedChar | !.RevChars],
-            get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
+            io_get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         else if Char = 'x' then
-            get_hex_char_escape(Stream, QuoteChar, !.RevChars, [], Token, !IO)
+            io_get_hex_char_escape(Stream, QuoteChar, !.RevChars, [],
+                Token, !IO)
         else if (Char = 'u', Exp = 4 ; Char = 'U', Exp = 8)then
-            get_unicode_escape(Stream, Exp, 0, 0, UnicodeResult, !IO),
+            io_get_unicode_escape(Stream, Exp, 0, 0, UnicodeResult, !IO),
             (
                 UnicodeResult = unicode_char(UnicodeChar),
                 !:RevChars = [UnicodeChar | !.RevChars],
-                get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
+                io_get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
             ;
                 UnicodeResult = unicode_nonchar(Token0),
                 Token = coerce(Token0)
             )
         else if char.is_octal_digit(Char) then
-            get_octal_escape(Stream, QuoteChar, !.RevChars, [Char], Token, !IO)
+            io_get_octal_escape(Stream, QuoteChar, !.RevChars, [Char],
+                Token, !IO)
         else
             Token = error("invalid escape character")
         )
@@ -1876,7 +1888,7 @@ string_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars, Posn0,
         Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if
-            % Note that get_quoted_name, the !IO variant of the predicate,
+            % Note that io_get_quoted_name, the !IO variant of the predicate,
             % cannot use this switch, because it is incomplete,
             % and we cannot update !IO in the arms of such switches.
             require_switch_arms_det [Char]
@@ -1946,7 +1958,7 @@ linestr_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars,
         LineContext0, LinePosn0, Token, Context, !LineContext, !LinePosn) :-
     ( if linestr_read_char(String, Len, Char, !LineContext, !LinePosn) then
         ( if
-            % Note that get_quoted_name, the !IO variant of the predicate,
+            % Note that io_get_quoted_name, the !IO variant of the predicate,
             % cannot use this switch, because it is incomplete,
             % and we cannot update !IO in the arms of such switches.
             (
@@ -2058,10 +2070,10 @@ escape_char('`', '`').
     ;       unicode_char_is_surrogate(int).
             % The int that is a surrogate.
 
-:- pred get_unicode_escape(io.text_input_stream::in, int::in, int::in, int::in,
-    unicode_char_result::out, io::di, io::uo) is det.
+:- pred io_get_unicode_escape(io.text_input_stream::in, int::in, int::in,
+    int::in, unicode_char_result::out, io::di, io::uo) is det.
 
-get_unicode_escape(Stream, NumExpHexChars, NumGotHexChars0, Value0,
+io_get_unicode_escape(Stream, NumExpHexChars, NumGotHexChars0, Value0,
         Result, !IO) :-
     ( if NumExpHexChars = NumGotHexChars0 then
         construct_unicode_char_if_valid(Value0, Result)
@@ -2080,7 +2092,7 @@ get_unicode_escape(Stream, NumExpHexChars, NumGotHexChars0, Value0,
             ( if char.hex_digit_to_int(Char, HexDigit) then
                 Value1 = Value0 * 16 + HexDigit,
                 NumGotHexChars1 = NumGotHexChars0 + 1,
-                get_unicode_escape(Stream, NumExpHexChars, NumGotHexChars1,
+                io_get_unicode_escape(Stream, NumExpHexChars, NumGotHexChars1,
                     Value1, Result, !IO)
             else
                 DecodeError = unicode_non_hex_digit(Char),
@@ -2191,10 +2203,10 @@ unicode_decode_error_to_result(DecodeError) = Result :-
 
 %---------------------%
 
-:- pred get_hex_char_escape(io.text_input_stream::in, char::in, list(char)::in,
-    list(char)::in, raw_token::out, io::di, io::uo) is det.
+:- pred io_get_hex_char_escape(io.text_input_stream::in, char::in,
+    list(char)::in, list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-get_hex_char_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
+io_get_hex_char_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
     Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
@@ -2207,10 +2219,10 @@ get_hex_char_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
         Result = ok,
         ( if char.is_hex_digit(Char) then
             !:RevHexChars = [Char | !.RevHexChars],
-            get_hex_char_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
+            io_get_hex_char_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
                 Token, !IO)
         else if Char = ('\\') then
-            finish_hex_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
+            io_finish_hex_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
                 Token, !IO)
         else
             Token = error("unterminated hex escape")
@@ -2272,10 +2284,11 @@ linestr_get_hex_char_escape(String, Len, QuoteChar, RevChars0, !.RevHexChars,
 
 %---------------------%
 
-:- pred finish_hex_escape(io.text_input_stream::in, char::in, list(char)::in,
-    list(char)::in, raw_token::out, io::di, io::uo) is det.
+:- pred io_finish_hex_escape(io.text_input_stream::in, char::in,
+    list(char)::in, list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-finish_hex_escape(Stream, QuoteChar, !.RevChars, RevHexChars0, Token, !IO) :-
+io_finish_hex_escape(Stream, QuoteChar, !.RevChars, RevHexChars0,
+        Token, !IO) :-
     (
         RevHexChars0 = [],
         Token = error("empty hex escape")
@@ -2290,7 +2303,7 @@ finish_hex_escape(Stream, QuoteChar, !.RevChars, RevHexChars0, Token, !IO) :-
                 Token = coerce(null_character_error)
             else
                 !:RevChars = [Char | !.RevChars],
-                get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
+                io_get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
             )
         else
             Token = error("invalid hex escape")
@@ -2363,10 +2376,11 @@ linestr_finish_hex_escape(String, Len, QuoteChar, !.RevChars, RevHexChars0,
 
 %---------------------%
 
-:- pred get_octal_escape(io.text_input_stream::in, char::in, list(char)::in,
+:- pred io_get_octal_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-get_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars, Token, !IO) :-
+io_get_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars,
+        Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -2378,11 +2392,11 @@ get_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars, Token, !IO) :-
         Result = ok,
         ( if char.is_octal_digit(Char) then
             !:RevOctalChars = [Char | !.RevOctalChars],
-            get_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars,
+            io_get_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars,
                 Token, !IO)
         else if Char = ('\\') then
-            finish_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars,
-                Token, !IO)
+            io_finish_octal_escape(Stream, QuoteChar,
+                RevChars0, !.RevOctalChars, Token, !IO)
         else
             Token = error("unterminated octal escape")
         )
@@ -2443,10 +2457,10 @@ linestr_get_octal_escape(String, Len, QuoteChar, RevChars0, !.RevOctalChars,
 
 %---------------------%
 
-:- pred finish_octal_escape(io.text_input_stream::in, char::in, list(char)::in,
-    list(char)::in, raw_token::out, io::di, io::uo) is det.
+:- pred io_finish_octal_escape(io.text_input_stream::in, char::in,
+    list(char)::in, list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-finish_octal_escape(Stream, QuoteChar, !.RevChars, RevOctalChars0,
+io_finish_octal_escape(Stream, QuoteChar, !.RevChars, RevOctalChars0,
         Token, !IO) :-
     (
         RevOctalChars0 = [],
@@ -2462,7 +2476,7 @@ finish_octal_escape(Stream, QuoteChar, !.RevChars, RevOctalChars0,
                 Token = coerce(null_character_error)
             else
                 !:RevChars = [Char | !.RevChars],
-                get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
+                io_get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
             )
         else
             Token = error("invalid octal escape")
@@ -2539,10 +2553,10 @@ linestr_finish_octal_escape(String, Len, QuoteChar,
 % Names and variables.
 %
 
-:- pred get_name(io.text_input_stream::in, list(char)::in, raw_token::out,
+:- pred io_get_name(io.text_input_stream::in, list(char)::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_name(Stream, !.RevChars, Token, !IO) :-
+io_get_name(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -2558,7 +2572,7 @@ get_name(Stream, !.RevChars, Token, !IO) :-
         Result = ok,
         ( if char.is_alnum_or_underscore(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_name(Stream, !.RevChars, Token, !IO)
+            io_get_name(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             ( if rev_char_list_to_string(!.RevChars, Name) then
@@ -2621,10 +2635,10 @@ linestr_get_name(String, Len, LineContext0, LinePosn0, Token, Context,
 
 %---------------------%
 
-:- pred get_implementation_defined_literal_rest(io.text_input_stream::in,
+:- pred io_get_implementation_defined_literal_rest(io.text_input_stream::in,
     raw_token::out, io::di, io::uo) is det.
 
-get_implementation_defined_literal_rest(Stream, Token, !IO) :-
+io_get_implementation_defined_literal_rest(Stream, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -2635,14 +2649,14 @@ get_implementation_defined_literal_rest(Stream, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_lower(Char) then
-            get_name(Stream, [Char], Token0, !IO),
+            io_get_name(Stream, [Char], Token0, !IO),
             ( if Token0 = name(S) then
                 Token = implementation_defined(S)
             else
                 Token = Token0
             )
         else if graphic_token_char(Char) then
-            get_graphic(Stream, [Char, '$'], Token, !IO)
+            io_get_graphic(Stream, [Char, '$'], Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = name("$")
@@ -2718,24 +2732,25 @@ linestr_get_implementation_defined_literal_rest(String, Len,
     % (The source file name can be set with a `:- pragma source_file'
     % declaration.)
     %
-:- pred get_source_line_number(io.text_input_stream::in, list(char)::in,
+:- pred io_get_source_line_number(io.text_input_stream::in, list(char)::in,
     raw_token::out, maybe_have_valid_token::out, io::di, io::uo) is det.
 
-get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO) :-
+io_get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        have_token(Stream, HaveToken, !IO),
+        io_have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        have_token(Stream, HaveToken, !IO),
+        io_have_token(Stream, HaveToken, !IO),
         Token = error("unexpected end-of-file in `#' line number directive")
     ;
         Result = ok,
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO)
+            io_get_source_line_number(Stream, !.RevChars,
+                Token, HaveToken, !IO)
         else if Char = '\n' then
             ( if rev_char_list_to_string(!.RevChars, String) then
                 ( if
@@ -2746,17 +2761,17 @@ get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO) :-
                     do_not_have_token(Token0, HaveToken),
                     Token = coerce(Token0)
                 else
-                    have_token(Stream, HaveToken, !IO),
+                    io_have_token(Stream, HaveToken, !IO),
                     string.format("invalid line number `%s' " ++
                         "in `#' line number directive", [s(String)], Message),
                     Token = error(Message)
                 )
             else
-                have_token(Stream, HaveToken, !IO),
+                io_have_token(Stream, HaveToken, !IO),
                 Token = error("invalid character in `#' line number directive")
             )
         else
-            have_token(Stream, HaveToken, !IO),
+            io_have_token(Stream, HaveToken, !IO),
             ( if char.to_int(Char, 0) then
                 String = "NUL"
             else
@@ -2860,10 +2875,10 @@ linestr_get_source_line_number(String, Len, LineContext1, LinePosn1,
 
 %---------------------%
 
-:- pred get_graphic(io.text_input_stream::in, list(char)::in, raw_token::out,
-    io::di, io::uo) is det.
+:- pred io_get_graphic(io.text_input_stream::in, list(char)::in,
+    raw_token::out, io::di, io::uo) is det.
 
-get_graphic(Stream, !.RevChars, Token, !IO) :-
+io_get_graphic(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -2881,7 +2896,7 @@ get_graphic(Stream, !.RevChars, Token, !IO) :-
             graphic_token_char(Char)
         then
             !:RevChars = [Char | !.RevChars],
-            get_graphic(Stream, !.RevChars, Token, !IO)
+            io_get_graphic(Stream, !.RevChars, Token, !IO)
         else if
             Char = 'u',
             ( !.RevChars = ['<', '<'], Name = "<<u"
@@ -2969,10 +2984,10 @@ linestr_get_graphic(String, Len, LineContext0, LinePosn0, Token, Context,
 
 %---------------------%
 
-:- pred get_variable(io.text_input_stream::in, list(char)::in, raw_token::out,
-    io::di, io::uo) is det.
+:- pred io_get_variable(io.text_input_stream::in, list(char)::in,
+    raw_token::out, io::di, io::uo) is det.
 
-get_variable(Stream, !.RevChars, Token, !IO) :-
+io_get_variable(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -2988,7 +3003,7 @@ get_variable(Stream, !.RevChars, Token, !IO) :-
         Result = ok,
         ( if char.is_alnum_or_underscore(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_variable(Stream, !.RevChars, Token, !IO)
+            io_get_variable(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             ( if rev_char_list_to_string(!.RevChars, VariableName) then
@@ -3054,10 +3069,10 @@ linestr_get_variable(String, Len, LineContext0, LinePosn0, Token, Context,
 % Integer and float literals.
 %
 
-:- pred get_zero(io.text_input_stream::in, raw_token::out,
+:- pred io_get_zero(io.text_input_stream::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_zero(Stream, Token, !IO) :-
+io_get_zero(Stream, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -3069,31 +3084,33 @@ get_zero(Stream, Token, !IO) :-
         Result = ok,
         ( if char.is_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            get_number(Stream, LastDigit, [Char], Token, !IO)
+            io_get_number(Stream, LastDigit, [Char], Token, !IO)
         else if Char = '_' then
             LastDigit = last_digit_is_underscore,
-            % We need to pass ['0'] to get_number/6 here because the initial
-            % '0' may in fact be the last digit in the token (e.g. if what
-            % appears after the '_' is a signedness / size suffix).
-            get_number(Stream, LastDigit, ['0'], Token, !IO)
+            % We need to pass ['0'] to io_get_number/6 here because
+            % the initial '0' may in fact be the last digit in the token
+            % (e.g. if what appears after the '_' is a
+            % signedness / size suffix).
+            io_get_number(Stream, LastDigit, ['0'], Token, !IO)
         else if Char = '''' then
-            get_char_code(Stream, Token, !IO)
+            io_get_char_code(Stream, Token, !IO)
         else if Char = 'b' then
-            get_binary_const(Stream, Token, !IO)
+            io_get_binary_const(Stream, Token, !IO)
         else if Char = 'o' then
-            get_octal_const(Stream, Token, !IO)
+            io_get_octal_const(Stream, Token, !IO)
         else if Char = 'x' then
-            get_hex_const(Stream, Token, !IO)
+            io_get_hex_const(Stream, Token, !IO)
         else if (Char = 'u', SorUS = unsigned; Char = 'i', SorUS = signed) then
             % In this case '0' is the only digit in the token; we need to pass
-            % ['0'] to get_integer_size_suffix/7 because we would otherwise
+            % ['0'] to io_get_integer_size_suffix/7 because we would otherwise
             % invoke rev_char_list_to_int/5 with an empty list.
-            get_integer_size_suffix(Stream, ['0'], base_10, SorUS, Token, !IO)
+            io_get_integer_size_suffix(Stream, ['0'], base_10, SorUS,
+                Token, !IO)
         else if Char = ('.') then
             LastDigit = last_digit_is_not_underscore,
-            get_int_dot(Stream, LastDigit, ['0'], Token, !IO)
+            io_get_int_dot(Stream, LastDigit, ['0'], Token, !IO)
         else if (Char = 'e' ; Char = 'E') then
-            get_float_exponent(Stream, [Char, '0'], Token, !IO)
+            io_get_float_exponent(Stream, [Char, '0'], Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = integer(base_10, integer.zero, signed, size_word)
@@ -3122,7 +3139,7 @@ string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_number(String, Len, LastDigit, Posn0,
                 Token, Context, !Posn)
         else if
-            % Note that get_zero, the !IO variant of the predicate,
+            % Note that io_get_zero, the !IO variant of the predicate,
             % cannot use this switch, because it is incomplete,
             % and we cannot update !IO in the arms of such switches.
             (
@@ -3195,7 +3212,7 @@ linestr_get_zero(String, Len, LineContext0, LinePosn0, Token, Context,
             linestr_get_number(String, Len, LastDigit, LineContext0, LinePosn0,
                 Token, Context, !LineContext, !LinePosn)
         else if
-            % Note that get_zero, the !IO variant of the predicate,
+            % Note that io_get_zero, the !IO variant of the predicate,
             % cannot use this switch, because it is incomplete,
             % and we cannot update !IO in the arms of such switches.
             (
@@ -3262,10 +3279,10 @@ linestr_get_zero(String, Len, LineContext0, LinePosn0, Token, Context,
 
 %---------------------%
 
-:- pred get_char_code(io.text_input_stream::in, raw_token::out,
+:- pred io_get_char_code(io.text_input_stream::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_char_code(Stream, Token, !IO) :-
+io_get_char_code(Stream, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -3307,10 +3324,10 @@ linestr_get_char_code(String, Len, LineContext0, Token, Context,
 
 %---------------------%
 
-:- pred get_binary_const(io.text_input_stream::in, raw_token::out,
+:- pred io_get_binary_const(io.text_input_stream::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_binary_const(Stream, Token, !IO) :-
+io_get_binary_const(Stream, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -3322,9 +3339,9 @@ get_binary_const(Stream, Token, !IO) :-
         Result = ok,
         ( if char.is_binary_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            get_binary_const_loop(Stream, LastDigit, [Char], Token, !IO)
+            io_get_binary_const_loop(Stream, LastDigit, [Char], Token, !IO)
         else if Char = '_' then
-            get_binary_const(Stream, Token, !IO)
+            io_get_binary_const(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = coerce(report_zero_base_no_digits(base_2))
@@ -3384,11 +3401,11 @@ linestr_get_binary_const(String, Len, LineContext0, Token, Context,
 
 %---------------------%
 
-:- pred get_binary_const_loop(io.text_input_stream::in,
+:- pred io_get_binary_const_loop(io.text_input_stream::in,
     last_digit_is_underscore::in, list(char)::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_binary_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
+io_get_binary_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -3409,15 +3426,17 @@ get_binary_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         ( if char.is_binary_digit(Char) then
             !:RevChars = [Char | !.RevChars],
             !:LastDigit = last_digit_is_not_underscore,
-            get_binary_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_binary_const_loop(Stream, !.LastDigit, !.RevChars,
+                Token, !IO)
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            get_binary_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_binary_const_loop(Stream, !.LastDigit, !.RevChars,
+                Token, !IO)
         else if Char = 'u' then
-            get_integer_size_suffix(Stream, !.RevChars, base_2, unsigned,
+            io_get_integer_size_suffix(Stream, !.RevChars, base_2, unsigned,
                 Token, !IO)
         else if Char = 'i' then
-            get_integer_size_suffix(Stream, !.RevChars, base_2, signed,
+            io_get_integer_size_suffix(Stream, !.RevChars, base_2, signed,
                 Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
@@ -3562,10 +3581,10 @@ linestr_get_binary_const_loop(String, Len, !.LastDigit,
 
 %---------------------%
 
-:- pred get_octal_const(io.text_input_stream::in, raw_token::out,
+:- pred io_get_octal_const(io.text_input_stream::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_octal_const(Stream, Token, !IO) :-
+io_get_octal_const(Stream, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -3577,9 +3596,9 @@ get_octal_const(Stream, Token, !IO) :-
         Result = ok,
         ( if char.is_octal_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            get_octal_loop(Stream, LastDigit, [Char], Token, !IO)
+            io_get_octal_loop(Stream, LastDigit, [Char], Token, !IO)
         else if Char = '_' then
-            get_octal_const(Stream, Token, !IO)
+            io_get_octal_const(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = coerce(report_zero_base_no_digits(base_8))
@@ -3644,10 +3663,11 @@ linestr_get_octal_const(String, Len, LineContext0, LinePosn0, Token, Context,
 
 %---------------------%
 
-:- pred get_octal_loop(io.text_input_stream::in, last_digit_is_underscore::in,
-    list(char)::in, raw_token::out, io::di, io::uo) is det.
+:- pred io_get_octal_loop(io.text_input_stream::in,
+    last_digit_is_underscore::in, list(char)::in, raw_token::out,
+    io::di, io::uo) is det.
 
-get_octal_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
+io_get_octal_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -3668,15 +3688,15 @@ get_octal_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         ( if char.is_octal_digit(Char) then
             !:RevChars = [Char | !.RevChars],
             !:LastDigit = last_digit_is_not_underscore,
-            get_octal_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_octal_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            get_octal_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_octal_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = 'u' then
-            get_integer_size_suffix(Stream, !.RevChars, base_8, unsigned,
+            io_get_integer_size_suffix(Stream, !.RevChars, base_8, unsigned,
                 Token, !IO)
         else if Char = 'i' then
-            get_integer_size_suffix(Stream, !.RevChars, base_8, signed,
+            io_get_integer_size_suffix(Stream, !.RevChars, base_8, signed,
                 Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
@@ -3808,10 +3828,10 @@ linestr_get_octal_loop(String, Len, !.LastDigit, LineContext1, LinePosn1,
 
 %---------------------%
 
-:- pred get_hex_const(io.text_input_stream::in, raw_token::out,
+:- pred io_get_hex_const(io.text_input_stream::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_hex_const(Stream, Token, !IO) :-
+io_get_hex_const(Stream, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -3823,9 +3843,9 @@ get_hex_const(Stream, Token, !IO) :-
         Result = ok,
         ( if char.is_hex_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            get_hex_const_loop(Stream, LastDigit, [Char], Token, !IO)
+            io_get_hex_const_loop(Stream, LastDigit, [Char], Token, !IO)
         else if Char = '_' then
-            get_hex_const(Stream, Token, !IO)
+            io_get_hex_const(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = coerce(report_zero_base_no_digits(base_16))
@@ -3892,11 +3912,11 @@ linestr_get_hex_const(String, Len, LineContext0, LinePosn0, Token, Context,
 
 %---------------------%
 
-:- pred get_hex_const_loop(io.text_input_stream::in,
+:- pred io_get_hex_const_loop(io.text_input_stream::in,
     last_digit_is_underscore::in, list(char)::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_hex_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
+io_get_hex_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -3917,17 +3937,18 @@ get_hex_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         ( if char.is_hex_digit(Char) then
             !:RevChars = [Char | !.RevChars],
             !:LastDigit = last_digit_is_not_underscore,
-            get_hex_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_hex_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             disable_warning [suspicious_recursion] (
-                get_hex_const_loop(Stream, !.LastDigit, !.RevChars, Token, !IO)
+                io_get_hex_const_loop(Stream, !.LastDigit, !.RevChars,
+                    Token, !IO)
             )
         else if Char = 'u' then
-            get_integer_size_suffix(Stream, !.RevChars, base_16, unsigned,
+            io_get_integer_size_suffix(Stream, !.RevChars, base_16, unsigned,
                 Token, !IO)
         else if Char = 'i' then
-            get_integer_size_suffix(Stream, !.RevChars, base_16, signed,
+            io_get_integer_size_suffix(Stream, !.RevChars, base_16, signed,
                 Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
@@ -4050,10 +4071,10 @@ linestr_get_hex_const_loop(String, Len, !.LastDigit, LineContext1, LinePosn1,
 
 %---------------------%
 
-:- pred get_number(io.text_input_stream::in, last_digit_is_underscore::in,
+:- pred io_get_number(io.text_input_stream::in, last_digit_is_underscore::in,
     list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
+io_get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -4074,27 +4095,27 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
             !:LastDigit = last_digit_is_not_underscore,
-            get_number(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_number(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            get_number(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_number(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = ('.') then
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO)
+                io_get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = coerce(report_underscore_before_decimal_point)
             )
         else if Char = 'u' then
-            get_integer_size_suffix(Stream, !.RevChars, base_10, unsigned,
+            io_get_integer_size_suffix(Stream, !.RevChars, base_10, unsigned,
                 Token, !IO)
         else if Char = 'i' then
-            get_integer_size_suffix(Stream, !.RevChars, base_10, signed,
+            io_get_integer_size_suffix(Stream, !.RevChars, base_10, signed,
                 Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
             !:RevChars = [Char | !.RevChars],
-            get_float_exponent(Stream, !.RevChars, Token, !IO)
+            io_get_float_exponent(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             (
@@ -4123,7 +4144,7 @@ string_get_number(String, Len, !.LastDigit, Posn0, Token, Context, !Posn) :-
                     Token, Context, !Posn)
             )
         else if
-            % Note that get_number, the !IO variant of the predicate,
+            % Note that io_get_number, the !IO variant of the predicate,
             % cannot use this switch, because it is incomplete,
             % and we cannot update !IO in the arms of such switches.
             (
@@ -4208,7 +4229,7 @@ linestr_get_number(String, Len, !.LastDigit, LineContext0, LinePosn0,
                     Token, Context, !LineContext, !LinePosn)
             )
         else if
-            % Note that get_number, the !IO variant of the predicate,
+            % Note that io_get_number, the !IO variant of the predicate,
             % cannot use this switch, because it is incomplete,
             % and we cannot update !IO in the arms of such switches.
             (
@@ -4284,10 +4305,10 @@ linestr_get_number(String, Len, !.LastDigit, LineContext0, LinePosn0,
 
 %---------------------%
 
-:- pred get_integer_size_suffix(io.text_input_stream::in, list(char)::in,
+:- pred io_get_integer_size_suffix(io.text_input_stream::in, list(char)::in,
     integer_base::in, signedness::in, raw_token::out, io::di, io::uo) is det.
 
-get_integer_size_suffix(Stream, RevChars, Base, Signedness, Token, !IO) :-
+io_get_integer_size_suffix(Stream, RevChars, Base, Signedness, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -4303,13 +4324,13 @@ get_integer_size_suffix(Stream, RevChars, Base, Signedness, Token, !IO) :-
                 Token0),
             Token = coerce(Token0)
         else if Char = '1' then
-            get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
+            io_get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
                 '6', size_16_bit, Token, !IO)
         else if Char = '3' then
-            get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
+            io_get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
                 '2', size_32_bit, Token, !IO)
         else if Char = '6' then
-            get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
+            io_get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
                 '4', size_64_bit, Token, !IO)
         else if char.is_digit(Char) then
             Token = error("invalid integer size suffix")
@@ -4402,12 +4423,12 @@ linestr_get_integer_size_suffix(String, Len, LinePosn1, LastDigitLinePosn,
 
 %---------------------%
 
-:- pred get_integer_size_suffix_2(io.text_input_stream::in, list(char)::in,
+:- pred io_get_integer_size_suffix_2(io.text_input_stream::in, list(char)::in,
     integer_base::in, signedness::in, char::in, integer_size::in,
     raw_token::out, io::di, io::uo) is det.
 
-get_integer_size_suffix_2(Stream, RevChars, Base, Signedness, ExpectedNextChar,
-        ExpectedSize, Token, !IO) :-
+io_get_integer_size_suffix_2(Stream, RevChars, Base, Signedness,
+        ExpectedNextChar, ExpectedSize, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -4466,10 +4487,10 @@ linestr_get_integer_size_suffix_2(String, Len, LinePosn1, LastDigitLinePosn,
 
 %---------------------%
 
-:- pred get_int_dot(io.text_input_stream::in, last_digit_is_underscore::in,
+:- pred io_get_int_dot(io.text_input_stream::in, last_digit_is_underscore::in,
     list(char)::in, raw_token::out, io::di, io::uo) is det.
 
-get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
+io_get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     % XXX The float literal syntax doesn't match ISO Prolog.
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
@@ -4492,15 +4513,15 @@ get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         ( if char.is_digit(Char) then
             !:RevChars = [Char, '.' | !.RevChars],
             !:LastDigit = last_digit_is_not_underscore,
-            get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = '_' then
             Token = error("underscore following decimal point")
         else
             io.putback_char(Stream, Char, !IO),
             % We can't putback the ".", because io.putback_char only
             % guarantees one character of pushback. So instead, we return
-            % an `integer_dot' token; the main loop of get_token_list_loop will
-            % handle this appropriately.
+            % an `integer_dot' token; io_get_token_list_loop will handle this
+            % appropriately.
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 rev_char_list_to_int(!.RevChars, base_10, signed, size_word,
@@ -4609,11 +4630,11 @@ linestr_get_int_dot(String, Len, !.LastDigit,
 
     % We have read past the decimal point, so now get the decimals.
     %
-:- pred get_float_decimals(io.text_input_stream::in,
+:- pred io_get_float_decimals(io.text_input_stream::in,
     last_digit_is_underscore::in, list(char)::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
+io_get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -4633,13 +4654,13 @@ get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
             !:LastDigit = last_digit_is_not_underscore,
-            get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
             !:RevChars = [Char | !.RevChars],
-            get_float_exponent(Stream, !.RevChars, Token, !IO)
+            io_get_float_exponent(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             (
@@ -4759,10 +4780,10 @@ linestr_get_float_decimals(String, Len, !.LastDigit, LineContext0, LinePosn0,
 
 %---------------------%
 
-:- pred get_float_exponent(io.text_input_stream::in, list(char)::in,
+:- pred io_get_float_exponent(io.text_input_stream::in, list(char)::in,
     raw_token::out, io::di, io::uo) is det.
 
-get_float_exponent(Stream, !.RevChars, Token, !IO) :-
+io_get_float_exponent(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -4775,11 +4796,11 @@ get_float_exponent(Stream, !.RevChars, Token, !IO) :-
         Result = ok,
         ( if ( Char = ('+') ; Char = ('-') ) then
             !:RevChars = [Char | !.RevChars],
-            get_float_exponent_2(Stream, !.RevChars, Token, !IO)
+            io_get_float_exponent_2(Stream, !.RevChars, Token, !IO)
         else if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
             LastDigit = last_digit_is_not_underscore,
-            get_float_exponent_3(Stream, LastDigit, !.RevChars, Token, !IO)
+            io_get_float_exponent_3(Stream, LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated exponent in float literal")
@@ -4846,10 +4867,10 @@ linestr_get_float_exponent(String, Len, LineContext0, LinePosn0,
     % make sure that there is at least one digit following,
     % and then get the remaining digits.
     %
-:- pred get_float_exponent_2(io.text_input_stream::in, list(char)::in,
+:- pred io_get_float_exponent_2(io.text_input_stream::in, list(char)::in,
     raw_token::out, io::di, io::uo) is det.
 
-get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
+io_get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -4862,7 +4883,7 @@ get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
             LastDigit = last_digit_is_not_underscore,
-            get_float_exponent_3(Stream, LastDigit, !.RevChars, Token, !IO)
+            io_get_float_exponent_3(Stream, LastDigit, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated exponent in float literal")
@@ -4920,11 +4941,11 @@ linestr_get_float_exponent_2(String, Len, LineContext0, LinePosn0,
     % We have read past the first digit of the exponent -
     % now get the remaining digits.
     %
-:- pred get_float_exponent_3(io.text_input_stream::in,
+:- pred io_get_float_exponent_3(io.text_input_stream::in,
     last_digit_is_underscore::in, list(char)::in, raw_token::out,
     io::di, io::uo) is det.
 
-get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
+io_get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -4944,10 +4965,12 @@ get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
             !:LastDigit = last_digit_is_not_underscore,
-            get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_float_exponent_3(Stream, !.LastDigit, !.RevChars,
+                Token, !IO)
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            io_get_float_exponent_3(Stream, !.LastDigit, !.RevChars,
+                Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             (
@@ -5060,10 +5083,10 @@ linestr_get_float_exponent_3(String, Len, !.LastDigit, LineContext0, LinePosn0,
 % Some triplicated low-level routines.
 %
 
-:- pred get_context(io.text_input_stream::in, token_context::out,
+:- pred io_get_context(io.text_input_stream::in, token_context::out,
     io::di, io::uo) is det.
 
-get_context(Stream, Context, !IO) :-
+io_get_context(Stream, Context, !IO) :-
     io.get_line_number(Stream, Context, !IO).
 
 :- type string_token_context == token_context.
