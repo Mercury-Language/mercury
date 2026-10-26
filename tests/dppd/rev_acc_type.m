@@ -4,7 +4,7 @@
 %
 % The "rev_acc_type" Benchmark.
 % Part of the DPPD Library.
-% 
+%
 % This benchmark is difficult in the sense that it causes the generation
 % of an infinite number of characteristic trees in a quite natural
 % manner. Indeed, the program is simply the well-known reverse with
@@ -25,11 +25,11 @@ is_list([_H | _T]) :-
     is_list(_T).
 
 % The partial deduction query
-% 
+%
 % :- rev(L, [], R).
-% 
+%
 % The run-time queries
-% 
+%
 % :- rev([], [], R).
 % :- rev([a], [], R).
 % :- rev([a, b, c, d, e, f, g], [], R).
@@ -50,9 +50,9 @@ is_list([_H | _T]) :-
 %     u, v, w, x, y, z,
 %     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 %     21, 22, 23, 24, 25, 26, 27, 28, 29, 30], [], R).
-% 
+%
 % Example solution
-% 
+%
 % to be inserted
-% 
+%
 % Michael Leuschel / K.U. Leuven / michael@cs.kuleuven.ac.be

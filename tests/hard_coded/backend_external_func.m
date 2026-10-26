@@ -25,12 +25,12 @@ main(!IO) :-
 %---------------------------------------------------------------------------%
 
     % in llds grades: external
-    % in mlds grades: foreign_proc 
+    % in mlds grades: foreign_proc
 :- func p(int, int, int) = int.
 :- pragma external_func(p/3, [low_level_backend]).
 
     % in llds grades: foreign_proc
-    % in mlds grades: external 
+    % in mlds grades: external
 :- func q(int, int, int) = int.
 :- pragma external_func(q/3, [high_level_backend]).
 

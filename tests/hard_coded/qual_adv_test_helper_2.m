@@ -595,7 +595,7 @@ format_get_optional_args( [A | As], Flags, Width, Precision, Mods) :-
             Precision = Prec
         )
     else if
-        ( A = 'h' ; A = 'l' ; A = 'L' ) 
+        ( A = 'h' ; A = 'l' ; A = 'L' )
     then
         Mods = A,
         format_get_optional_args( As, Flags, Width, Precision, _)

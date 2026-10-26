@@ -33,7 +33,7 @@ main(!IO) :-
     test_bag_combinations_outer_loop(AllBags, AllBags, !IO).
 
 :- pred test_bag_combinations_outer_loop(
-    list(bag(int))::in, list(bag(int))::in, 
+    list(bag(int))::in, list(bag(int))::in,
     io::di, io::uo) is det.
 
 test_bag_combinations_outer_loop([], _, !IO).
@@ -41,7 +41,7 @@ test_bag_combinations_outer_loop([OuterBag | OuterBags], InnerBags, !IO) :-
     test_bag_combinations_inner_loop(OuterBag, InnerBags, !IO),
     test_bag_combinations_outer_loop(OuterBags, InnerBags, !IO).
 
-:- pred test_bag_combinations_inner_loop(bag(int)::in, list(bag(int))::in, 
+:- pred test_bag_combinations_inner_loop(bag(int)::in, list(bag(int))::in,
     io::di, io::uo) is det.
 
 test_bag_combinations_inner_loop(_OuterBag, [], !IO).
@@ -49,7 +49,7 @@ test_bag_combinations_inner_loop(OuterBag, [InnerBag | InnerBags], !IO) :-
     test_bag_combination(OuterBag, InnerBag, !IO),
     test_bag_combinations_inner_loop(OuterBag, InnerBags, !IO).
 
-:- pred test_bag_combination(bag(int)::in, bag(int)::in, 
+:- pred test_bag_combination(bag(int)::in, bag(int)::in,
     io::di, io::uo) is det.
 
 test_bag_combination(BagA, BagB, !IO) :-

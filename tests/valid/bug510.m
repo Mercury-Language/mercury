@@ -20,7 +20,7 @@
 %
 % - bug510b.m defines the type foo_set as being equivalent to
 %   sparse_bitset(int). The definition is in the implementation section
-%   of bug510b.m.   
+%   of bug510b.m.
 %
 %   This fact is recorded in the implementation section of bug510b.int as
 %

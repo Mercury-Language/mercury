@@ -5,7 +5,7 @@
 % regex.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Copyright (C) 2002, 2006, 2010 The University of Melbourne
-% Copyright (C) 2014, 2018-2019, 2023, 2025 The Mercury team.
+% Copyright (C) 2014, 2018-2019, 2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % This module provides basic string matching and search and replace
@@ -243,7 +243,7 @@ compile_regex(S, C, ParserState0) = ParserState :-
     (
         ParserState0 = res(REs),
         % res: we are looking for the next regex or operator.
-        ( if 
+        ( if
             ( C = ('.'),  PS = res([re(dot) | REs])
             ; C = ('|'),  PS = res(alt(S, REs))
             ; C = ('*'),  PS = res(star(S, REs))

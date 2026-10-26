@@ -1,10 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% 
+%
 % The "depth" Benchmark.
 % Part of the DPPD Library.
-% 
+%
 % A Lam & Kusalik benchmark. It consists of a simple non-ground
 % meta-interpreter which has to be specialised for a fully-unfoldable
 % object program. It uses neither negations nor built-ins. For a
@@ -30,15 +30,15 @@ prog_clause(append([], _L, _L), true).
 prog_clause(append([_X | _L1], _L2, [_X | _L3]), append(_L1, _L2, _L3)).
 
 % The partial deduction query
-% 
+%
 % :- depth(member(X, [a, b, c, m, d, e, m, f, g, m, i, j]), Depth).
-% 
+%
 % The run-time queries
-% 
+%
 % :- depth(member(i, [a, b, c, m, d, e, m, f, g, m, i, j]), Depth).
-% 
+%
 % Example solution
-% 
+%
 % This benchmark can be fully unfolded. With the ECCE partial deduction
 % system one can obtain the following:
 

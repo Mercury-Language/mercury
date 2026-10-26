@@ -10,26 +10,27 @@
 
 :- use_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module int, list.
-:- import_module qcheck, nrev.
+:- import_module int.
+:- import_module list.
+:- import_module nrev.
+:- import_module qcheck.
 
 %---------------------------------------------------------------------------%
 
 main -->
-     	qcheck(qcheck__f(testing), "sample testing").
+    qcheck(qcheck.f(testing), "sample testing").
 
 %---------------------------------------------------------------------------%
-% 	Invariant test functions
+%   Invariant test functions
 %---------------------------------------------------------------------------%
 
 :- func testing(list(int), list(int)) = property.
-testing(Xs, Ys) = 
-	nrev(Xs ++ Ys) `===` (nrev(Ys) ++ nrev(Xs)).
 
+testing(Xs, Ys) =
+    nrev(Xs ++ Ys) `===` (nrev(Ys) ++ nrev(Xs)).

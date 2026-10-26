@@ -13,7 +13,7 @@
 main(!IO) :-
     % The compiler did not look for violations of require_detism scopes inside
     % lambda goals.
-    T = 
+    T =
         ( pred(X::in, Y::out) is semidet :-
             require_det (
                 X < 10,

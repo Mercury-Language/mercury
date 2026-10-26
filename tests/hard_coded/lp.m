@@ -410,15 +410,15 @@ show_tableau(_N, _M, _Tableau, !IO).
 %     { string.format("Tableau (%d, %d):\n", [i(N), i(M)], Str) },
 %     io.write_string(Str),
 %     unsorted_aggregate(between(0, N), show_row(Tableau, M)).
-% 
+%
 % :- pred show_row(tableau::in, int::in, int::in, io::di, io::uo) is cc_multi.
-% 
+%
 % show_row(Tableau, M, Row) -->
 %     unsorted_aggregate(between(0, M), show_cell(Tableau, Row)),
 %     io.write_string("\n").
-% 
+%
 % :- pred show_cell(tableau::in, int::in, int::in, io::di, io::uo) is cc_multi.
-% 
+%
 % show_cell(Tableau, Row, Col) -->
 %     { index(Tableau, Row, Col, Val) },
 %     { string.format("%2.2f\t", [f(Val)], Str) },

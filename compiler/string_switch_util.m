@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -106,7 +106,7 @@
     %
     % This means that any such bespoke type would not be worthwhile, since
     % it would be almost as general as the pair type constructor.
-    %   
+    %
 :- pred build_str_case_id_list(list(tagged_case)::in,
     int::out, assoc_list(string, case_id)::out) is det.
 

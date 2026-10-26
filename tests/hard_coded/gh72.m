@@ -25,17 +25,17 @@
 main(!IO) :-
     conj_tests(!IO),
 
-    disj_test_init(!IO), 
+    disj_test_init(!IO),
 
-    switch_test_init(10, !IO), 
-    switch_test_init(11, !IO), 
-    switch_test_init(12, !IO), 
-    switch_test_init(13, !IO), 
+    switch_test_init(10, !IO),
+    switch_test_init(11, !IO),
+    switch_test_init(12, !IO),
+    switch_test_init(13, !IO),
 
-    ite_test_init(10, !IO), 
-    ite_test_init(11, !IO), 
-    ite_test_init(12, !IO), 
-    ite_test_init(13, !IO), 
+    ite_test_init(10, !IO),
+    ite_test_init(11, !IO),
+    ite_test_init(12, !IO),
+    ite_test_init(13, !IO),
 
     method_tests("string", "hij", !IO),
     method_tests("int", 53, !IO).

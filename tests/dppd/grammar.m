@@ -4,7 +4,7 @@
 %
 % The "grammar" Benchmark.
 % Part of the DPPD Library.
-% 
+%
 % This is the grammar example from the Lam & Kusalik benchmarks.
 % It is written in DCG form (when transformed into ordinary clauses the
 % built-in =/2 appears.
@@ -24,11 +24,11 @@ grammar :-
     expression_query(['(', '(', '(', '(', n, ')', ')', ')', ')']).
 
 % The benchmark program (in ordinary clause format)
-% 
+%
 % expression(X1, X2, X3, X4) :-
 %     value(X1, X3, X5), qualification(X2, X5, X4).
 % expression(X1, [], X2, X3) :- value(X1, X2, X3).
-% 
+%
 % value(X1, X2, X3) :- identifier(X1, X2, X3).
 % value(X1, X2, X3) :- numeric(X1, X2, X3).
 % value(X1, X2, X3) :- built_in(X1, X2, X3).
@@ -42,7 +42,7 @@ grammar :-
 %     leftparen(X2, X4),
 %     value(X1, X4, X5),
 %     rightparen(X5, X3).
-% 
+%
 % qualification(merge_qualifiers(X1, X2), X3, X4) :-
 %     qualifier(X1, X3, X5), qualification(X2, X5, X4).
 % qualification(X1, X2, X3) :-
@@ -55,7 +55,7 @@ grammar :-
 %     when(X2, X4), value(X1, X4, X3).
 % qualifier(where(X1), X2, X3) :-
 %     where(X2, X4), is_a(X1, X4, X3).
-% 
+%
 % leftparen(X1, X2) :- '='(X1, ['(' | X2]).
 % rightparen(X1, X2) :- '='(X1, [')' | X2]).
 % leftbracket(X1, X2) :- '='(X1, ['[' | X2]).
@@ -89,24 +89,24 @@ grammar :-
 % built_in(X1, nomatch, X2).
 % bracketted(X1, nomatch, X2).
 % common_function(X1, nomatch, X2).
-% 
+%
 % The partial deduction query
-% 
+%
 % :- expression(n, [], String, []).
-% 
+%
 % The run-time queries
-% 
+%
 % :- expression( n, [], ['(', '(', '(', '(', n, ')', ')', ')', ')'], [] ).
-% 
+%
 % Example solution
-% 
+%
 % The following specialised program can be obtained by the ECCE partial
 % deduction system. It runs more than 7 times faster than the original.
-% 
+%
 % expression__1(X1) :- value__3(X1, []).
-% 
+%
 % value__3(nomatch, X1).
 % value__3([n | X1], X1).
 % value__3(['(' | X1], X2) :- value__3(X1, [')' | X2]).
-% 
+%
 % Michael Leuschel / K.U. Leuven / michael@cs.kuleuven.ac.be

@@ -1,10 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% 
+%
 % The "contains.kmp" Benchmark.
 % Part of the DPPD Library.
-% 
+%
 % This is exactly the same benchmark as the Lam & Kusalik contains benchmark,
 % except that the run-time query is more challenging (in the sense that
 % a Knuth-Morris-Pratt like optimisation will pay off).

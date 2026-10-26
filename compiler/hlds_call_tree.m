@@ -554,7 +554,7 @@ add_caller_callees_to_digraph(CallerKey, [Callee | Callees], !Graph) :-
 %---------------------%
 
 :- pred record_pred_order(list(pred_callees)::in, int::in,
-    map(pred_id, int)::in, map(pred_id, int)::out) is det. 
+    map(pred_id, int)::in, map(pred_id, int)::out) is det.
 
 record_pred_order([], _, !PredOrderMap).
 record_pred_order([HeadPredCallee | TailPredCalles], CurNum, !PredOrderMap) :-

@@ -5,7 +5,7 @@
 % Program: Cryptarithmetic puzzle SENDMORY
 % Author:  Rong Yang (adapted)
 % Date:
-% 
+%
 % Notes:
 % 1. To run:
 %     ?- money(S, E, N, D, M, O, R, Y).
@@ -13,7 +13,7 @@
 %     as the ecuations are being resolved.
 % 3. After-checks are used and calc/5 ordering is better (L to R).
 %     compiled it takes about 50 sec.
-% 
+%
 :- module money.
 
 :- interface.

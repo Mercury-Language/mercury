@@ -1,10 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% 
+%
 % The "ex_depth" Benchmark
 % Part of the DPPD Library.
-% 
+%
 % A (more difficult) variation of the Lam & Kusalik depth benchmark
 % using a different meta-interpreter. It consists of a simple non-ground
 % meta-interpreter which has to be specialised for a (not
@@ -32,11 +32,11 @@ claus(test(A, L1, L2, Res),
         [inboth(A, L1, L2), delete(A, L1, D1), app(D1, L2, Res)]).
 
 % The partial deduction query
-% 
+%
 % :- solve([inboth(X, Y, Z)], 0, Depth).
-% 
+%
 % The run-time queries
-% 
+%
 % :- solve([inboth(d, [a, b, c, d, e, f, d], [f, e, d, c, b, a])], 0, Depth).
 % :- solve([inboth(a, [a, b, c, d, e, f, d], [f, e, d, c, b, a])], 0, Depth).
 % :- solve([inboth(d, [], [f, e, d, c, b, a])], 0, Depth).
@@ -49,21 +49,21 @@ claus(test(A, L1, L2, Res),
 %                     [a, b, c, d, e, f, d, e, g, h, i, l, m, n])], 0, Depth).
 % :- solve([inboth(X, [a, b, c, d, e, f, d, e, g, h, i, l, m, n],
 %                     [a, b, c, d, e, f, d, e, g, h, i, l, m, n])], 0, Depth).
-% 
+%
 % Example solution
-% 
+%
 % With the ECCE partial deduction system one can obtain the following
 % (which runs 3 times faster than the original, slightly faster versions
 % can also be obtained):
-% 
+%
 % solve__1(X1, [X1 | X2], X3, X4) :-
 %     solve__2(X1, X3, s(s(0)), X4).
 % solve__1(X1, [X2 | X3], X4, X5) :-
 %     solve__2(X1, X3, s(s(0)), X6),
 %     solve__2(X1, X4, X6, X5).
-% 
+%
 % solve__2(X1, [X1 | X2], X3, s(X3)).
 % solve__2(X1, [X2 | X3], X4, X5) :-
 %     solve__2(X1, X3, s(X4), X5).
-% 
+%
 % Michael Leuschel / K.U. Leuven / michael@cs.kuleuven.ac.be

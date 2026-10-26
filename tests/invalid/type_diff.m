@@ -102,7 +102,7 @@ p2(HO, A, B, Z) :-
     %
     % Right now, we also don't generate error messages that specify exact
     % differences for the lines marked NO_HO_INST. The reason is that
-    % the types of the higher-order arguments in the expect_* predicates below 
+    % the types of the higher-order arguments in the expect_* predicates below
     % don't contain higher-order inst information, which means that
     % typecheck_errors.m cannot diagnose errors in the higher-order inst
     % information of the actual argument in that position.

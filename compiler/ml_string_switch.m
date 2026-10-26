@@ -517,7 +517,7 @@ ml_convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
         expect(unify(NumRevMatchedCodeUnits, NumMatched), $pred,
             "NumRevMatchedCodeUnits != NumMatched"),
 
-        chase_any_stick_in_trie(TrieNode, ChoicePairs, 
+        chase_any_stick_in_trie(TrieNode, ChoicePairs,
             StickCodeUnits, TrieNodeAfterStick),
         (
             StickCodeUnits = [_, _ | _],

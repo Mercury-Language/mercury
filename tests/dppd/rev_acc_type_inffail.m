@@ -4,7 +4,7 @@
 
 % The "rev_acc_type.inffail" Benchmark.
 % Part of the DPPD Library.
-% 
+%
 % This benchmark has an infinite determinate failure at run-time, and
 % thus might cause difficulties to some partial deduction systems.
 
@@ -18,11 +18,11 @@ is_list([_H | _T]) :-
     is_list(_T).
 
 % The partial deduction query
-% 
+%
 % :- rev(L, [], a).
-% 
+%
 % The run-time queries
-% 
+%
 % :- rev([], [], a).
 % :- rev([a], [], a).
 % :- rev([a, b, c, d, e, f, g], [], a).
@@ -43,9 +43,9 @@ is_list([_H | _T]) :-
 %     u, v, w, x, y, z,
 %     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 %     21, 22, 23, 24, 25, 26, 27, 28, 29, 30], [], a).
-% 
+%
 % Example solution
-% 
+%
 % to be inserted
-% 
+%
 % Michael Leuschel / K.U. Leuven / michael@cs.kuleuven.ac.be

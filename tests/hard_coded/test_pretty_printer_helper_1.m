@@ -182,7 +182,7 @@ run_test_case(LineWidths, MaxLines, Limits, MaybePrintDoc, TestCase, !IO) :-
     ),
     run_test_case_loop_1(Doc, LineWidths, MaxLines, Limits, !IO).
 
-:- pred run_test_case_loop_1(doc::in, list(int)::in, list(int)::in,   
+:- pred run_test_case_loop_1(doc::in, list(int)::in, list(int)::in,
     list(func_symbol_limit)::in, io::di, io::uo) is det.
 
 run_test_case_loop_1(_Doc, [], _MaxLines, _Limits, !IO).
@@ -190,7 +190,7 @@ run_test_case_loop_1(Doc, [LineWidth | LineWidths], MaxLines, Limits, !IO) :-
     run_test_case_loop_2(Doc, LineWidth, MaxLines, Limits, !IO),
     run_test_case_loop_1(Doc, LineWidths, MaxLines, Limits, !IO).
 
-:- pred run_test_case_loop_2(doc::in, int::in, list(int)::in,   
+:- pred run_test_case_loop_2(doc::in, int::in, list(int)::in,
     list(func_symbol_limit)::in, io::di, io::uo) is det.
 
 run_test_case_loop_2(_Doc, _LineWidth, [], _Limits, !IO).
@@ -198,7 +198,7 @@ run_test_case_loop_2(Doc, LineWidth, [MaxLine | MaxLines], Limits, !IO) :-
     run_test_case_loop_3(Doc, LineWidth, MaxLine, Limits, !IO),
     run_test_case_loop_2(Doc, LineWidth, MaxLines, Limits, !IO).
 
-:- pred run_test_case_loop_3(doc::in, int::in, int::in,   
+:- pred run_test_case_loop_3(doc::in, int::in, int::in,
     list(func_symbol_limit)::in, io::di, io::uo) is det.
 
 run_test_case_loop_3(_Doc, _LineWidth, _MaxLines, [], !IO).

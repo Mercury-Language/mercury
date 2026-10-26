@@ -12,7 +12,7 @@
 
 :- module sub.
 % :- interface.
-% 
+%
 % :- type t2
 %     --->    t2.
 :- end_module sub.

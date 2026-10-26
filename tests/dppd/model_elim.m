@@ -4,7 +4,7 @@
 %
 % The "model_elim.app" Benchmark
 % Part of the DPPD Library.
-% 
+%
 % This benchmark uses the Poole-Goebel model elimination theorem prover
 % used by Andre de Waal and John Gallager. The FOL object theory for
 % this particular benchmark represents the append program. The program
@@ -58,18 +58,18 @@ input_clause(testp2, axiom,
     [pos(p(X)), pos(q(a)), pos(q(b))]).
 
 % The partial deduction query
-% 
+%
 % :- solve(neg(app(X, Y, Z)), []).
-% 
+%
 % The run-time queries
-% 
+%
 % :- solve(neg(app([a, b], [c, d], L)), []).
 % :- solve(neg(app([a, b, c, d, e, f, g, h, i, k, l, m, n, o, p],
 %                     [q, r, s, t, u, v, w, x, y, z], L)), []).
 % :- solve(neg(app(X, Y, [a, b, c, d])), []).
-% 
+%
 % Example solution
-% 
+%
 % to be inserted
-% 
+%
 % Michael Leuschel / K.U. Leuven / michael@cs.kuleuven.ac.be

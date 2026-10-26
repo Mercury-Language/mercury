@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000, 2005, 2012 The University of Melbourne.
-% Copyright (C) 2018, 2025 The Mercury team.
+% Copyright (C) 2018, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -34,14 +34,14 @@
 logged_output.init(FileName, Result, !IO) :-
     create_stream(FileName, Stream, !IO),
     Result = ok(Stream).
-    
+
 %---------------------------------------------------------------------------%
 
 :- pred create_stream(string::in, io.output_stream::out, io::di, io::uo)
     is det.
 
 :- pragma foreign_proc("C",
-    create_stream(FileName::in, IOStream::out, _IO0::di, _IO::uo), 
+    create_stream(FileName::in, IOStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     MercuryFile *stream;
@@ -105,7 +105,7 @@ ME_logged_output_close(MR_StreamInfo *info)
 {
     return fclose(info->file);
 }
-  
+
 int
 ME_logged_output_vfprintf(MR_StreamInfo *info, const char *format, va_list ap)
 {
@@ -127,22 +127,22 @@ ME_logged_output_vfprintf(MR_StreamInfo *info, const char *format, va_list ap)
 int
 ME_logged_output_write(MR_StreamInfo *info, const void *buffer, size_t size)
 {
-    int rc;                                
+    int rc;
     fwrite(buffer, sizeof(unsigned char), size, stdout);
     rc = fwrite(buffer, sizeof(unsigned char), size, info->file);
     return (rc < size ? -1 : rc);
 }
-  
+
 /*
 ** We are creating an output stream so none of these functions will ever
 ** be called.
 */
 int
-ME_logged_output_getch(MR_StreamInfo *info) 
+ME_logged_output_getch(MR_StreamInfo *info)
 {
     MR_fatal_error(""ME_logged_output_getch"");
 }
-      
+
 int
 ME_logged_output_ungetch(MR_StreamInfo *info, int ch)
 {
@@ -155,10 +155,10 @@ ME_logged_output_flush(MR_StreamInfo *info)
     fflush(stdout);
     return fflush(info->file);
 }
-  
+
 int
 ME_logged_output_read(MR_StreamInfo *info, void *buffer, size_t size)
-{ 
+{
     MR_fatal_error(""ME_logged_output_read"");
 }
 ").

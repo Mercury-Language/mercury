@@ -110,7 +110,7 @@ main(!IO) :-
                           f0_b(flag_set, blue, peach),
                           f0_b(flag_set, blue, peach),
                           f0_b(flag_set, blue, peach),
- 
+
                           f0_b(flag_set, blue, peach),
                           f0_b(flag_set, blue, peach),
                           f0_b(flag_set, blue, peach),
@@ -133,7 +133,7 @@ main(!IO) :-
                           f0_c(green, orange, flag_clear),
                           f0_c(green, orange, flag_clear),
                           f0_c(green, orange, flag_clear),
- 
+
                           f0_c(green, orange, flag_clear),
                           f0_c(green, orange, flag_clear),
                           f0_c(green, orange, flag_clear),

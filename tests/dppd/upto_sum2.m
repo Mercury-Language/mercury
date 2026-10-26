@@ -4,7 +4,7 @@
 %
 % The "upto.sum2" Benchmark.
 % Part of the DPPD Library.
-% 
+%
 % This is a sophisticated deforestation example coming from the
 % functional programming community. It was handed over to me by Jesper
 % Jorgensen, who adapted it from Wadler's paper Deforestation:
@@ -37,11 +37,11 @@ upto_sum2 :-
     use(X3).
 
 % The partial deduction query
-% 
+%
 % :- sumtrsquaretr(N, S).
-% 
+%
 % The run-time queries
-% 
+%
 % :- sumtrsquaretr(branch(leaf(3), leaf(2)), X).
 % :- sumtrsquaretr(branch(branch(branch(leaf(1), leaf(2)),
 %     branch(leaf(3), leaf(9))), branch(leaf(3),
@@ -50,9 +50,9 @@ upto_sum2 :-
 %     branch(leaf(3), branch(branch(leaf(3), leaf(4)), leaf(6)))),
 %     branch(branch(leaf(2), branch(leaf(2), leaf(5))),
 %     branch(branch(leaf(10), leaf(9)), branch(leaf(6), leaf(6))))), X).
-% 
+%
 % Example solution
-% 
+%
 % to be inserted
-% 
+%
 % Michael Leuschel / K.U. Leuven / michael@cs.kuleuven.ac.be

@@ -576,7 +576,7 @@ estimate_cost_of_case_test(TaggedCase) = Cost - TaggedCase :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_if_then_else_chain_cases(maybe_cheaper_tag_test::in,
-    rval::in, mer_type::in, string::in, list(tagged_case)::in, 
+    rval::in, mer_type::in, string::in, list(tagged_case)::in,
     code_model::in, can_fail::in, hlds_goal_info::in,
     position_info::in, label::in, branch_end::in, branch_end::out,
     llds_code::out, code_info::in, code_info::out) is det.

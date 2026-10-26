@@ -555,7 +555,7 @@ add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap) :-
 % instantiated term.
 %
 
-:- pred delay_partial_inst_in_deconstruct(delay_partial_inst_info::in, 
+:- pred delay_partial_inst_in_deconstruct(delay_partial_inst_info::in,
     hlds_goal::in, unify_mode::in, unification::in(unification_deconstruct),
     hlds_goal::out, construct_map::in, construct_map::out) is det.
 

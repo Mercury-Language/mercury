@@ -12,16 +12,16 @@
 %
 % To reproduce compile with:
 %
-%   $ mmc -C --grade asm_fast.gc.debug 
+%   $ mmc -C --grade asm_fast.gc.debug
 %
 % (This test case is derived from g12/zinc/compiler/flatzinc_colgen_solver.m
 % in r4693 of G12.)
 %
 %---------------------------------------------------------------------------%
-% 
+%
 % The compiler crashed when compiling the call to crash_location (pred_id 2)
 % in the body of crash (pred_id 0).
-% 
+%
 % The crash came when the compiler is trying to record the type of
 % SpSolversRep_9 in the RTTI. It was trying to record this because
 % SpSolversRep_9 is a named variable. Even though it is not live after
@@ -29,29 +29,29 @@
 % when he/she stops the program execution somewhere iside the call tree
 % of the call. This is why the delay_death pass of liveness.m prolongs
 % the life of SpSolversRep_9 beyond the call.
-% 
+%
 % SpSolversRep_9's type is tree234(int, Solver_1), so the compiler needs
 % to know where the type_info for the type represented by type variable
 % Solver_1 is.
-% 
+%
 % The rtti varmaps records it as being in slot 1 of the typeclass_info
 % variable V_20, which is indeed its location.
-% 
+%
 % The problem was that V_20 is the post-death set of the call, and since
 % calls are atomic goals, the variables in the post-death set are deleted
 % from the code generator state BEFORE we generate code for the call.
 % (This is done to avoid the storing them on the stack across the call.)
-% 
+%
 % There were two reasons why V_20 died in the post-death set of the call,
 % and not into the post-death set of the switch.
-% 
+%
 % First, FCBackend is nonlocal to the switch, and thus it dies in the
 % post-death set of the switch. However, while V_20 is needed to describe
 % the type of the ARGUMENTS of FCBackend, it is not needed to describe
 % the type of FCBackend itself, since that type is just flatzinc_colgen_solver.
 % Therefore the initial_deadness predicate in liveness.m does NOT believe
 % that V_20 is needed outside the switch.
-% 
+%
 % Second, the delay_death pass of liveness.m COULD have delayed the death
 % of V_20, moving it from the post-death set of the call to the post-death
 % set of the switch, but it didn't, because V_20 did not have a name.
@@ -65,11 +65,11 @@
 % (V_20) was later unified with the original named variable (which was
 % TypeClassInfo_for_flatzinc_solver_14). The typeclass info needed to describe
 % the type of SpSolversRep_9 was thus available in both
-% 
+%
 % - a named variable (TypeClassInfo_for_flatzinc_solver_14) that was local
 %   to the switch arm, and
 % - an unnamed variable (V_20) that was visible outside (before) the switch,
-% 
+%
 % but it was not recorded as being in a NAMED variable that was visible OUTSIDE
 % the switch. Without the second condition being fulfilled, the delay_death
 % pass COULD not delay the death of V_20, and without the first, it CHOSE
@@ -81,7 +81,7 @@
 % would have a smaller impact on the size and speed of the generate code,
 % but would probably confuse debugger users being presented with those
 % unnamed variables.
-% 
+%
 % The better fix is to have cse_detection copy the names (if any) of the
 % field variables containing type_infos and typeclass_infos from the original
 % deconstruction unification in the first switch arm it processes
@@ -110,12 +110,12 @@
 :- type dummy
     --->    dummy.
 
-:- type flatzinc_colgen_solver 
+:- type flatzinc_colgen_solver
     --->    some [Solver, Var]
             flatzinc_colgen_solver(
                 fcb_colgen_dw_solver :: dummy,
                 fcb_sp_solvers       :: map(int, Solver)
-            ) => ( flatzinc_solver(Solver, Var) ).               
+            ) => ( flatzinc_solver(Solver, Var) ).
 
 :- type flatzinc_colgen_var
     --->    colgen_var(int)
@@ -139,7 +139,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type sp_solver_instance 
+:- type sp_solver_instance
     --->    some [Solver, Var]
             sp_solver_instance(
                 spsi_solver   :: Solver,

@@ -47,7 +47,7 @@
 %
 % The fix was change the code that pushes types into bound insts
 % to copy the module qualifier from the type constructor (which is required to
-% be module qualified) into the bound insts (which are *not* required to 
+% be module qualified) into the bound insts (which are *not* required to
 % be module qualified). This eliminates the mismatch.
 %
 %---------------------------------------------------------------------------%

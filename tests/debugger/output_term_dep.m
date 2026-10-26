@@ -92,7 +92,7 @@ test3(!IO) :-
     r(4, Z),
     io.write_line(Z, !IO).
 
-:- pred r(int::in, int::out) is det. 
+:- pred r(int::in, int::out) is det.
 
 r(N, P) :-
     ( if N = 1 then

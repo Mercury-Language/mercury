@@ -1,12 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2003, 2005-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014, 2018 The Mercury team.
+% Copyright (C) 1997-2000,2002-2003, 2005-2006, The University of Melbourne.
+% Copyright (C) 2010-2011 The University of Melbourne.
+% Copyright (C) 2014, 2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: tr_store.m. 
+% File: tr_store.m.
 % Main author: fjh.
 % Stability: medium.
 %
@@ -60,7 +61,7 @@
 % references
 %
 
-    % new_ref(Val, Ref):    
+    % new_ref(Val, Ref):
     %   /* In C: Ref = malloc(...); *Ref = Val; */
     % Given a value of any type `T', insert a copy of the term
     % into the store and return a new reference to that term.
@@ -79,7 +80,7 @@
 :- pred ref_functor(generic_ref(T, S)::in, string::out, int::out,
     store(S)::mdi, store(S)::muo) is det.
 
-    % arg_ref(Ref, ArgNum, ArgRef):      
+    % arg_ref(Ref, ArgNum, ArgRef):
     %   /* Psuedo-C code: ArgRef = &Ref[ArgNum]; */
     % Given a reference to a term, return a reference to
     % the specified argument (field) of that term
@@ -102,7 +103,7 @@
 
     % set_ref(Ref, ValueRef):
     %   /* Pseudo-C code: *Ref = *ValueRef; */
-    % Given a reference to a term (Ref), 
+    % Given a reference to a term (Ref),
     % a reference to another term (ValueRef),
     % update the store so that the term referred to by Ref
     % is replaced with the term referenced by ValueRef.

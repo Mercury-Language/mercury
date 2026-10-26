@@ -6,7 +6,7 @@
 % Part of the DPPD Library.
 %
 % General Description:
-% 
+%
 % This is a benchmark developed by Thomas Horvath. It can be fully unfolded
 % and contains no builtins or negations.
 
@@ -34,19 +34,19 @@ advisor :-
     % what_to_do_today_may(nice, wash_your_car).
 
 % The partial deduction query
-% 
+%
 % :- what_to_do_today(first_of_may, _weather, _program).
-% 
+%
 % The renamed run-time queries
-% 
+%
 % :- what_to_do_today__1(sunny, _program).
 % :- what_to_do_today__1(_wheather, enjoy_yourself_at_home).
 % :- what_to_do_today__1(foggy, _program).
 % :- what_to_do_today__1(_wheather, wash_your_car).
 % :- what_to_do_today__1(nice, wash_your_car)
-% 
+%
 % Example solution
-% 
+%
 % what_to_do_today__1(sunny, go_out_to_the_nature).
 % what_to_do_today__1(sunny, visit_the_golf_club).
 % what_to_do_today__1(sunny, wash_your_car).
@@ -63,5 +63,5 @@ advisor :-
 % what_to_do_today__1(windy, visit_the_bridge_club).
 % what_to_do_today__1(windy, enjoy_yourself_at_home).
 % what_to_do_today__1(windy, it_is_fun_to_learn_Japanese).
-% 
+%
 % Michael Leuschel / K.U. Leuven / michael@cs.kuleuven.ac.be

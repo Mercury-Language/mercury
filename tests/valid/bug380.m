@@ -5,7 +5,7 @@
 % The bug was that mercury_string.h was #included in the generated C file
 % only if the module being compiled imported the string module, but
 % despite this, the compiler could generate references to macros
-% defined in that file. 
+% defined in that file.
 %
 %---------------------------------------------------------------------------%
 

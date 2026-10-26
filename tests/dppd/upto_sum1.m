@@ -4,7 +4,7 @@
 %
 % The "upto.sum1" Benchmark.
 % Part of the DPPD Library.
-% 
+%
 % This is a sophisticated deforestation example coming from the
 % functional programming community. It was handed over to me by Jesper
 % Jorgensen, who adapted it from Wadler's paper Deforestation:
@@ -33,18 +33,18 @@ upto_sum1 :-
     use(X4).
 
 % The partial deduction query
-% 
+%
 % :- sumsquaresupto(N, S).
-% 
+%
 % The run-time queries
-% 
+%
 % :- sumsquaresupto(5, X).
 % :- sumsquaresupto(15, X).
 % :- sumsquaresupto(25, X).
 % :- sumsquaresupto(30, X).
-% 
+%
 % Example solution
-% 
+%
 % to be inserted
-% 
+%
 % Michael Leuschel / K.U. Leuven / michael@cs.kuleuven.ac.be

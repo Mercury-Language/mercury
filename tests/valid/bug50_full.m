@@ -44,7 +44,7 @@
 :- type colgen_dw_var
     --->    colgen_dw_var.
 
-:- type flatzinc_colgen_solver 
+:- type flatzinc_colgen_solver
     --->    some [Solver, Var]
             flatzinc_colgen_solver(
                 fcb_colgen_dw_solver :: colgen_dw_solver,
@@ -56,7 +56,7 @@
                                              })),
                 fcb_colgen_var_map   :: bt_ref(map(flatzinc_colgen_var,
                                             colgen_dw_var))
-            ) => ( flatzinc_solver(Solver, Var) ).               
+            ) => ( flatzinc_solver(Solver, Var) ).
 
 :- type flatzinc_colgen_var
     --->    colgen_var(int)
@@ -99,7 +99,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type sp_solver_instance 
+:- type sp_solver_instance
     --->    some[Solver, Var]
             sp_solver_instance(
                 spsi_solver   :: Solver,
@@ -158,7 +158,7 @@ new_float_var_wrapper(MaybeLo, MaybeHi, Solver, Anns, Var) :-
         {Solver, maybe(int), map(flatzinc_colgen_var, Var),
         map(int, flatzinc_colgen_var)}))::in,
     int::in, string::in, flatzinc_type::in,
-    solver_annotations(flatzinc_colgen_var)::ia, 
+    solver_annotations(flatzinc_colgen_var)::ia,
     pred(Solver, solver_annotations(Var), Var)::in(pred(in, ia, oa) is det),
     flatzinc_colgen_var::oa) is det <= flatzinc_solver(Solver, Var).
 

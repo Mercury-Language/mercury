@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % The following program tests whether the presence of a require_switch_arms_X
-% scope can get the compiler to recognize the switch inside the scope as 
+% scope can get the compiler to recognize the switch inside the scope as
 % being an incomplete switch on the named variable, even though it could
 % also recognize it as a *complete* switch on another variable.
 %

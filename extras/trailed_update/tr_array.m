@@ -1,17 +1,18 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999, 2002, 2005-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 1993-1995, 1997, 1999, 2002 The University of Melbourne.
+% Copyright (C) 2005-2006, 2010-2011 The University of Melbourne.
+% Copyright (C) 2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: tr_array.m.
 % Main authors: fjh.
 % Stability: medium.
-% 
+%
 % This module provides backtrackable destructive update operations on arrays.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -28,7 +29,7 @@
 %
 
     % set sets the nth element of an array, and returns the
-    % resulting array (good opportunity for destructive update ;-).  
+    % resulting array (good opportunity for destructive update ;-).
     % It is an error if the index is out of bounds.
     %
 :- pred set(int::in, T::in,
@@ -65,14 +66,14 @@
 
     % size returns the length of the array,
     % i.e. upper bound - lower bound + 1.
-    % 
+    %
 :- pred size(array(_T), int).
 :- mode size(array_mui, out) is det.
 %:- mode size(in, out) is det.
 
     % bounds returns the upper and lower bounds of an array.
     % Note: in this implementation, the lower bound is always zero.
-    % 
+    %
 :- pred bounds(array(_T), int, int).
 :- mode bounds(array_mui, out, out) is det.
 %:- mode bounds(in, out, out) is det.
@@ -88,7 +89,7 @@
 
     % lookup returns the Nth element of an array.
     % It is an error if the index is out of bounds.
-    % 
+    %
 :- pred lookup(array(T), int, T).
 :- mode lookup(array_mui, in, out) is det.
 %:- mode lookup(in, in, out) is det.
@@ -105,7 +106,7 @@
     % required to be unique, so the implementation may not be able to use
     % destructive update.
     % It is an error if the index is out of bounds.
-    % 
+    %
 :- pred slow_set(array(T), int, T, array(T)).
 :- mode slow_set(array_mui, in, in, array_uo) is det.
 %:- mode slow_set(in, in, in, array_uo) is det.
@@ -115,14 +116,14 @@
     % required to be unique, so the implementation may not be able to use
     % destructive update.
     % It fails if the index is out of bounds.
-    % 
+    %
 :- pred semidet_slow_set(array(T), int, T, array(T)).
 :- mode semidet_slow_set(array_mui, in, in, array_uo) is semidet.
 %:- mode semidet_slow_set(in, in, in, array_uo) is semidet.
 
     % copy(Array0, Array):
     % Makes a new unique copy of an array.
-    % 
+    %
 :- pred copy(array(T), array(T)).
 :- mode copy(array_mui, array_uo) is det.
 %:- mode copy(in, array_uo) is det.
@@ -131,7 +132,7 @@
     % The array is expanded or shrunk to make it fit
     % the new size `Size'.  Any new entries are filled
     % with `Init'.
-    % 
+    %
 :- pred resize(array(T), int, T, array(T)).
 :- mode resize(array_mui, in, in, array_uo) is det.
 %:- mode resize(in, in, in, array_uo) is det.
@@ -156,7 +157,7 @@
     % index, and places those items in the array between these
     % indices into a list.  It is an error if either index is
     % out of bounds.
-    % 
+    %
 :- pred fetch_items(array(T), int, int, list(T)).
 :- mode fetch_items(array_mui, in, in, out) is det.
 %:- mode fetch_items(in, in, in, out) is det.
@@ -507,11 +508,11 @@ bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
             Mid = (Lo + Hi) >> 1,   % `>> 1' is hand-optimized `div 2'.
             tr_array.lookup(Array, Mid, XMid),
             Compare(XMid, El, Comp),
-            ( 
+            (
                 Comp = (<),
                 Mid1 = Mid + 1,
                 tr_array.bsearch_2(Array, Mid1, Hi, El, Compare, Result)
-            ; 
+            ;
                 Comp = (=),
                 tr_array.bsearch_2(Array, Lo, Mid, El, Compare, Result)
             ;
