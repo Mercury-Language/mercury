@@ -22,4 +22,3 @@ bar(f1(X, _), X).
 :- func f1(T, T) = foo(T) <= baz(T).
 
 f1(_, _) = f2.
-
