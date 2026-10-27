@@ -884,6 +884,7 @@ MR_setup_redzones(MR_MemoryZone *zone)
     size_t      redsize;
     int         res;
     char        errbuf[MR_STRERROR_BUF_SIZE];
+    MR_bool     protected_last_page = MR_FALSE;
 
     size = zone->MR_zone_desired_size;
     redsize = zone->MR_zone_redzone_size;
@@ -895,7 +896,6 @@ MR_setup_redzones(MR_MemoryZone *zone)
 #endif
 
     // Setup the redzone.
-
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
     MR_configure_redzone_size(zone, redsize);
 
@@ -912,16 +912,20 @@ MR_setup_redzones(MR_MemoryZone *zone)
             zone->MR_zone_bottom, zone->MR_zone_redzone,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
+    protected_last_page = MR_TRUE;
 #endif // MR_CHECK_OVERFLOW_VIA_MPROTECT
 
     // Setup the hardzone.
-
 #if defined(MR_PROTECTPAGE)
     // The % MR_page_size is to ensure page alignment.
     zone->MR_zone_hardmax = (MR_Word *)((MR_Unsigned) zone->MR_zone_top -
             MR_page_size - ((MR_Unsigned) zone->MR_zone_top % MR_page_size));
-    res = MR_protect_pages((char *) zone->MR_zone_hardmax, MR_page_size,
-        REDZONE_PROT);
+    if (protected_last_page) {
+        res = 0;
+    } else {
+        res = MR_protect_pages((char *) zone->MR_zone_hardmax, MR_page_size,
+            REDZONE_PROT);
+    }
     if (res < 0) {
         if (zone->MR_zone_name == NULL) {
             zone->MR_zone_name = "unknown";
