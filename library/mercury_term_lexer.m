@@ -542,8 +542,7 @@ io_get_token(Stream, ScannedPastWhiteSpace, Token, Context, !IO) :-
 % of the instruction cache.
 % :- pragma inline(string_get_token/7).
 
-string_get_token(String, Len, ScannedPastWhiteSpace,
-        Token, Context, !Posn) :-
+string_get_token(String, Len, ScannedPastWhiteSpace, Token, Context, !Posn) :-
     Posn0 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if
