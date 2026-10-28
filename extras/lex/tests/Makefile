@@ -29,4 +29,5 @@ all: test_regex
 
 check: test_regex
 	./test_regex < test_regex.in > test_regex.res
-	diff -u test_regex.exp test_regex.res && echo "Passed" || echo "Failed"
+	diff -u test_regex.exp test_regex.res
+	echo "Passed"
