@@ -64,9 +64,6 @@
   static void           simple_sighandler(int);
 #endif
 
-// round_up(amount, align) returns `amount' rounded up to the nearest
-// alignment boundary. `align' must be a power of 2.
-
 static  void    MR_print_dump_stack(void);
 static  MR_bool MR_try_munprotect(void *address, void *context);
 static  char    *MR_explain_context(void *context);
