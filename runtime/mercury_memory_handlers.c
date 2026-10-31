@@ -314,6 +314,10 @@ complex_bushandler(int sig, siginfo_t *info, void *context)
             "caught strange bus error ***\n", 1);
     }
 
+    // XXX on macOS we should call MR_try_munprotect here since
+    // the kernel on that OS may generate a SIGBUS signal for
+    // writes to a protected area.
+
     fprintf(stderr, "\n*** Mercury runtime: ");
     fprintf(stderr, "caught bus error ***\n");
 
