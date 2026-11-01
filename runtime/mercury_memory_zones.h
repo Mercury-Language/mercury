@@ -52,12 +52,12 @@ typedef MR_bool     MR_ZoneHandler(MR_Word *addr, MR_MemoryZone *zone,
 //          zones with smaller tokens.
 //
 // desired_size
-//          The desired size of the zone in kilobytes. The actual size
-//          may be larger due to roundups.
+//          The desired size of the zone in bytes.
+//          The actual size may be larger due to roundups.
 //
 // redzone_size
-//          The desired size of the redzone in kilobytes. The actual size
-//          may be larger due to roundups.
+//          The desired size of the redzone in bytes.
+//          The actual size may be larger due to roundups.
 //
 // bottom   The address of the bottom of the allocated area
 //          (should be on a page boundary).
