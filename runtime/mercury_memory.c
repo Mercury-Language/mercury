@@ -229,7 +229,7 @@ MR_init_memory(void)
     }
 #endif
 
-    if (MR_stack_margin_size_words >= (sizeof(MR_Word) * MR_detstack_size)) {
+    if ((MR_stack_margin_size_words * sizeof(MR_Word)) >= MR_detstack_size) {
         MR_fatal_error("MR_init_memory: stack margin size far too big");
     }
 
