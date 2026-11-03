@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2000,2002, 2004, 2006, 2008 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2025 The Mercury Team.
+// Copyright (C) 2014-2016, 2018, 2025-2026 The Mercury Team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_memory.h:
@@ -43,7 +43,7 @@
 
 #define MR_kilobytes_to_bytes_and_round_up(var)                         \
     do {                                                                \
-        var = MR_round_up(var * 1024, MR_unit);                         \
+        var = MR_round_up(var * 1024, MR_unit_bytes);                   \
     } while (0)
 
 // For these functions, see the comments in mercury_memory.c and
@@ -365,11 +365,12 @@ extern char *MR_copy_string(const char *s);
 
 ////////////////////////////////////////////////////////////////////////////
 
-// `MR_unit' is the size of the minimum unit of memory we allocate (in bytes).
-// `MR_page_size' is the size of a single page of memory (in bytes).
+// `MR_unit_bytes' is the size of the minimum unit of memory we
+// allocate (in bytes).
+// `MR_page_size_bytes' is the size of a single page of memory (in bytes).
 
-extern  size_t          MR_unit;
-extern  size_t          MR_page_size;
+extern  size_t          MR_unit_bytes;
+extern  size_t          MR_page_size_bytes;
 
 ////////////////////////////////////////////////////////////////////////////
 

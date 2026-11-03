@@ -172,7 +172,7 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
     size_t  zone_size;
 
     new_zone = (MR_Word *) MR_round_up((MR_Unsigned) fault_addr
-        + sizeof(MR_Word), MR_unit);
+        + sizeof(MR_Word), MR_unit_bytes);
 
     if (new_zone <= zone->MR_zone_hardmax) {
         zone_size = (char *) new_zone - (char *) zone->MR_zone_redzone;

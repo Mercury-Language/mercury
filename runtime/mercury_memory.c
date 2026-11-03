@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2000,2002-2004, 2006, 2008, 2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2025 The Mercury Team.
+// Copyright (C) 2014-2016, 2018, 2025-2026 The Mercury Team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines the register array and data regions of the
@@ -107,8 +107,8 @@
   MR_MemoryZone *MR_pnegstack_zone;
 #endif
 
-size_t      MR_unit;
-size_t      MR_page_size;
+size_t      MR_unit_bytes;
+size_t      MR_page_size_bytes;
 
 void
 MR_init_memory(void)
@@ -125,8 +125,9 @@ MR_init_memory(void)
     // (a) they are multiples of the page size, and (b) at least as big
     // as the cache size.
 
-    MR_page_size = getpagesize();
-    MR_unit = MR_round_up(MR_max(MR_page_size, MR_pcache_size), MR_page_size);
+    MR_page_size_bytes = getpagesize();
+    MR_unit_bytes = MR_round_up(
+        MR_max(MR_page_size_bytes, MR_pcache_size), MR_page_size_bytes);
 
 #ifdef MR_CONSERVATIVE_GC
     MR_heap_size                = 0;
@@ -201,30 +202,30 @@ MR_init_memory(void)
 
 #ifndef MR_CONSERVATIVE_GC
     if (MR_heap_zone_size >= MR_heap_size) {
-        MR_heap_zone_size = MR_unit;
+        MR_heap_zone_size = MR_unit_bytes;
     }
     if (MR_solutions_heap_zone_size >= MR_solutions_heap_size) {
-        MR_solutions_heap_zone_size = MR_unit;
+        MR_solutions_heap_zone_size = MR_unit_bytes;
     }
     if (MR_global_heap_zone_size >= MR_global_heap_size) {
-        MR_global_heap_zone_size = MR_unit;
+        MR_global_heap_zone_size = MR_unit_bytes;
     }
     if (MR_heap_margin_size >= MR_heap_size) {
-        MR_heap_margin_size = MR_unit;
+        MR_heap_margin_size = MR_unit_bytes;
     }
 #endif
 
     if (MR_detstack_zone_size >= MR_detstack_size) {
-        MR_detstack_zone_size = MR_unit;
+        MR_detstack_zone_size = MR_unit_bytes;
     }
 
     if (MR_nondetstack_zone_size >= MR_nondetstack_size) {
-        MR_nondetstack_zone_size = MR_unit;
+        MR_nondetstack_zone_size = MR_unit_bytes;
     }
 
 #ifdef MR_USE_TRAIL
     if (MR_trail_zone_size >= MR_trail_size) {
-        MR_trail_zone_size = MR_unit;
+        MR_trail_zone_size = MR_unit_bytes;
     }
 #endif
 

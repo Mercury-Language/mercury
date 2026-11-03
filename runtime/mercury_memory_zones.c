@@ -143,11 +143,11 @@ MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
     // the alignment of Boehm GC allocations. In other cases, allocate enough
     // extra space to align the address to a page boundary. The alignment is
     // required for memory protection, which works in terms of pages.
-    if (MR_page_size == 4096) {
+    if (MR_page_size_bytes == 4096) {
         alloc_size = size;
     } else {
-        assert(size <= SIZE_MAX - (MR_page_size - 1));
-        alloc_size = size + MR_page_size - 1;
+        assert(size <= SIZE_MAX - (MR_page_size_bytes - 1));
+        alloc_size = size + MR_page_size_bytes - 1;
     }
 
     alloc_ptr = GC_MALLOC_UNCOLLECTABLE(alloc_size);
@@ -158,14 +158,14 @@ MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
     }
 
     addr = (uintptr_t) alloc_ptr;
-    if (MR_page_size == 4096) {
-        assert(addr % MR_page_size == 0);
+    if (MR_page_size_bytes == 4096) {
+        assert(addr % MR_page_size_bytes == 0);
     } else {
-        assert(addr <= UINTPTR_MAX - (MR_page_size - 1));
-        addr = MR_round_up(addr, MR_page_size);
+        assert(addr <= UINTPTR_MAX - (MR_page_size_bytes - 1));
+        addr = MR_round_up(addr, MR_page_size_bytes);
     }
 
-    assert(addr % MR_page_size == 0);
+    assert(addr % MR_page_size_bytes == 0);
     assert(addr >= (uintptr_t) alloc_ptr);
     assert(addr - (uintptr_t) alloc_ptr <= alloc_size - size);
 
@@ -212,7 +212,7 @@ MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
     void    *ptr;
     int     res;
 
-    res = posix_memalign(&ptr, MR_unit, size);
+    res = posix_memalign(&ptr, MR_unit_bytes, size);
     if (res != 0) {
         *base_alloc = NULL;
         *base_aligned = NULL;
@@ -235,7 +235,7 @@ MR_realloc_zone_memory(
     void    *ptr;
     int     res;
 
-    res = posix_memalign(&ptr, MR_unit, new_size);
+    res = posix_memalign(&ptr, MR_unit_bytes, new_size);
     if (res != 0) {
         *new_base_alloc = NULL;
         *new_base_aligned = NULL;
@@ -263,7 +263,7 @@ MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
 {
     void    *ptr;
 
-    ptr = memalign(MR_unit, size);
+    ptr = memalign(MR_unit_bytes, size);
     if (ptr == NULL) {
         *base_alloc = NULL;
         *base_aligned = NULL;
@@ -285,7 +285,7 @@ MR_realloc_zone_memory(
 {
     void    *ptr;
 
-    ptr = memalign(MR_unit, new_size);
+    ptr = memalign(MR_unit_bytes, new_size);
     if (ptr == NULL) {
         *new_base_alloc = NULL;
         *new_base_aligned = NULL;
@@ -529,7 +529,7 @@ MR_free_zone(MR_MemoryZone *zone)
 
     redsize = zone->MR_zone_redzone_size;
     res = MR_protect_pages((char *) zone->MR_zone_redzone,
-        redsize + MR_page_size, NORMAL_PROT);
+        redsize + MR_page_size_bytes, NORMAL_PROT);
     if (res) {
         MR_fatal_error(
             "Could not unprotect memory pages in MR_free_zone: %s",
@@ -691,14 +691,14 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
     // The redzone must be page aligned and its size must be a multiple of
     // the page size.
 
-    redzone_size = MR_round_up(redzone_size, MR_page_size);
+    redzone_size = MR_round_up(redzone_size, MR_page_size_bytes);
     // Include an extra page size for the hardzone.
 
-    total_size = desired_size + redzone_size + MR_page_size;
+    total_size = desired_size + redzone_size + MR_page_size_bytes;
     // The total size must also be rounded to a page boundary, so that it can
     // be allocated from mmap if we are using accurate GC.
 
-    total_size = MR_round_up(total_size, MR_page_size);
+    total_size = MR_round_up(total_size, MR_page_size_bytes);
 
 #ifdef MR_PROFILE_ZONES
     MR_LOCK(&memory_zones_stats_lock, "MR_create_new_zone");
@@ -777,9 +777,9 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     // We should fix this in the future.
 
 #ifdef  MR_PROTECTPAGE
-    new_total_size = new_size + 2 * MR_unit;
+    new_total_size = new_size + 2 * MR_unit_bytes;
 #else
-    new_total_size = new_size + MR_unit;
+    new_total_size = new_size + MR_unit_bytes;
 #endif
 
     old_base_alloc = zone->MR_zone_bottom_alloc;
@@ -861,7 +861,7 @@ MR_configure_redzone_size(MR_MemoryZone *zone, size_t redsize)
 
     zone->MR_zone_redzone = (MR_Word *)
         MR_round_up((MR_Unsigned) zone->MR_zone_bottom + size - redsize,
-            MR_page_size);
+            MR_page_size_bytes);
     zone->MR_zone_redzone_base = zone->MR_zone_redzone;
 
     // When using small memory zones, the offset given by MR_next_offset()
@@ -900,7 +900,7 @@ MR_setup_redzones(MR_MemoryZone *zone)
     MR_configure_redzone_size(zone, redsize);
 
     res = MR_protect_pages((char *) zone->MR_zone_redzone,
-        redsize + MR_page_size, REDZONE_PROT);
+        redsize + MR_page_size_bytes, REDZONE_PROT);
     if (res < 0) {
         if (zone->MR_zone_name == NULL) {
             zone->MR_zone_name = "unknown";
@@ -917,13 +917,13 @@ MR_setup_redzones(MR_MemoryZone *zone)
 
     // Setup the hardzone.
 #if defined(MR_PROTECTPAGE)
-    // The % MR_page_size is to ensure page alignment.
+    // The % MR_page_size_bytes is to ensure page alignment.
     zone->MR_zone_hardmax = (MR_Word *)((MR_Unsigned) zone->MR_zone_top -
-            MR_page_size - ((MR_Unsigned) zone->MR_zone_top % MR_page_size));
+            MR_page_size_bytes - ((MR_Unsigned) zone->MR_zone_top % MR_page_size_bytes));
     if (protected_last_page) {
         res = 0;
     } else {
-        res = MR_protect_pages((char *) zone->MR_zone_hardmax, MR_page_size,
+        res = MR_protect_pages((char *) zone->MR_zone_hardmax, MR_page_size_bytes,
             REDZONE_PROT);
     }
     if (res < 0) {
@@ -1088,9 +1088,9 @@ static MR_bool          MR_should_stop_gc_memory_zones(void);
 // 4 zones per thread
 #define MR_FREE_MEMORY_ZONES_NUM_LOW    (4*THREAD_COUNT)
 // 16MB per thread
-#define MR_FREE_MEMORY_ZONES_PAGES_HIGH (((16*1024*1024)/MR_page_size)*THREAD_COUNT)
+#define MR_FREE_MEMORY_ZONES_PAGES_HIGH (((16*1024*1024)/MR_page_size_bytes)*THREAD_COUNT)
 // 4MB per thread
-#define MR_FREE_MEMORY_ZONES_PAGES_LOW  (((4*1024*1024)/MR_page_size)*THREAD_COUNT)
+#define MR_FREE_MEMORY_ZONES_PAGES_LOW  (((4*1024*1024)/MR_page_size_bytes)*THREAD_COUNT)
 
 static MR_MemoryZonesFree * MR_THREADSAFE_VOLATILE free_memory_zones = NULL;
 
@@ -1183,7 +1183,7 @@ MR_get_free_zone(size_t size)
 
     if (zone != NULL) {
         free_memory_zones_num--;
-        free_memory_zones_pages -= get_zone_alloc_size(zone) / MR_page_size;
+        free_memory_zones_pages -= get_zone_alloc_size(zone) / MR_page_size_bytes;
     }
 
     MR_UNLOCK(&memory_zones_lock, "MR_get_free_zone");
@@ -1208,7 +1208,7 @@ MR_return_zone_to_free_list(MR_MemoryZone *zone)
     MR_LOCK(&memory_zones_lock, "MR_return_zone_to_free_list");
 
     free_memory_zones_num++;
-    free_memory_zones_pages += size / MR_page_size;
+    free_memory_zones_pages += size / MR_page_size_bytes;
 
     zone->MR_zone_lru_token = lru_memory_zone_token++;
 
@@ -1390,7 +1390,7 @@ MR_gc_zones(void)
         }
 
         free_memory_zones_num--;
-        free_memory_zones_pages -= get_zone_alloc_size(zone) / MR_page_size;
+        free_memory_zones_pages -= get_zone_alloc_size(zone) / MR_page_size_bytes;
         MR_free_zone(zone);
 
         // Clear the LRU information.
@@ -1415,12 +1415,12 @@ MR_debug_memory(FILE *fp)
     fprintf(fp, "\n");
     fprintf(fp, "pcache_size  = %zu (0x%zx)\n", MR_pcache_size,
         MR_pcache_size);
-    fprintf(fp, "page_size    = %zu (0x%zx)\n", MR_page_size, MR_page_size);
-    fprintf(fp, "unit         = %zu (0x%zx)\n", MR_unit, MR_unit);
+    fprintf(fp, "page_size    = %zu (0x%zx)\n", MR_page_size_bytes, MR_page_size_bytes);
+    fprintf(fp, "unit         = %zu (0x%zx)\n", MR_unit_bytes, MR_unit_bytes);
 
     fprintf(fp, "\n");
     fprintf(fp, "fake_reg       = %p (offset %" MR_INTEGER_LENGTH_MODIFIER "d)\n",
-        (void *) MR_fake_reg, (MR_Integer) MR_fake_reg & (MR_unit-1));
+        (void *) MR_fake_reg, (MR_Integer) MR_fake_reg & (MR_unit_bytes-1));
     fprintf(fp, "\n");
 
     MR_LOCK(&memory_zones_lock, "MR_debug_memory");
