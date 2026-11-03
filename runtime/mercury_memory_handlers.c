@@ -101,7 +101,7 @@ MR_try_munprotect(void *addr, void *context)
   #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
         if (MR_memdebug) {
             fprintf(stderr, "checking %s#%" MR_INTEGER_LENGTH_MODIFIER
-                    "d: %p - %p\n",
+                    "u: %p - %p\n",
                 zone->MR_zone_name, zone->MR_zone_id,
                 (void *) zone->MR_zone_redzone,
                 (void *) zone->MR_zone_top);
@@ -111,8 +111,8 @@ MR_try_munprotect(void *addr, void *context)
             && fault_addr <= zone->MR_zone_top)
         {
             if (MR_memdebug) {
-                fprintf(stderr, "address is in %s#% "
-                        MR_INTEGER_LENGTH_MODIFIER "d redzone\n",
+                fprintf(stderr, "address is in %s#%"
+                        MR_INTEGER_LENGTH_MODIFIER "u redzone\n",
                     zone->MR_zone_name, zone->MR_zone_id);
             }
 
@@ -179,7 +179,7 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 
         if (MR_memdebug) {
             fprintf(stderr, "trying to unprotect %s#%"
-                MR_INTEGER_LENGTH_MODIFIER "d from %p to %p (%x)\n",
+                MR_INTEGER_LENGTH_MODIFIER "u from %p to %p (%x)\n",
             zone->MR_zone_name, zone->MR_zone_id,
             (void *) zone->MR_zone_redzone, (void *) new_zone,
             (int) zone_size);
@@ -189,7 +189,7 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
         {
             char buf[2560];
             sprintf(buf, "Mercury runtime: cannot unprotect %s#%"
-                    MR_INTEGER_LENGTH_MODIFIER "d zone",
+                    MR_INTEGER_LENGTH_MODIFIER "u zone",
                 zone->MR_zone_name, zone->MR_zone_id);
             perror(buf);
             exit(1);
@@ -199,7 +199,7 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 
         if (MR_memdebug) {
             fprintf(stderr, "successful: %s#%" MR_INTEGER_LENGTH_MODIFIER
-                    "d redzone now %p to %p\n",
+                    "u redzone now %p to %p\n",
                 zone->MR_zone_name, zone->MR_zone_id,
                 (void *) zone->MR_zone_redzone, (void *) zone->MR_zone_top);
         }
@@ -213,7 +213,7 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
         char buf[2560];
         if (MR_memdebug) {
             fprintf(stderr, "can't unprotect last page of %s#%"
-                    MR_INTEGER_LENGTH_MODIFIER "d\n",
+                    MR_INTEGER_LENGTH_MODIFIER "u\n",
                 zone->MR_zone_name, zone->MR_zone_id);
             fflush(stdout);
         }
@@ -223,7 +223,7 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
         MR_debug_memory_zone(stderr, zone);
 #endif
         sprintf(buf, "\nMercury runtime: memory zone %s#%"
-                MR_INTEGER_LENGTH_MODIFIER "d overflowed\n",
+                MR_INTEGER_LENGTH_MODIFIER "u overflowed\n",
             zone->MR_zone_name, zone->MR_zone_id);
         MR_fatal_abort(context, buf, MR_TRUE);
     }
@@ -603,7 +603,7 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
             while (zone != NULL) {
                 fprintf(stderr,
                     "\n***    Checking zone %s#%"
-                    MR_INTEGER_LENGTH_MODIFIER "d: "
+                    MR_INTEGER_LENGTH_MODIFIER "u: "
                     "0x%08" MR_INTEGER_LENGTH_MODIFIER "x - "
                     "0x%08" MR_INTEGER_LENGTH_MODIFIER "x - "
                     "0x%08" MR_INTEGER_LENGTH_MODIFIER "x",
@@ -618,13 +618,13 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
                     fprintf(stderr,
                         "\n***     Address is within redzone of "
                         "%s#%" MR_INTEGER_LENGTH_MODIFIER
-                        "d (!!zone overflowed!!)\n",
+                        "u (!!zone overflowed!!)\n",
                         zone->MR_zone_name, zone->MR_zone_id);
                 } else if ((zone->MR_zone_bottom <= address) &&
                         (address <= zone->MR_zone_top))
                 {
                     fprintf(stderr, "\n***     Address is"
-                        " within zone %s#%" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                        " within zone %s#%" MR_INTEGER_LENGTH_MODIFIER "u\n",
                         zone->MR_zone_name, zone->MR_zone_id);
                 }
                 // Don't need to call handler, because it

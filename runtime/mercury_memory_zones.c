@@ -1433,38 +1433,38 @@ MR_debug_memory(FILE *fp)
 void
 MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone)
 {
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-dessize   = %zu\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-dessize   = %zu\n",
         zone->MR_zone_name, zone->MR_zone_id,
         zone->MR_zone_desired_size);
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-base  = %p\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-base  = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_bottom);
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-min       = %p\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-min       = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_min);
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-top       = %p\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-top       = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_top);
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-end       = %p\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-end       = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_end);
 #ifdef  MR_CHECK_OVERFLOW_VIA_MPROTECT
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-redsize   = %zu\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-redsize   = %zu\n",
         zone->MR_zone_name, zone->MR_zone_id,
         zone->MR_zone_redzone_size);
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-redzone   = %p\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-redzone   = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_redzone);
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-redzone_base  = %p\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-redzone_base  = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_redzone_base);
 #endif  // MR_CHECK_OVERFLOW_VIA_MPROTECT
 #ifdef  MR_PROTECTPAGE
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-hardmax       = %p\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-hardmax       = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_hardmax);
 #endif
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-size      = %zu\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "u-size      = %zu\n",
         zone->MR_zone_name, zone->MR_zone_id,
         get_zone_alloc_size(zone));
     fprintf(fp, "\n");
