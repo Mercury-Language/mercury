@@ -127,7 +127,7 @@ MR_init_memory(void)
 
     MR_page_size_bytes = getpagesize();
     MR_unit_bytes = MR_round_up(
-        MR_max(MR_page_size_bytes, MR_pcache_size), MR_page_size_bytes);
+        MR_max(MR_page_size_bytes, MR_pcache_size_bytes), MR_page_size_bytes);
 
 #ifdef MR_CONSERVATIVE_GC
     MR_heap_size                = 0;

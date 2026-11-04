@@ -285,7 +285,7 @@ extern MR_bool              MR_mdb_benchmark_silent;
 extern MR_bool              MR_force_readline;
 
 // Size of the primary cache.
-extern size_t               MR_pcache_size;
+extern size_t               MR_pcache_size_bytes;
 
 // Low level debugging.
 extern MR_bool              MR_check_space;

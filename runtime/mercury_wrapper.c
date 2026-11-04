@@ -191,7 +191,7 @@ double      MR_heap_expansion_factor = 2.0;
 size_t      MR_stack_margin_size_words = 32;
 
 // Primary cache size to optimize for, in bytes.
-size_t      MR_pcache_size = 8192;
+size_t      MR_pcache_size_bytes = 8192;
 
 // Limits on the number of contexts we can create for parallel execution.
 // These allow 64MB of det stacks regardless of which grade is being used.
@@ -2113,7 +2113,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_pcache_size = size * 1024;
+                MR_pcache_size_bytes = size * 1024;
                 break;
 
             case 'd':

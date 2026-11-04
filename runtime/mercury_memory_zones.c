@@ -494,12 +494,12 @@ MR_init_offsets(void)
     offset_vector = MR_GC_NEW_ARRAY_ATTRIB(size_t, CACHE_SLICES - 1,
         MR_ALLOC_SITE_RUNTIME);
 
-    fake_reg_offset = (MR_Unsigned) MR_fake_reg % MR_pcache_size;
+    fake_reg_offset = (MR_Unsigned) MR_fake_reg % MR_pcache_size_bytes;
 
     for (int i = 0; i < CACHE_SLICES - 1; i++) {
         offset_vector[i] =
-            (fake_reg_offset + MR_pcache_size * i / CACHE_SLICES)
-            % MR_pcache_size;
+            (fake_reg_offset + MR_pcache_size_bytes * i / CACHE_SLICES)
+            % MR_pcache_size_bytes;
     }
 }
 
@@ -1413,8 +1413,8 @@ MR_debug_memory(FILE *fp)
     MR_MemoryZone   *zone;
 
     fprintf(fp, "\n");
-    fprintf(fp, "pcache_size  = %zu (0x%zx)\n", MR_pcache_size,
-        MR_pcache_size);
+    fprintf(fp, "pcache_size  = %zu (0x%zx)\n", MR_pcache_size_bytes,
+        MR_pcache_size_bytes);
     fprintf(fp, "page_size    = %zu (0x%zx)\n", MR_page_size_bytes, MR_page_size_bytes);
     fprintf(fp, "unit         = %zu (0x%zx)\n", MR_unit_bytes, MR_unit_bytes);
 
