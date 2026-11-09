@@ -7,7 +7,7 @@
 #-----------------------------------------------------------------------------#
 #
 # This Makefile just invokes `mmake' to do the real work.
-# Standard targets include `all', `install', and `clean'.
+# Standard targets include `all', `install', `target', and `clean'.
 #
 # If you want to do a parallel make, invoke make as
 #	make PARALLEL=-j2
@@ -32,6 +32,18 @@ all:
 .PHONY: install
 install:
 	$(MMAKE) MMAKEFLAGS=$(PARALLEL) DESTDIR=$(DESTDIR) install
+
+# `make target' builds and installs Mercury below the `target'
+# subdirectory of this source tree. No root required.
+# Override TARGET_DIR to install elsewhere.
+# e.g. `make target TARGET_DIR=$HOME/mercury'.
+
+TARGET_DIR=	$(CURDIR)/target
+
+.PHONY: target
+target:
+	sh configure --prefix=$(TARGET_DIR)
+	$(MMAKE) MMAKEFLAGS=$(PARALLEL) install
 
 # `mmake clean' has a different meaning to the usual GNU standard `make clean':
 # it removes the .c files, which makes bootstrapping impossible unless you
