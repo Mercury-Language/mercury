@@ -563,7 +563,7 @@
 %---------------------------------------------------------------------------%
 %
 % Utility predicates that are a bit more complicated than
-% a simple getter or setter predicates.
+% a simple getter/setter predicate.
 %
 
 :- pred module_info_get_pred_id_table(module_info::in,
