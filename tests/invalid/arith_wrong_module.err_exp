@@ -6,7 +6,8 @@ arith_wrong_module.m:022:     [38;5;203muint32,[39;49m
 arith_wrong_module.m:022:   [38;5;87mfunctor `+'/2[39;49m has type
 arith_wrong_module.m:022:     [38;5;40m`+'(int, int): int.[39;49m
 arith_wrong_module.m:022:   Note that operations on values of type `uint32' are
-arith_wrong_module.m:022:   available only if module [38;5;226m`uint32' is imported.[39;49m
+arith_wrong_module.m:022:   available only if [38;5;226mmodule `uint32' is imported,[39;49m but
+arith_wrong_module.m:022:   [38;5;203mit is not.[39;49m
 arith_wrong_module.m:025: In clause for predicate `test_pred'/3:
 arith_wrong_module.m:025:   in call to predicate `int.pow'/3:
 arith_wrong_module.m:025:   in argument 1:
@@ -24,9 +25,9 @@ arith_wrong_module.m:025:     [38;5;87mvariable `C'[39;49m has type
 arith_wrong_module.m:025:       [38;5;203mint16,[39;49m
 arith_wrong_module.m:025:     expected type was
 arith_wrong_module.m:025:       [38;5;40mint.[39;49m
-arith_wrong_module.m:025:   Note that operations on values of types `int16'
-arith_wrong_module.m:025:   `uint16' are available only if modules [38;5;226m`int16'[39;49m and
-arith_wrong_module.m:025:   [38;5;226m`uint16' are imported.[39;49m
+arith_wrong_module.m:025:   Note that operations on values of types `int16' and
+arith_wrong_module.m:025:   `uint16' are available only if [38;5;226mmodules `int16' and[39;49m
+arith_wrong_module.m:025:   [38;5;226m`uint16' are imported,[39;49m but [38;5;203mthey are not.[39;49m
 arith_wrong_module.m:028: In clause for predicate `game_loop'/4:
 arith_wrong_module.m:028:   in unification of [38;5;87mvariable `Diff'[39;49m
 arith_wrong_module.m:028:   and term [38;5;87m`(End - Start)':[39;49m
@@ -40,5 +41,17 @@ arith_wrong_module.m:028:     [38;5;203mint64,[39;49m
 arith_wrong_module.m:028:   expected type was
 arith_wrong_module.m:028:     [38;5;40mint.[39;49m
 arith_wrong_module.m:028:   Note that operations on values of type `int64' are
-arith_wrong_module.m:028:   available only if module [38;5;226m`int64' is imported.[39;49m
+arith_wrong_module.m:028:   available only if [38;5;226mmodule `int64' is imported,[39;49m but
+arith_wrong_module.m:028:   [38;5;203mit is not.[39;49m
+arith_wrong_module.m:034: In clause for predicate `inc64'/2:
+arith_wrong_module.m:034:   type error in unification of argument 2 of functor
+arith_wrong_module.m:034:   `+/2'
+arith_wrong_module.m:034:   and constant `42i64'.
+arith_wrong_module.m:034:   [38;5;87mArgument 2 of functor `+/2'[39;49m has type
+arith_wrong_module.m:034:     [38;5;203mint,[39;49m
+arith_wrong_module.m:034:   [38;5;87mconstant `42i64'[39;49m has type
+arith_wrong_module.m:034:     [38;5;40mint64.[39;49m
+arith_wrong_module.m:034:   Note that operations on values of type `int64' are
+arith_wrong_module.m:034:   available only if [38;5;226mmodule `int64' is imported,[39;49m but
+arith_wrong_module.m:034:   [38;5;203mit is not.[39;49m
 For more information, recompile with `-E'.

@@ -188,17 +188,17 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
         Var, ConsDefnList, Functor, Arity, TypeAssignSet) = Spec :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    UnifyContext = unify_context(MainContext, BottomUpSubContexts),
     ( if varset.search_name(VarSet, Var, _) then
         unify_context_to_pieces(UnifyContext, _LastContextWord,
             InClauseForPieces, ContextPieces),
         VarName = mercury_var_to_name_only_vs(VarSet, Var),
         VarDescPieces = [words("variable"), quote(VarName)]
     else
-        UnifyContext = unify_context(MainContext, BottomUpSubContexts),
         ( if
             BottomUpSubContexts = [BottomSubContext | NonBottomSubContexts],
-            BottomSubContext = unify_sub_context(ConsId, _ArgNum),
-            not cons_id_may_be_list_cons(ConsId),
+            BottomSubContext = unify_sub_context(BottomConsId, _BottomArgNum),
+            not cons_id_may_be_list_cons(BottomConsId),
             UnifyContextToUse =
                 unify_context(MainContext, NonBottomSubContexts),
             unify_context_to_pieces(UnifyContextToUse, LastContextWord,
@@ -264,7 +264,18 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
         NoSuffixIntegerPieces = []
     ),
 
-    ( if is_int_func_op(Functor) then
+    ( if
+        % Is the type error report about ...
+        (
+            % ... a call to an arithmetic-or-similar operation for integers ...
+            is_int_func_op(Functor)
+        ;
+            % ... or for an argument of such a function?
+            BottomUpSubContexts = [NearContext | _],
+            NearContext = unify_sub_context(NearConsId, _NearArgNum),
+            is_int_func_op(NearConsId)
+        )
+    then
         acc_builtin_types_of_var(TypeAssignSet, Var, set.init, BuiltinTypes0),
         acc_builtin_types_in_cons_type_infos(ConsDefnList,
             BuiltinTypes0, BuiltinTypes),

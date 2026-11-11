@@ -237,22 +237,23 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
         (
             TailInvisIntTypePieces = [],
             Pieces = [words("Note that operations on values of type"),
-                HeadInvisIntTypePiece, words("are available"),
-                words("only if module")] ++
-                color_as_hint([HeadInvisIntTypePiece,
-                    words("is imported.")]) ++
-                [nl]
+                HeadInvisIntTypePiece, words("are available only if")] ++
+                color_as_hint([words("module"), HeadInvisIntTypePiece,
+                    words("is imported,")]) ++
+                [words("but")] ++
+                color_as_incorrect([words("it is not.")]) ++ [nl]
         ;
             TailInvisIntTypePieces = [_ | _],
             InvisIntTypePieces =
                 [HeadInvisIntTypePiece | TailInvisIntTypePieces],
-            InvisIntTypeListAreImportedtPieces =
-                piece_list_to_color_pieces(color_hint, "and",
-                    [words("are imported.")], InvisIntTypePieces),
-            Pieces = [words("Note that operations on values of types") |
-                InvisIntTypePieces] ++ [words("are available"),
-                words("only if modules")] ++
-                InvisIntTypeListAreImportedtPieces ++ [nl]
+            InvisIntTypesPieces =
+                piece_list_to_pieces("and", InvisIntTypePieces),
+            Pieces = [words("Note that operations on values of types")] ++
+                InvisIntTypesPieces ++ [words("are available only if")] ++
+                color_as_hint([words("modules")] ++ InvisIntTypesPieces ++
+                    [words("are imported,")]) ++
+                [words("but")] ++
+                color_as_incorrect([words("they are not.")]) ++ [nl]
         )
     else
         Pieces = []

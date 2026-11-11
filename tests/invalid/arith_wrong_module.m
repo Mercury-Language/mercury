@@ -5,12 +5,12 @@
 :- module arith_wrong_module.
 
 :- interface.
-
 :- import_module io.
 
 :- pred test_func(uint32::in, uint32::in, uint32::out) is det.
 :- pred test_pred(int16::in, uint16::in, int16::out) is det.
 :- pred game_loop(int64::in, int64::in, io::di, io::uo) is det.
+:- pred inc64(int::in, int::out) is det.
 
 :- implementation.
 
@@ -29,3 +29,6 @@ game_loop(Start, End, !IO) :-
     io.stdout_stream(StdOut, !IO),
     io.format(StdOut, "start: %di, end: %i, diff: %i\n",
         [i64(Start), i64(End), i64(Diff)], !IO).
+
+inc64(In, Out) :-
+    Out = In + 42i64.

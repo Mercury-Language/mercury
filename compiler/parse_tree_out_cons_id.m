@@ -293,7 +293,8 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, StripQual,
         String = "{}/" ++ string.int_to_string(Arity)
     ;
         ConsId = some_int_const(IntConst),
-        int_const_to_string_and_suffix(IntConst, String, _Suffix)
+        int_const_to_string_and_suffix(IntConst, BaseString, Suffix),
+        String = BaseString ++ Suffix
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)
