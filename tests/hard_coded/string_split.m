@@ -87,7 +87,7 @@ split_into_line_tests = [
     "a\r\n",
 
     % Mercury backslash escapes
-    "\a\b\e\f\t\v\n",
+    "\a\b\f\t\v\n",
 
     % Other code points that are treated as line breaks
     % in various contexts, but not by split_into_lines/1.
