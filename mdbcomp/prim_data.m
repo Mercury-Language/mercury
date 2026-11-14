@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2020, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2020, 2023-2024, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -20,7 +20,7 @@
 :- import_module mdbcomp.sym_name.
 
     % This enumeration must be EXACTLY the same as the MR_PredFunc enum
-    % in runtime/mercury_stack_layout.h, and in the same order, since the
+    % in runtime/mercury_proc_id.h, and in the same order, since the
     % code (in browser) assumes the representation is the same.
     %
 :- type pred_or_func
@@ -65,7 +65,7 @@
 :- mode string_to_trace_port(in, out) is semidet.
 :- mode string_to_trace_port(out, in) is det.
 
-    % A proc_label is a data structure a backend can use to as the basis
+    % A proc_label is a data structure a backend can use as the basis
     % of the label used as the entry point of a procedure.
     %
     % The defining module is the module that provides the code for the
@@ -133,7 +133,7 @@
     %
 :- func get_special_pred_id_target_name(special_pred_id) = string.
 
-    % get_special_pred_id_name(SpecialPredId) = Arity:
+    % get_special_pred_id_arity(SpecialPredId) = Arity:
     %
     % The arity of the SpecialPredId predicate is Arity.
     %

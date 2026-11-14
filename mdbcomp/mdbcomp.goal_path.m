@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2022-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -33,8 +33,8 @@
 % being identified. (These are the kinds of goal paths you can see
 % on mdb events, for example.)
 %
-% A reverse goal path lists the steps from to the goal being identified
-% back to the root of the tree.
+% A reverse goal path lists the steps from the goal being identified back to
+% the root of the tree.
 %
 % HISTORY
 %
@@ -377,14 +377,14 @@
 :- func create_goal_id_array(goal_id, T) = goal_attr_array(T).
 :- mode create_goal_id_array(in, in) = gaa_uo is det.
 
-    % update_goal_attribute(GoalId, Attribute, !Array),
+    % update_goal_attribute(GoalId, Attribute, !Array):
     %
     % Make Attribute the new attribute for GoalId in !:Array.
     %
 :- pred update_goal_attribute(goal_id::in, T::in,
     goal_attr_array(T)::gaa_di, goal_attr_array(T)::gaa_uo) is det.
 
-    % get_goal_attribute(Array, GoalId) = Attribute.
+    % get_goal_attribute_det(Array, GoalId) = Attribute.
     %
     % Get a goal attribute.
     %
