@@ -438,7 +438,7 @@ extern MR_bool MR_escape_string_quote(MR_String *ptr, const char * string);
 // U+007f..U+009f.
 
 #define MR_is_control(c) \
-    ((0x00 <= (unsigned) (c) && (unsigned) (c) <= 0x1f) || \
+    (((unsigned) (c) <= 0x1f) || \
      (0x7f <= (unsigned) (c) && (unsigned) (c) <= 0x9f))
 
 // UTF-8 manipulation
