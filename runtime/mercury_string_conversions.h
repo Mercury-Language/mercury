@@ -3,7 +3,7 @@
 // Copyright (C) 2025-2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
-// mercury_string_conversion.h - macros for C code in library/string.m.
+// mercury_string_conversions.h - macros for C code in library/string.m.
 
 #ifndef MERCURY_STRING_CONVERSIONS_H
 #define MERCURY_STRING_CONVERSIONS_H
