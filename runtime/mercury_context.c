@@ -1037,15 +1037,15 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
         case MR_CONTEXT_SIZE_REGULAR:
             detstack_name  = "detstack";
             nondetstack_name = "nondetstack";
-            detstack_size  = MR_detstack_size;
-            nondetstack_size = MR_nondetstack_size;
+            detstack_size  = MR_detstack_size_bytes;
+            nondetstack_size = MR_nondetstack_size_bytes;
             break;
 #ifndef MR_STACK_SEGMENTS
         case MR_CONTEXT_SIZE_SMALL:
             detstack_name  = "small_detstack";
             nondetstack_name = "small_nondetstack";
-            detstack_size  = MR_small_detstack_size;
-            nondetstack_size = MR_small_nondetstack_size;
+            detstack_size  = MR_small_detstack_size_bytes;
+            nondetstack_size = MR_small_nondetstack_size_bytes;
             break;
 #endif
     }
@@ -1056,12 +1056,12 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     if (c->MR_ctxt_detstack_zone == NULL) {
         if (gen != NULL) {
             c->MR_ctxt_detstack_zone = MR_create_or_reuse_zone("gen_detstack",
-                    MR_gen_detstack_size, MR_next_offset(),
-                    MR_gen_detstack_zone_size, MR_default_handler);
+                    MR_gen_detstack_size_bytes, MR_next_offset(),
+                    MR_gen_detstack_zone_size_bytes, MR_default_handler);
         } else {
             c->MR_ctxt_detstack_zone = MR_create_or_reuse_zone(detstack_name,
                     detstack_size, MR_next_offset(),
-                    MR_detstack_zone_size, MR_default_handler);
+                    MR_detstack_zone_size_bytes, MR_default_handler);
         }
 
         if (c->MR_ctxt_prev_detstack_zones != NULL) {
@@ -1084,13 +1084,13 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
         if (gen != NULL) {
             c->MR_ctxt_nondetstack_zone =
                 MR_create_or_reuse_zone("gen_nondetstack",
-                    MR_gen_nondetstack_size, MR_next_offset(),
-                    MR_gen_nondetstack_zone_size, MR_default_handler);
+                    MR_gen_nondetstack_size_bytes, MR_next_offset(),
+                    MR_gen_nondetstack_zone_size_bytes, MR_default_handler);
         } else {
             c->MR_ctxt_nondetstack_zone =
                 MR_create_or_reuse_zone(nondetstack_name,
                     nondetstack_size, MR_next_offset(),
-                    MR_nondetstack_zone_size, MR_default_handler);
+                    MR_nondetstack_zone_size_bytes, MR_default_handler);
         }
 
         if (c->MR_ctxt_prev_nondetstack_zones != NULL) {
@@ -1129,22 +1129,22 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 
     if (c->MR_ctxt_genstack_zone == NULL) {
         c->MR_ctxt_genstack_zone = MR_create_or_reuse_zone("genstack",
-            MR_genstack_size, MR_next_offset(),
-            MR_genstack_zone_size, MR_default_handler);
+            MR_genstack_size_bytes, MR_next_offset(),
+            MR_genstack_zone_size_bytes, MR_default_handler);
     }
     c->MR_ctxt_gen_next = 0;
 
     if (c->MR_ctxt_cutstack_zone == NULL) {
         c->MR_ctxt_cutstack_zone = MR_create_or_reuse_zone("cutstack",
-            MR_cutstack_size, MR_next_offset(),
-            MR_cutstack_zone_size, MR_default_handler);
+            MR_cutstack_size_bytes, MR_next_offset(),
+            MR_cutstack_zone_size_bytes, MR_default_handler);
     }
     c->MR_ctxt_cut_next = 0;
 
     if (c->MR_ctxt_pnegstack_zone == NULL) {
         c->MR_ctxt_pnegstack_zone = MR_create_or_reuse_zone("pnegstack",
-            MR_pnegstack_size, MR_next_offset(),
-            MR_pnegstack_zone_size, MR_default_handler);
+            MR_pnegstack_size_bytes, MR_next_offset(),
+            MR_pnegstack_zone_size_bytes, MR_default_handler);
     }
     c->MR_ctxt_pneg_next = 0;
   #endif // MR_USE_MINIMAL_MODEL_STACK_COPY
@@ -1166,8 +1166,8 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 
     if (c->MR_ctxt_trail_zone == NULL) {
         c->MR_ctxt_trail_zone = MR_create_or_reuse_zone("trail",
-            MR_trail_size, MR_next_offset(),
-            MR_trail_zone_size, MR_default_handler);
+            MR_trail_size_bytes, MR_next_offset(),
+            MR_trail_zone_size_bytes, MR_default_handler);
     }
     c->MR_ctxt_trail_ptr =
         (MR_TrailEntry *) c->MR_ctxt_trail_zone->MR_zone_min;

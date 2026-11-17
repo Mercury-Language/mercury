@@ -195,37 +195,53 @@ extern char                 **mercury_argv;
 extern int                  mercury_exit_status;
 
 // Sizes of the data areas, *including* the red zone size.
-extern size_t               MR_heap_size;
-extern size_t               MR_detstack_size;
-extern size_t               MR_nondetstack_size;
-extern size_t               MR_small_detstack_size;
-extern size_t               MR_small_nondetstack_size;
-extern size_t               MR_solutions_heap_size;
-extern size_t               MR_trail_size;
-extern size_t               MR_global_heap_size;
-extern size_t               MR_debug_heap_size;
-extern size_t               MR_genstack_size;
-extern size_t               MR_cutstack_size;
-extern size_t               MR_pnegstack_size;
-extern size_t               MR_gen_detstack_size;
-extern size_t               MR_gen_nondetstack_size;
+
+// Sizes of data areas used for the det and nondet stacks.
+extern size_t               MR_detstack_size_bytes;
+extern size_t               MR_nondetstack_size_bytes;
+extern size_t               MR_small_detstack_size_bytes;
+extern size_t               MR_small_nondetstack_size_bytes;
+
+// Sizes of data areas used when *not* using conservative GC.
+extern size_t               MR_heap_size_bytes;
+extern size_t               MR_solutions_heap_size_bytes;
+extern size_t               MR_global_heap_size_bytes;
+extern size_t               MR_debug_heap_size_bytes;
+
+// Sizes of the data areas used by minimal model tabling.
+extern size_t               MR_genstack_size_bytes;
+extern size_t               MR_cutstack_size_bytes;
+extern size_t               MR_pnegstack_size_bytes;
+extern size_t               MR_gen_detstack_size_bytes;
+extern size_t               MR_gen_nondetstack_size_bytes;
+
+// Size of the data areas used by the trail.
+extern size_t               MR_trail_size_bytes;
 
 // Sizes of the red zones.
-extern size_t               MR_heap_zone_size;
-extern size_t               MR_detstack_zone_size;
-extern size_t               MR_nondetstack_zone_size;
-extern size_t               MR_solutions_heap_zone_size;
-extern size_t               MR_trail_zone_size;
-extern size_t               MR_global_heap_zone_size;
-extern size_t               MR_debug_heap_zone_size;
-extern size_t               MR_genstack_zone_size;
-extern size_t               MR_cutstack_zone_size;
-extern size_t               MR_pnegstack_zone_size;
-extern size_t               MR_gen_detstack_zone_size;
-extern size_t               MR_gen_nondetstack_zone_size;
+extern size_t               MR_detstack_zone_size_bytes;
+extern size_t               MR_nondetstack_zone_size_bytes;
+
+extern size_t               MR_heap_zone_size_bytes;
+extern size_t               MR_solutions_heap_zone_size_bytes;
+extern size_t               MR_global_heap_zone_size_bytes;
+extern size_t               MR_debug_heap_zone_size_bytes;
+
+extern size_t               MR_genstack_zone_size_bytes;
+extern size_t               MR_cutstack_zone_size_bytes;
+extern size_t               MR_pnegstack_zone_size_bytes;
+extern size_t               MR_gen_detstack_zone_size_bytes;
+extern size_t               MR_gen_nondetstack_zone_size_bytes;
+
+extern size_t               MR_trail_zone_size_bytes;
 
 // Heap margin for MLDS->C accurate GC (documented in mercury_wrapper.c).
-extern size_t               MR_heap_margin_size;
+extern size_t               MR_heap_margin_size_bytes;
+
+// Compute the sizes in bytes of the data areas above (including their
+// redzones) from the sizes given by the runtime options. This should
+// only be called by MR_init_memory().
+extern void                 MR_compute_data_area_sizes(void);
 
 // Heap expansion factor for accurate GC (see mercury_accurate_gc.c).
 extern double               MR_heap_expansion_factor;

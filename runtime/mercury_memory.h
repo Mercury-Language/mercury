@@ -36,16 +36,6 @@
 
 #define MR_round_up(amount, align)  ((((amount) - 1) | ((align) - 1)) + 1)
 
-// MR_kilobytes_to_bytes_and_round_up(var) takes an original value in var
-// which represents an memory size measured in kilobytes, and converts it to
-// a memory size measured in bytes, and then rounds it up to be the next
-// multiple of MR_unit.
-
-#define MR_kilobytes_to_bytes_and_round_up(var)                         \
-    do {                                                                \
-        var = MR_round_up(var * 1024, MR_unit_bytes);                   \
-    } while (0)
-
 // For this function see the comments in mercury_memory.c.
 
 extern  void    MR_init_memory(void);

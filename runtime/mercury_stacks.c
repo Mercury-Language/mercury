@@ -210,7 +210,7 @@ MR_new_detstack_segment(MR_Word *sp, int n)
 
     // We perform explicit overflow checks so redzones just waste space.
     new_zone = MR_create_or_reuse_zone("detstack_segment",
-        MR_detstack_size, 0, 0, MR_default_handler);
+        MR_detstack_size_bytes, 0, 0, MR_default_handler);
 
     list = MR_GC_malloc_uncollectable_attrib(sizeof(MR_MemoryZones),
         MR_ALLOC_SITE_RUNTIME);
@@ -337,7 +337,7 @@ MR_new_nondetstack_segment(MR_Word *maxfr, int incr)
         // would just waste space.
 
         new_cur_zone = MR_create_or_reuse_zone("nondetstack_segment",
-            MR_nondetstack_size, 0, 0, MR_default_handler);
+            MR_nondetstack_size_bytes, 0, 0, MR_default_handler);
     }
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS

@@ -217,8 +217,8 @@ MR_new_trail_segment(void)
 
     // We perform explicit overflow checks so redzones just waste space.
 
-    new_zone = MR_create_or_reuse_zone("trail_segment", MR_trail_size, 0,
-        0, MR_default_handler);
+    new_zone = MR_create_or_reuse_zone("trail_segment", MR_trail_size_bytes,
+        0, 0, MR_default_handler);
 
     list = MR_GC_malloc_uncollectable_attrib(sizeof(MR_MemoryZones),
         MR_ALLOC_SITE_RUNTIME);

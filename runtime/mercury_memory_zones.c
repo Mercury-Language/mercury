@@ -941,7 +941,7 @@ MR_setup_redzones(MR_MemoryZone *zone)
 
 #if defined(MR_NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
     zone->MR_zone_gc_threshold = (char *) zone->MR_zone_end
-        - MR_heap_margin_size;
+        - MR_heap_margin_size_bytes;
 #endif
 
 #if defined(MR_STACK_SEGMENTS) && !defined(MR_HIGHLEVEL_CODE)

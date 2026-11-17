@@ -64,6 +64,7 @@
 
 #include "mercury_trace_base.h"
 #include "mercury_memory_handlers.h"
+#include "mercury_wrapper.h" // For MR_compute_data_area_sizes().
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -121,118 +122,21 @@ MR_init_memory(void)
 
     already_initialized = MR_TRUE;
 
-    // Convert all the sizes from kilobytes to bytes and make sure
-    // (a) they are multiples of the page size, and (b) at least as big
-    // as the cache size.
+    // Compute MR_unit_bytes, the unit to which we round up the sizes of data
+    // areas, and then call MR_compute_data_area_sizes() to compute the
+    // "_bytes" version of each data area size. The comment on the data area
+    // size variables in mercury_wrapper.c describes the conversion and its
+    // exceptions.
 
     MR_page_size_bytes = getpagesize();
     MR_unit_bytes = MR_round_up(
         MR_max(MR_page_size_bytes, MR_pcache_size_bytes), MR_page_size_bytes);
 
-#ifdef MR_CONSERVATIVE_GC
-    MR_heap_size                = 0;
-    MR_heap_zone_size           = 0;
-    MR_solutions_heap_size      = 0;
-    MR_solutions_heap_zone_size = 0;
-    MR_global_heap_size         = 0;
-    MR_global_heap_zone_size    = 0;
-    MR_debug_heap_size          = 0;
-    MR_debug_heap_zone_size     = 0;
-    MR_heap_margin_size         = 0;
-#else
-    MR_kilobytes_to_bytes_and_round_up(MR_heap_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_heap_zone_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_solutions_heap_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_solutions_heap_zone_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_global_heap_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_global_heap_zone_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_debug_heap_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_debug_heap_zone_size);
-    // Note that there is no need for the heap margin to be rounded up.
-    MR_heap_margin_size  = MR_heap_margin_size * 1024;
-#endif
-    MR_kilobytes_to_bytes_and_round_up(MR_detstack_size);
-#ifndef MR_STACK_SEGMENTS
-    MR_kilobytes_to_bytes_and_round_up(MR_small_detstack_size);
-#endif
-    MR_kilobytes_to_bytes_and_round_up(MR_detstack_zone_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_nondetstack_size);
-#ifndef MR_STACK_SEGMENTS
-    MR_kilobytes_to_bytes_and_round_up(MR_small_nondetstack_size);
-#endif
-    MR_kilobytes_to_bytes_and_round_up(MR_nondetstack_zone_size);
-#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
-    MR_kilobytes_to_bytes_and_round_up(MR_genstack_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_genstack_zone_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_cutstack_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_cutstack_zone_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_pnegstack_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_pnegstack_zone_size);
-#else
-    MR_genstack_size       = 0;
-    MR_genstack_zone_size  = 0;
-    MR_cutstack_size       = 0;
-    MR_cutstack_zone_size  = 0;
-    MR_pnegstack_size      = 0;
-    MR_pnegstack_zone_size = 0;
-#endif
+    // Convert all the sizes from kilobytes to bytes and make sure
+    // (a) they are multiples of the page size, and
+    // (b) at least as big as the cache size.
 
-#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
-    MR_kilobytes_to_bytes_and_round_up(MR_gen_detstack_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_gen_nondetstack_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_gen_detstack_zone_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_gen_nondetstack_zone_size);
-#else
-    MR_gen_detstack_size         = 0;
-    MR_gen_nondetstack_size      = 0;
-    MR_gen_detstack_zone_size    = 0;
-    MR_gen_nondetstack_zone_size = 0;
-#endif
-
-#ifdef  MR_USE_TRAIL
-    MR_kilobytes_to_bytes_and_round_up(MR_trail_size);
-    MR_kilobytes_to_bytes_and_round_up(MR_trail_zone_size);
-#else
-    MR_trail_size        = 0;
-    MR_trail_zone_size   = 0;
-#endif
-
-    // If the zone sizes were set to something too big, then
-    // set them to a single unit.
-
-#ifndef MR_CONSERVATIVE_GC
-    if (MR_heap_zone_size >= MR_heap_size) {
-        MR_heap_zone_size = MR_unit_bytes;
-    }
-    if (MR_solutions_heap_zone_size >= MR_solutions_heap_size) {
-        MR_solutions_heap_zone_size = MR_unit_bytes;
-    }
-    if (MR_global_heap_zone_size >= MR_global_heap_size) {
-        MR_global_heap_zone_size = MR_unit_bytes;
-    }
-    if (MR_heap_margin_size >= MR_heap_size) {
-        MR_heap_margin_size = MR_unit_bytes;
-    }
-#endif
-
-    if (MR_detstack_zone_size >= MR_detstack_size) {
-        MR_detstack_zone_size = MR_unit_bytes;
-    }
-
-    if (MR_nondetstack_zone_size >= MR_nondetstack_size) {
-        MR_nondetstack_zone_size = MR_unit_bytes;
-    }
-
-#ifdef MR_USE_TRAIL
-    if (MR_trail_zone_size >= MR_trail_size) {
-        MR_trail_zone_size = MR_unit_bytes;
-    }
-#endif
-
-    if ((MR_stack_margin_size_words * sizeof(MR_Word)) >= MR_detstack_size) {
-        MR_fatal_error("MR_init_memory: stack margin size far too big");
-    }
-
+    MR_compute_data_area_sizes();
     MR_init_zones();
 
 } // end MR_init_memory()

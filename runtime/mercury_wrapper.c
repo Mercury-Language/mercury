@@ -63,14 +63,46 @@ ENDINIT
 
 // command-line options
 
-// Sizes of data areas (including redzones), in kilobytes
-// (but we later multiply by 1024 to convert to bytes, then make sure they are
-// at least as big as the primary cache size then round up to the page size).
+// Sizes of data areas (including redzones).
 //
-// XXX We should associate a *single* unit with each of these sizes, and
-// use that unit *consistently*; anything else is just asking for trouble.
-// To reduce the chances of trouble further, include the name of the unit
-// in the name of the variable.
+// The size of each data area is given by a pair of variables whose names
+// share the same prefix:
+//
+// * The variable with the suffix "_kilobytes" gives the size of the named
+//   data area in kilobytes. This variable is local to this module and its
+//   value is either a default (which may be grade-specific), or a value
+//   set by a runtime option which may be one of MERCURY_OPTIONS, its
+//   program-specific variant, or the runtime flags built into the program
+//   by mkinit.
+//
+// * The variable with the suffix "_bytes" gives the same size in bytes.
+//   It is zero until MR_compute_data_area_sizes() below computes it.
+//   Normally, MR_compute_data_area_sizes() multiplies the kilobyte value
+//   by 1024 and then rounds the result up to a multiple of MR_unit_bytes,
+//   which is the page size rounded up to a multiple of the page size that is
+//   at least as big as the primary cache size. The exceptions are:
+//
+//   - A size of zero (such as the redzone size of stack segments) stays zero.
+//
+//   - MR_heap_margin_size_bytes is converted to bytes, but not rounded.
+//     (XXX Why?)
+//
+//   - In conservative GC grades, all the heap-related sizes (the heaps,
+//     their redzones, and the heap margin) are set to zero, since the
+//     Boehm ccollector manages the heap.
+//
+//   - The sizes of data areas that the current grade does not use
+//     (the generator, cut and pneg stacks outside minimal model stack copy
+//     grades, the generator det and nondet stacks outside minimal model
+//     own stacks grades, and the trail outside trailing grades) are set
+//     to zero.
+//
+//   - If a redzone size is at least as big as the size of its data area,
+//     or the heap margin is at least as big as the heap, it is replaced
+//     by MR_unit_bytes. This applies to the heap, solutions heap,
+//     global heap, det stack, nondet stack and trail.
+//     (This part is done by MR_init_memory() in mercury_memory.c.)
+//     (XXX Again, why?)
 //
 // Note that it is OK to allocate a large heap, since we will only touch
 // the part of it that we use; we are really only allocating address space,
@@ -82,38 +114,57 @@ ENDINIT
 // will be twice the heap size specified here, since it is a two-space
 // collector.
 //
-// Changes to MR_heap_size, MR_detstack_size or MR_nondetstack_size should be
-// reflected in the user guide. Changes to MR_heap_size may also require
-// changing MR_heap_zone_size and/or the MR_heap_margin_size, which are
-// defined below.
+// Changes to MR_heap_size_kilobytes, MR_detstack_size_kilobytes or
+// MR_nondetstack_size_kilobytes should be reflected in the user guide.
+// Changes to MR_heap_size_kilobytes may also require changing
+// MR_heap_zone_size_kilobytes and/or the MR_heap_margin_size_kilobytes,
+// which are defined below.
 
 #ifdef MR_DEBUG_AGC_SMALL_HEAP
-  size_t    MR_heap_size =                13 * sizeof(MR_Word);
+  static size_t    MR_heap_size_kilobytes =    13 * sizeof(MR_Word);
 #else
-  size_t    MR_heap_size =              8192 * sizeof(MR_Word);
+  static size_t    MR_heap_size_kilobytes =  8192 * sizeof(MR_Word);
 #endif
+  size_t    MR_heap_size_bytes = 0;
+
 #ifdef MR_STACK_SEGMENTS
-size_t      MR_detstack_size =            64 * sizeof(MR_Word);
-size_t      MR_nondetstack_size =         16 * sizeof(MR_Word);
+static size_t      MR_detstack_size_kilobytes =    64 * sizeof(MR_Word);
+static size_t      MR_nondetstack_size_kilobytes = 16 * sizeof(MR_Word);
 #else
 // If you change these, you should also change the description of the
 // default stack sizes in doc/user_guide.texi.
-size_t      MR_detstack_size =          4096 * sizeof(MR_Word);
-size_t      MR_nondetstack_size =         64 * sizeof(MR_Word);
-size_t      MR_small_detstack_size =     512 * sizeof(MR_Word);
-size_t      MR_small_nondetstack_size =    8 * sizeof(MR_Word);
+static size_t      MR_detstack_size_kilobytes =        4096 * sizeof(MR_Word);
+static size_t      MR_nondetstack_size_kilobytes =       64 * sizeof(MR_Word);
+static size_t      MR_small_detstack_size_kilobytes =   512 * sizeof(MR_Word);
+size_t             MR_small_detstack_size_bytes = 0;
+static size_t      MR_small_nondetstack_size_kilobytes =  8 * sizeof(MR_Word);
+size_t             MR_small_nondetstack_size_bytes = 0;
 #endif
-size_t      MR_solutions_heap_size =     256 * sizeof(MR_Word);
-size_t      MR_global_heap_size =        256 * sizeof(MR_Word);
-size_t      MR_trail_size =               32 * sizeof(MR_Word);
-size_t      MR_debug_heap_size =        1024 * sizeof(MR_Word);
-size_t      MR_genstack_size =             8 * sizeof(MR_Word);
-size_t      MR_cutstack_size =             8 * sizeof(MR_Word);
-size_t      MR_pnegstack_size =            8 * sizeof(MR_Word);
-size_t      MR_gen_detstack_size =        16 * sizeof(MR_Word);
-size_t      MR_gen_nondetstack_size =     16 * sizeof(MR_Word);
+size_t      MR_detstack_size_bytes = 0;
+size_t      MR_nondetstack_size_bytes = 0;
 
-// size of the redzones at the end of data areas, in kilobytes
+static size_t      MR_solutions_heap_size_kilobytes =  256 * sizeof(MR_Word);
+size_t             MR_solutions_heap_size_bytes = 0;
+static size_t      MR_global_heap_size_kilobytes =     256 * sizeof(MR_Word);
+size_t             MR_global_heap_size_bytes = 0;
+static size_t      MR_debug_heap_size_kilobytes =     1024 * sizeof(MR_Word);
+size_t             MR_debug_heap_size_bytes = 0;
+
+static size_t      MR_genstack_size_kilobytes =          8 * sizeof(MR_Word);
+size_t             MR_genstack_size_bytes = 0;
+static size_t      MR_cutstack_size_kilobytes =          8 * sizeof(MR_Word);
+size_t             MR_cutstack_size_bytes = 0;
+static size_t      MR_pnegstack_size_kilobytes =         8 * sizeof(MR_Word);
+size_t             MR_pnegstack_size_bytes = 0;
+static size_t      MR_gen_detstack_size_kilobytes =     16 * sizeof(MR_Word);
+size_t             MR_gen_detstack_size_bytes = 0;
+static size_t      MR_gen_nondetstack_size_kilobytes =  16 * sizeof(MR_Word);
+size_t             MR_gen_nondetstack_size_bytes = 0;
+
+static size_t      MR_trail_size_kilobytes =            32 * sizeof(MR_Word);
+size_t             MR_trail_size_bytes = 0;
+
+// Sizes of the redzones at the end of data areas.
 //
 // For accurate GC, although we start out with a big heap (32 Mb on 32-bit
 // architectures -- see above), we don't want to touch all of it unless we
@@ -123,40 +174,58 @@ size_t      MR_gen_nondetstack_size =     16 * sizeof(MR_Word);
 // the end of each collection.
 //
 // For MLDS grades, we don't use redzones to schedule GC;
-// instead GCs are scheduled, based on MR_heap_margin_size (see below),
+// instead GCs are scheduled, based on MR_heap_margin_size_bytes (see below),
 // by explicit calls to MR_GC_check()
 
 #if defined(MR_NATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
   #ifdef MR_DEBUG_AGC_SMALL_HEAP
-    size_t      MR_heap_zone_size =        8 * sizeof(MR_Word);
+    static size_t      MR_heap_zone_size_kilobytes = 8 * sizeof(MR_Word);
   #else
-    size_t      MR_heap_zone_size =   (4 + 7 * 1024) * sizeof(MR_Word);
+    static size_t      MR_heap_zone_size_kilobytes =
+                            (4 + 7 * 1024) * sizeof(MR_Word);
   #endif
 #else
-  size_t        MR_heap_zone_size =        4 * sizeof(MR_Word);
+  static size_t        MR_heap_zone_size_kilobytes = 4 * sizeof(MR_Word);
 #endif
+size_t      MR_heap_zone_size_bytes = 0;
+
 #ifdef MR_STACK_SEGMENTS
 // We don't use redzones with stack segments.
-
-size_t      MR_detstack_zone_size =        0;
-size_t      MR_nondetstack_zone_size =     0;
+static size_t      MR_detstack_zone_size_kilobytes =     0;
+static size_t      MR_nondetstack_zone_size_kilobytes =  0;
 #else
-size_t      MR_detstack_zone_size =        4 * sizeof(MR_Word);
-size_t      MR_nondetstack_zone_size =     4 * sizeof(MR_Word);
+static size_t      MR_detstack_zone_size_kilobytes =     4 * sizeof(MR_Word);
+static size_t      MR_nondetstack_zone_size_kilobytes =  4 * sizeof(MR_Word);
 #endif
-size_t      MR_solutions_heap_zone_size =  4 * sizeof(MR_Word);
-size_t      MR_global_heap_zone_size =     4 * sizeof(MR_Word);
-size_t      MR_trail_zone_size =           4 * sizeof(MR_Word);
-size_t      MR_debug_heap_zone_size =      4 * sizeof(MR_Word);
-size_t      MR_genstack_zone_size =        4 * sizeof(MR_Word);
-size_t      MR_cutstack_zone_size =        4 * sizeof(MR_Word);
-size_t      MR_pnegstack_zone_size =       4 * sizeof(MR_Word);
-size_t      MR_gen_detstack_zone_size =    4 * sizeof(MR_Word);
-size_t      MR_gen_nondetstack_zone_size = 4 * sizeof(MR_Word);
+size_t      MR_detstack_zone_size_bytes = 0;
+size_t      MR_nondetstack_zone_size_bytes = 0;
+
+static size_t   MR_solutions_heap_zone_size_kilobytes = 4 * sizeof(MR_Word);
+size_t          MR_solutions_heap_zone_size_bytes = 0;
+static size_t   MR_global_heap_zone_size_kilobytes =    4 * sizeof(MR_Word);
+size_t          MR_global_heap_zone_size_bytes = 0;
+static size_t   MR_debug_heap_zone_size_kilobytes =     4 * sizeof(MR_Word);
+size_t          MR_debug_heap_zone_size_bytes = 0;
+
+static size_t   MR_genstack_zone_size_kilobytes =        4 * sizeof(MR_Word);
+size_t          MR_genstack_zone_size_bytes = 0;
+static size_t   MR_cutstack_zone_size_kilobytes =        4 * sizeof(MR_Word);
+size_t          MR_cutstack_zone_size_bytes = 0;
+static size_t   MR_pnegstack_zone_size_kilobytes =       4 * sizeof(MR_Word);
+size_t          MR_pnegstack_zone_size_bytes = 0;
+static size_t   MR_gen_detstack_zone_size_kilobytes =    4 * sizeof(MR_Word);
+size_t          MR_gen_detstack_zone_size_bytes = 0;
+static size_t   MR_gen_nondetstack_zone_size_kilobytes = 4 * sizeof(MR_Word);
+size_t          MR_gen_nondetstack_zone_size_bytes = 0;
+
+// XXX FIXME the initial trail segment is being created with a redzone, but
+// subsequent segments do not have one.
+static size_t      MR_trail_zone_size_kilobytes =         4 * sizeof(MR_Word);
+size_t             MR_trail_zone_size_bytes = 0;
 
 double      MR_heap_expansion_factor = 2.0;
 
-// MR_heap_margin_size is used for accurate GC with the MLDS->C back-end.
+// MR_heap_margin_size_bytes is used for accurate GC with the MLDS->C back-end.
 // It is used to decide when to actually do a garbage collection.
 // At each call to MR_GC_check(), which is normally done before
 // each allocation, we check whether there is less than this
@@ -167,15 +236,13 @@ double      MR_heap_expansion_factor = 2.0;
 // of heap_zone->gc_threshold.
 // The collector recomputes heap_zone->gc_threshold automatically at
 // the end of each collection.
-//
-// Like the sizes above, it is measured in kilobytes
-// (but we later multiply by 1024 to convert to bytes).
 
 #ifdef MR_DEBUG_AGC_SMALL_HEAP
-  size_t    MR_heap_margin_size =          4 * sizeof(MR_Word);
+  static size_t    MR_heap_margin_size_kilobytes = 4 * sizeof(MR_Word);
 #else
-  size_t    MR_heap_margin_size =          7 * 1024 * sizeof(MR_Word);
+  static size_t    MR_heap_margin_size_kilobytes = 7 * 1024 * sizeof(MR_Word);
 #endif
+size_t      MR_heap_margin_size_bytes = 0;
 
 // When we use stack segments, we reserve the last MR_stack_margin_size_words
 // words of each stack segment for leaf procedures. This way, leaf procedures
@@ -610,9 +677,9 @@ mercury_runtime_init(int argc, char **argv)
   #ifdef MR_USE_TRAIL
     // initialize the trail
     MR_trail_zone = MR_create_or_reuse_zone("trail",
-        MR_trail_size, MR_next_offset(),
-        MR_trail_zone_size, MR_default_handler);
-    MR_trail_ptr = (MR_TrailEntry *) MR_trail_zone->min;
+        MR_trail_size_bytes, MR_next_offset(),
+        MR_trail_zone_size_bytes, MR_default_handler);
+    MR_trail_ptr = (MR_TrailEntry *) MR_trail_zone->MR_zone_min;
     MR_ticket_counter = 1;
     MR_ticket_high_water = 1;
   #endif
@@ -1427,7 +1494,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_heap_size = size;
+                MR_heap_size_kilobytes = size;
                 break;
 
             case MR_HEAP_SIZE_KWORDS:
@@ -1435,7 +1502,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_heap_size = size * sizeof(MR_Word);
+                MR_heap_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_DETSTACK_SIZE:
@@ -1443,7 +1510,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_detstack_size = size;
+                MR_detstack_size_kilobytes = size;
                 break;
 
             case MR_DETSTACK_SIZE_KWORDS:
@@ -1451,7 +1518,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_detstack_size = size * sizeof(MR_Word);
+                MR_detstack_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_NONDETSTACK_SIZE:
@@ -1459,7 +1526,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_nondetstack_size = size;
+                MR_nondetstack_size_kilobytes = size;
                 break;
 
             case MR_NONDETSTACK_SIZE_KWORDS:
@@ -1467,7 +1534,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_nondetstack_size = size * sizeof(MR_Word);
+                MR_nondetstack_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_SMALL_DETSTACK_SIZE:
@@ -1476,7 +1543,7 @@ MR_process_options(int argc, char **argv)
                 }
 
 #ifndef MR_STACK_SEGMENTS
-                MR_small_detstack_size = size;
+                MR_small_detstack_size_kilobytes = size;
 #endif
                 break;
 
@@ -1486,7 +1553,7 @@ MR_process_options(int argc, char **argv)
                 }
 
 #ifndef MR_STACK_SEGMENTS
-                MR_small_detstack_size = size * sizeof(MR_Word);
+                MR_small_detstack_size_kilobytes = size * sizeof(MR_Word);
 #endif
                 break;
 
@@ -1496,7 +1563,7 @@ MR_process_options(int argc, char **argv)
                 }
 
 #ifndef MR_STACK_SEGMENTS
-                MR_small_nondetstack_size = size;
+                MR_small_nondetstack_size_kilobytes = size;
 #endif
                 break;
 
@@ -1505,7 +1572,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 #ifndef MR_STACK_SEGMENTS
-                MR_small_nondetstack_size = size * sizeof(MR_Word);
+                MR_small_nondetstack_size_kilobytes = size * sizeof(MR_Word);
 #endif
                 break;
 
@@ -1514,7 +1581,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_solutions_heap_size = size;
+                MR_solutions_heap_size_kilobytes = size;
                 break;
 
             case MR_SOLUTIONS_HEAP_SIZE_KWORDS:
@@ -1522,7 +1589,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_solutions_heap_size = size * sizeof(MR_Word);
+                MR_solutions_heap_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_TRAIL_SIZE:
@@ -1531,7 +1598,7 @@ MR_process_options(int argc, char **argv)
                 }
 
                 #if defined(MR_USE_FIXED_SIZE_TRAIL)
-                    MR_trail_size = size;
+                    MR_trail_size_kilobytes = size;
                 #endif
                 break;
 
@@ -1541,7 +1608,7 @@ MR_process_options(int argc, char **argv)
                 }
 
                 #if defined(MR_USE_FIXED_SIZE_TRAIL)
-                    MR_trail_size = size * sizeof(MR_Word);
+                    MR_trail_size_kilobytes = size * sizeof(MR_Word);
                 #endif
                 break;
 
@@ -1551,7 +1618,7 @@ MR_process_options(int argc, char **argv)
                 }
 
                 #if !defined(MR_USE_FIXED_SIZE_TRAIL)
-                    MR_trail_size = size;
+                    MR_trail_size_kilobytes = size;
                 #endif
                 break;
 
@@ -1561,7 +1628,7 @@ MR_process_options(int argc, char **argv)
                 }
 
                 #if !defined(MR_USE_FIXED_SIZE_TRAIL)
-                    MR_trail_size = size * sizeof(MR_Word);
+                    MR_trail_size_kilobytes = size * sizeof(MR_Word);
                 #endif
                 break;
 
@@ -1570,7 +1637,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_heap_zone_size = size;
+                MR_heap_zone_size_kilobytes = size;
                 break;
 
             case MR_HEAP_REDZONE_SIZE_KWORDS:
@@ -1578,7 +1645,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_heap_zone_size = size * sizeof(MR_Word);
+                MR_heap_zone_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_DETSTACK_REDZONE_SIZE:
@@ -1586,7 +1653,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_detstack_zone_size = size;
+                MR_detstack_zone_size_kilobytes = size;
                 break;
 
             case MR_DETSTACK_REDZONE_SIZE_KWORDS:
@@ -1594,7 +1661,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_detstack_zone_size = size * sizeof(MR_Word);
+                MR_detstack_zone_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_NONDETSTACK_REDZONE_SIZE:
@@ -1602,7 +1669,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_nondetstack_zone_size = size;
+                MR_nondetstack_zone_size_kilobytes = size;
                 break;
 
             case MR_NONDETSTACK_REDZONE_SIZE_KWORDS:
@@ -1610,7 +1677,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_nondetstack_zone_size = size * sizeof(MR_Word);
+                MR_nondetstack_zone_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_SOLUTIONS_HEAP_REDZONE_SIZE:
@@ -1618,7 +1685,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_solutions_heap_zone_size = size;
+                MR_solutions_heap_zone_size_kilobytes = size;
                 break;
 
             case MR_SOLUTIONS_HEAP_REDZONE_SIZE_KWORDS:
@@ -1626,7 +1693,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_solutions_heap_zone_size = size * sizeof(MR_Word);
+                MR_solutions_heap_zone_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_TRAIL_REDZONE_SIZE:
@@ -1634,7 +1701,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_trail_zone_size = size;
+                MR_trail_zone_size_kilobytes = size;
                 break;
 
             case MR_TRAIL_REDZONE_SIZE_KWORDS:
@@ -1642,7 +1709,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_trail_zone_size = size * sizeof(MR_Word);
+                MR_trail_zone_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_HEAP_MARGIN_SIZE:
@@ -1650,7 +1717,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_heap_margin_size = size;
+                MR_heap_margin_size_kilobytes = size;
                 break;
 
             case MR_HEAP_MARGIN_SIZE_KWORDS:
@@ -1658,7 +1725,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_heap_margin_size = size * sizeof(MR_Word);
+                MR_heap_margin_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_HEAP_EXPANSION_FACTOR:
@@ -1672,7 +1739,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_genstack_size = size;
+                MR_genstack_size_kilobytes = size;
                 break;
 
             case MR_GENSTACK_SIZE_KWORDS:
@@ -1680,7 +1747,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_genstack_size = size * sizeof(MR_Word);
+                MR_genstack_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_CUTSTACK_SIZE:
@@ -1688,7 +1755,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_cutstack_size = size;
+                MR_cutstack_size_kilobytes = size;
                 break;
 
             case MR_CUTSTACK_SIZE_KWORDS:
@@ -1696,7 +1763,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_cutstack_size = size * sizeof(MR_Word);
+                MR_cutstack_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_PNEGSTACK_SIZE:
@@ -1704,7 +1771,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_pnegstack_size = size;
+                MR_pnegstack_size_kilobytes = size;
                 break;
 
             case MR_PNEGSTACK_SIZE_KWORDS:
@@ -1712,7 +1779,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_pnegstack_size = size * sizeof(MR_Word);
+                MR_pnegstack_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_GEN_DETSTACK_SIZE:
@@ -1720,7 +1787,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_gen_detstack_size = size;
+                MR_gen_detstack_size_kilobytes = size;
                 break;
 
             case MR_GEN_DETSTACK_SIZE_KWORDS:
@@ -1728,7 +1795,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_gen_detstack_size = size * sizeof(MR_Word);
+                MR_gen_detstack_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_GEN_NONDETSTACK_SIZE:
@@ -1736,7 +1803,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_gen_nondetstack_size = size;
+                MR_gen_nondetstack_size_kilobytes = size;
                 break;
 
             case MR_GEN_NONDETSTACK_SIZE_KWORDS:
@@ -1744,7 +1811,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_gen_nondetstack_size = size * sizeof(MR_Word);
+                MR_gen_nondetstack_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_GEN_DETSTACK_REDZONE_SIZE:
@@ -1752,7 +1819,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_gen_detstack_zone_size = size;
+                MR_gen_detstack_zone_size_kilobytes = size;
                 break;
 
             case MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS:
@@ -1760,7 +1827,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_gen_detstack_zone_size = size * sizeof(MR_Word);
+                MR_gen_detstack_zone_size_kilobytes = size * sizeof(MR_Word);
                 break;
 
             case MR_GEN_NONDETSTACK_REDZONE_SIZE:
@@ -1768,7 +1835,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_gen_nondetstack_zone_size = size;
+                MR_gen_nondetstack_zone_size_kilobytes = size;
                 break;
 
             case MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS:
@@ -1776,7 +1843,8 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_gen_nondetstack_zone_size = size * sizeof(MR_Word);
+                MR_gen_nondetstack_zone_size_kilobytes =
+                    size * sizeof(MR_Word);
                 break;
 
             case MR_MAX_ENGINES:
@@ -2323,14 +2391,14 @@ MR_process_options(int argc, char **argv)
 
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE) && \
     !defined(MR_STACK_SEGMENTS)
-    if (MR_small_detstack_size > MR_detstack_size) {
+    if (MR_small_detstack_size_kilobytes > MR_detstack_size_kilobytes) {
         printf("The small detstack size must be smaller than the "
             "regular detstack size.\n");
         fflush(stdout);
         exit(1);
     }
 
-    if (MR_small_nondetstack_size > MR_nondetstack_size) {
+    if (MR_small_nondetstack_size_kilobytes > MR_nondetstack_size_kilobytes) {
         printf("The small nondetstack size must be smaller than the "
             "regular nondetstack size.\n");
         fflush(stdout);
@@ -2399,6 +2467,141 @@ MR_setup_call_intervals(char **more_str_ptr,
     *more_str_ptr = more_str;
     *min_ptr = min;
     *max_ptr = max;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+// MR_compute_data_area_sizes() computes the "_bytes" version of each
+// data area size from its "_kilobytes" version, as described in the
+// comment on the data area size variables above.
+//
+// This is logically part of MR_init_memory(), which calls it, and which
+// does the rest of the work of computing the data area sizes. We define it
+// here only because the "_kilobytes" variables are visible only in this file.
+//
+void
+MR_compute_data_area_sizes(void)
+{
+    if (MR_unit_bytes == 0) {
+        MR_fatal_error("MR_compute_data_area_sizes: MR_unit_bytes is zero");
+    }
+
+    // set_bytes_from_kilobytes(base) takes the prefix `base' and assigns
+    // the variable base_bytes from base_kilobytes. The assignment converts
+    // a memory size measured in kilobytes to one measured in bytes, and then
+    // rounds it up to a multiple of MR_unit_bytes. Since `base' is token-pasted,
+    // it must be an identifier.
+#define set_bytes_from_kilobytes(base)                                      \
+    do {                                                                    \
+        base##_bytes = MR_round_up(base##_kilobytes * 1024, MR_unit_bytes); \
+    } while (0)
+
+#ifdef MR_CONSERVATIVE_GC
+    MR_heap_size_bytes                = 0;
+    MR_heap_zone_size_bytes           = 0;
+    MR_solutions_heap_size_bytes      = 0;
+    MR_solutions_heap_zone_size_bytes = 0;
+    MR_global_heap_size_bytes         = 0;
+    MR_global_heap_zone_size_bytes    = 0;
+    MR_debug_heap_size_bytes          = 0;
+    MR_debug_heap_zone_size_bytes     = 0;
+    MR_heap_margin_size_bytes         = 0;
+#else
+    set_bytes_from_kilobytes(MR_heap_size);
+    set_bytes_from_kilobytes(MR_heap_zone_size);
+    set_bytes_from_kilobytes(MR_solutions_heap_size);
+    set_bytes_from_kilobytes(MR_solutions_heap_zone_size);
+    set_bytes_from_kilobytes(MR_global_heap_size);
+    set_bytes_from_kilobytes(MR_global_heap_zone_size);
+    set_bytes_from_kilobytes(MR_debug_heap_size);
+    set_bytes_from_kilobytes(MR_debug_heap_zone_size);
+    // Note that there is no need for the heap margin to be rounded up.
+    MR_heap_margin_size_bytes = MR_heap_margin_size_kilobytes * 1024;
+#endif
+    set_bytes_from_kilobytes(MR_detstack_size);
+#ifndef MR_STACK_SEGMENTS
+    set_bytes_from_kilobytes(MR_small_detstack_size);
+#endif
+    set_bytes_from_kilobytes(MR_detstack_zone_size);
+    set_bytes_from_kilobytes(MR_nondetstack_size);
+#ifndef MR_STACK_SEGMENTS
+    set_bytes_from_kilobytes(MR_small_nondetstack_size);
+#endif
+    set_bytes_from_kilobytes(MR_nondetstack_zone_size);
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
+    set_bytes_from_kilobytes(MR_genstack_size);
+    set_bytes_from_kilobytes(MR_genstack_zone_size);
+    set_bytes_from_kilobytes(MR_cutstack_size);
+    set_bytes_from_kilobytes(MR_cutstack_zone_size);
+    set_bytes_from_kilobytes(MR_pnegstack_size);
+    set_bytes_from_kilobytes(MR_pnegstack_zone_size);
+#else
+    MR_genstack_size_bytes       = 0;
+    MR_genstack_zone_size_bytes  = 0;
+    MR_cutstack_size_bytes       = 0;
+    MR_cutstack_zone_size_bytes  = 0;
+    MR_pnegstack_size_bytes      = 0;
+    MR_pnegstack_zone_size_bytes = 0;
+#endif
+
+#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
+    set_bytes_from_kilobytes(MR_gen_detstack_size);
+    set_bytes_from_kilobytes(MR_gen_nondetstack_size);
+    set_bytes_from_kilobytes(MR_gen_detstack_zone_size);
+    set_bytes_from_kilobytes(MR_gen_nondetstack_zone_size);
+#else
+    MR_gen_detstack_size_bytes         = 0;
+    MR_gen_nondetstack_size_bytes      = 0;
+    MR_gen_detstack_zone_size_bytes    = 0;
+    MR_gen_nondetstack_zone_size_bytes = 0;
+#endif
+
+#ifdef  MR_USE_TRAIL
+    set_bytes_from_kilobytes(MR_trail_size);
+    set_bytes_from_kilobytes(MR_trail_zone_size);
+#else
+    MR_trail_size_bytes        = 0;
+    MR_trail_zone_size_bytes   = 0;
+#endif
+
+#undef set_bytes_from_kilobytes
+
+    // If the zone sizes were set to something too big, then
+    // set them to a single unit.
+
+#ifndef MR_CONSERVATIVE_GC
+    if (MR_heap_zone_size_bytes >= MR_heap_size_bytes) {
+        MR_heap_zone_size_bytes = MR_unit_bytes;
+    }
+    if (MR_solutions_heap_zone_size_bytes >= MR_solutions_heap_size_bytes) {
+        MR_solutions_heap_zone_size_bytes = MR_unit_bytes;
+    }
+    if (MR_global_heap_zone_size_bytes >= MR_global_heap_size_bytes) {
+        MR_global_heap_zone_size_bytes = MR_unit_bytes;
+    }
+    if (MR_heap_margin_size_bytes >= MR_heap_size_bytes) {
+        MR_heap_margin_size_bytes = MR_unit_bytes;
+    }
+#endif
+
+    if (MR_detstack_zone_size_bytes >= MR_detstack_size_bytes) {
+        MR_detstack_zone_size_bytes = MR_unit_bytes;
+    }
+
+    if (MR_nondetstack_zone_size_bytes >= MR_nondetstack_size_bytes) {
+        MR_nondetstack_zone_size_bytes = MR_unit_bytes;
+    }
+
+#ifdef MR_USE_TRAIL
+    if (MR_trail_zone_size_bytes >= MR_trail_size_bytes) {
+        MR_trail_zone_size_bytes = MR_unit_bytes;
+    }
+#endif
+
+    if ((MR_stack_margin_size_words * sizeof(MR_Word)) >= MR_detstack_size_bytes) {
+        MR_fatal_error(
+        "MR_compute_data_area_sizes: stack margin size far too big");
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////

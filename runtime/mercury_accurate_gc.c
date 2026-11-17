@@ -206,7 +206,7 @@ resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 
     gc_heap_size = MR_round_up(
         (size_t) (MR_heap_expansion_factor * new_heap_usage),
-        MR_unit);
+        MR_unit_bytes);
     if (gc_heap_size < old_heap_space) {
         gc_heap_size = old_heap_space;
     }
@@ -839,7 +839,7 @@ resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 
     gc_heap_size = MR_round_up(
         (size_t) (MR_heap_expansion_factor * new_heap_usage),
-        MR_unit);
+        MR_unit_bytes);
     if (gc_heap_size < old_heap_space) {
         gc_heap_size = old_heap_space;
     }
