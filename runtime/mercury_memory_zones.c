@@ -212,7 +212,7 @@ MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
     void    *ptr;
     int     res;
 
-    res = posix_memalign(&ptr, MR_unit_bytes, size);
+    res = posix_memalign(&ptr, MR_alloc_unit_bytes, size);
     if (res != 0) {
         *base_alloc = NULL;
         *base_aligned = NULL;
@@ -235,7 +235,7 @@ MR_realloc_zone_memory(
     void    *ptr;
     int     res;
 
-    res = posix_memalign(&ptr, MR_unit_bytes, new_size);
+    res = posix_memalign(&ptr, MR_alloc_unit_bytes, new_size);
     if (res != 0) {
         *new_base_alloc = NULL;
         *new_base_aligned = NULL;
@@ -263,7 +263,7 @@ MR_alloc_zone_memory(size_t size, void **base_alloc, MR_Word **base_aligned)
 {
     void    *ptr;
 
-    ptr = memalign(MR_unit_bytes, size);
+    ptr = memalign(MR_alloc_unit_bytes, size);
     if (ptr == NULL) {
         *base_alloc = NULL;
         *base_aligned = NULL;
@@ -285,7 +285,7 @@ MR_realloc_zone_memory(
 {
     void    *ptr;
 
-    ptr = memalign(MR_unit_bytes, new_size);
+    ptr = memalign(MR_alloc_unit_bytes, new_size);
     if (ptr == NULL) {
         *new_base_alloc = NULL;
         *new_base_aligned = NULL;
@@ -777,9 +777,9 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     // We should fix this in the future.
 
 #ifdef  MR_PROTECTPAGE
-    new_total_size = new_size + 2 * MR_unit_bytes;
+    new_total_size = new_size + 2 * MR_alloc_unit_bytes;
 #else
-    new_total_size = new_size + MR_unit_bytes;
+    new_total_size = new_size + MR_alloc_unit_bytes;
 #endif
 
     old_base_alloc = zone->MR_zone_bottom_alloc;
@@ -1416,11 +1416,11 @@ MR_debug_memory(FILE *fp)
     fprintf(fp, "pcache_size  = %zu (0x%zx)\n", MR_pcache_size_bytes,
         MR_pcache_size_bytes);
     fprintf(fp, "page_size    = %zu (0x%zx)\n", MR_page_size_bytes, MR_page_size_bytes);
-    fprintf(fp, "unit         = %zu (0x%zx)\n", MR_unit_bytes, MR_unit_bytes);
+    fprintf(fp, "alloc_unit   = %zu (0x%zx)\n", MR_alloc_unit_bytes, MR_alloc_unit_bytes);
 
     fprintf(fp, "\n");
     fprintf(fp, "fake_reg       = %p (offset %" MR_INTEGER_LENGTH_MODIFIER "d)\n",
-        (void *) MR_fake_reg, (MR_Integer) MR_fake_reg & (MR_unit_bytes-1));
+        (void *) MR_fake_reg, (MR_Integer) MR_fake_reg & (MR_alloc_unit_bytes-1));
     fprintf(fp, "\n");
 
     MR_LOCK(&memory_zones_lock, "MR_debug_memory");

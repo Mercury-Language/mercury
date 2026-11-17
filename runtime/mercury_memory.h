@@ -353,11 +353,11 @@ extern char *MR_copy_string(const char *s);
 
 ////////////////////////////////////////////////////////////////////////////
 
-// `MR_unit_bytes' is the size of the minimum unit of memory we
+// `MR_alloc_unit_bytes' is the size of the minimum unit of memory we
 // allocate (in bytes).
 // `MR_page_size_bytes' is the size of a single page of memory (in bytes).
 
-extern  size_t          MR_unit_bytes;
+extern  size_t          MR_alloc_unit_bytes;
 extern  size_t          MR_page_size_bytes;
 
 ////////////////////////////////////////////////////////////////////////////

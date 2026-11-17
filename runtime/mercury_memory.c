@@ -108,7 +108,7 @@
   MR_MemoryZone *MR_pnegstack_zone;
 #endif
 
-size_t      MR_unit_bytes;
+size_t      MR_alloc_unit_bytes;
 size_t      MR_page_size_bytes;
 
 void
@@ -122,14 +122,14 @@ MR_init_memory(void)
 
     already_initialized = MR_TRUE;
 
-    // Compute MR_unit_bytes, the unit to which we round up the sizes of data
-    // areas, and then call MR_compute_data_area_sizes() to compute the
+    // Compute MR_alloc_unit_bytes, the unit to which we round up the sizes of
+    // data areas, and then call MR_compute_data_area_sizes() to compute the
     // "_bytes" version of each data area size. The comment on the data area
     // size variables in mercury_wrapper.c describes the conversion and its
     // exceptions.
 
     MR_page_size_bytes = getpagesize();
-    MR_unit_bytes = MR_round_up(
+    MR_alloc_unit_bytes = MR_round_up(
         MR_max(MR_page_size_bytes, MR_pcache_size_bytes), MR_page_size_bytes);
 
     // Convert all the sizes from kilobytes to bytes and make sure

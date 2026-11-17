@@ -78,9 +78,10 @@ ENDINIT
 // * The variable with the suffix "_bytes" gives the same size in bytes.
 //   It is zero until MR_compute_data_area_sizes() below computes it.
 //   Normally, MR_compute_data_area_sizes() multiplies the kilobyte value
-//   by 1024 and then rounds the result up to a multiple of MR_unit_bytes,
-//   which is the page size rounded up to a multiple of the page size that is
-//   at least as big as the primary cache size. The exceptions are:
+//   by 1024 and then rounds the result up to a multiple of
+//   MR_alloc_unit_bytes, which is the page size rounded up to a multiple of
+//   the page size that is at least as big as the primary cache size.
+//   The exceptions are:
 //
 //   - A size of zero (such as the redzone size of stack segments) stays zero.
 //
@@ -99,7 +100,7 @@ ENDINIT
 //
 //   - If a redzone size is at least as big as the size of its data area,
 //     or the heap margin is at least as big as the heap, it is replaced
-//     by MR_unit_bytes. This applies to the heap, solutions heap,
+//     by MR_alloc_unit_bytes. This applies to the heap, solutions heap,
 //     global heap, det stack, nondet stack and trail.
 //     (This part is done by MR_init_memory() in mercury_memory.c.)
 //     (XXX Again, why?)
@@ -2482,19 +2483,21 @@ MR_setup_call_intervals(char **more_str_ptr,
 void
 MR_compute_data_area_sizes(void)
 {
-    if (MR_unit_bytes == 0) {
-        MR_fatal_error("MR_compute_data_area_sizes: MR_unit_bytes is zero");
+    if (MR_alloc_unit_bytes == 0) {
+        MR_fatal_error(
+            "MR_compute_data_area_sizes: MR_alloc_unit_bytes is zero");
     }
 
     // set_bytes_from_kilobytes(base) takes the prefix `base' and assigns
     // the variable base_bytes from base_kilobytes. The assignment converts
     // a memory size measured in kilobytes to one measured in bytes, and then
-    // rounds it up to a multiple of MR_unit_bytes. Since `base' is token-pasted,
-    // it must be an identifier.
-#define set_bytes_from_kilobytes(base)                                      \
-    do {                                                                    \
-        base##_bytes = MR_round_up(base##_kilobytes * 1024, MR_unit_bytes); \
-    } while (0)
+    // rounds it up to a multiple of MR_alloc_unit_bytes. Since `base' is
+    // token-pasted, it must be an identifier.
+    #define set_bytes_from_kilobytes(base)                                  \
+        do {                                                                \
+            base##_bytes =                                                  \
+                MR_round_up(base##_kilobytes * 1024, MR_alloc_unit_bytes);  \
+        } while (0)
 
 #ifdef MR_CONSERVATIVE_GC
     MR_heap_size_bytes                = 0;
@@ -2571,30 +2574,30 @@ MR_compute_data_area_sizes(void)
 
 #ifndef MR_CONSERVATIVE_GC
     if (MR_heap_zone_size_bytes >= MR_heap_size_bytes) {
-        MR_heap_zone_size_bytes = MR_unit_bytes;
+        MR_heap_zone_size_bytes = MR_alloc_unit_bytes;
     }
     if (MR_solutions_heap_zone_size_bytes >= MR_solutions_heap_size_bytes) {
-        MR_solutions_heap_zone_size_bytes = MR_unit_bytes;
+        MR_solutions_heap_zone_size_bytes = MR_alloc_unit_bytes;
     }
     if (MR_global_heap_zone_size_bytes >= MR_global_heap_size_bytes) {
-        MR_global_heap_zone_size_bytes = MR_unit_bytes;
+        MR_global_heap_zone_size_bytes = MR_alloc_unit_bytes;
     }
     if (MR_heap_margin_size_bytes >= MR_heap_size_bytes) {
-        MR_heap_margin_size_bytes = MR_unit_bytes;
+        MR_heap_margin_size_bytes = MR_alloc_unit_bytes;
     }
 #endif
 
     if (MR_detstack_zone_size_bytes >= MR_detstack_size_bytes) {
-        MR_detstack_zone_size_bytes = MR_unit_bytes;
+        MR_detstack_zone_size_bytes = MR_alloc_unit_bytes;
     }
 
     if (MR_nondetstack_zone_size_bytes >= MR_nondetstack_size_bytes) {
-        MR_nondetstack_zone_size_bytes = MR_unit_bytes;
+        MR_nondetstack_zone_size_bytes = MR_alloc_unit_bytes;
     }
 
 #ifdef MR_USE_TRAIL
     if (MR_trail_zone_size_bytes >= MR_trail_size_bytes) {
-        MR_trail_zone_size_bytes = MR_unit_bytes;
+        MR_trail_zone_size_bytes = MR_alloc_unit_bytes;
     }
 #endif
 
