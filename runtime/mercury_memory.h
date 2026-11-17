@@ -46,11 +46,9 @@
         var = MR_round_up(var * 1024, MR_unit_bytes);                   \
     } while (0)
 
-// For these functions, see the comments in mercury_memory.c and
-// mercury_engine.c
+// For this function see the comments in mercury_memory.c.
 
 extern  void    MR_init_memory(void);
-extern  void    MR_init_heap(void);
 
 ////////////////////////////////////////////////////////////////////////////
 
