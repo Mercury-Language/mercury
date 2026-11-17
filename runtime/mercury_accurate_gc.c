@@ -193,25 +193,25 @@ resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
     // These counts include some wasted space between
     // ->MR_zone_min and ->MR_zone_bottom.
 
-    size_t old_heap_space =
+    size_t old_heap_space_bytes =
         (char *) old_heap->MR_zone_gc_threshold -
         (char *) old_heap->MR_zone_bottom;
     size_t new_heap_usage =
         (char *) MR_virtual_hp - (char *) new_heap->MR_zone_bottom;
-    size_t gc_heap_size;
+    size_t gc_heap_size_bytes;
 
     // Set the size at which to GC to be MR_heap_expansion_factor
     // (which defaults to two) times the current usage,
     // or the size at which we GC'd last time, whichever is larger.
 
-    gc_heap_size = MR_round_up(
+    gc_heap_size_bytes = MR_round_up(
         (size_t) (MR_heap_expansion_factor * new_heap_usage),
         MR_unit_bytes);
-    if (gc_heap_size < old_heap_space) {
-        gc_heap_size = old_heap_space;
+    if (gc_heap_size_bytes < old_heap_space_bytes) {
+        gc_heap_size_bytes = old_heap_space_bytes;
     }
     old_heap->MR_zone_gc_threshold =
-        ((char *) old_heap->MR_zone_bottom + gc_heap_size);
+        ((char *) old_heap->MR_zone_bottom + gc_heap_size_bytes);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -826,27 +826,27 @@ resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
     // These counts include some wasted space between
     // ->MR_zone_min and ->MR_zone_bottom.
 
-    size_t old_heap_space =
+    size_t old_heap_space_bytes =
         (char *) old_heap->MR_zone_redzone_base -
             (char *) old_heap->MR_zone_bottom;
     size_t new_heap_usage =
         (char *) MR_virtual_hp - (char *) new_heap->MR_zone_bottom;
-    size_t gc_heap_size;
+    size_t gc_heap_size_bytes;
 
     // Set the size at which to GC to be MR_heap_expansion_factor
     // (which defaults to two) times the current usage,
     // or the size at which we GC'd last time, whichever is larger.
 
-    gc_heap_size = MR_round_up(
+    gc_heap_size_bytes = MR_round_up(
         (size_t) (MR_heap_expansion_factor * new_heap_usage),
         MR_unit_bytes);
-    if (gc_heap_size < old_heap_space) {
-        gc_heap_size = old_heap_space;
+    if (gc_heap_size_bytes < old_heap_space_bytes) {
+        gc_heap_size_bytes = old_heap_space_bytes;
     }
 
     // Reset the redzone on the new heap
     old_heap->MR_zone_redzone_base = (MR_Word *)
-        ((char *) old_heap->MR_zone_bottom + gc_heap_size);
+        ((char *) old_heap->MR_zone_bottom + gc_heap_size_bytes);
     MR_reset_redzone(old_heap);
 }
 

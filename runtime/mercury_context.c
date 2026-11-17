@@ -1015,8 +1015,8 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 #ifndef MR_HIGHLEVEL_CODE
     const char  *detstack_name;
     const char  *nondetstack_name;
-    size_t      detstack_size;
-    size_t      nondetstack_size;
+    size_t      detstack_size_bytes;
+    size_t      nondetstack_size_bytes;
 #endif
 
     c->MR_ctxt_id = id;
@@ -1037,15 +1037,15 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
         case MR_CONTEXT_SIZE_REGULAR:
             detstack_name  = "detstack";
             nondetstack_name = "nondetstack";
-            detstack_size  = MR_detstack_size_bytes;
-            nondetstack_size = MR_nondetstack_size_bytes;
+            detstack_size_bytes  = MR_detstack_size_bytes;
+            nondetstack_size_bytes = MR_nondetstack_size_bytes;
             break;
 #ifndef MR_STACK_SEGMENTS
         case MR_CONTEXT_SIZE_SMALL:
             detstack_name  = "small_detstack";
             nondetstack_name = "small_nondetstack";
-            detstack_size  = MR_small_detstack_size_bytes;
-            nondetstack_size = MR_small_nondetstack_size_bytes;
+            detstack_size_bytes  = MR_small_detstack_size_bytes;
+            nondetstack_size_bytes = MR_small_nondetstack_size_bytes;
             break;
 #endif
     }
@@ -1060,7 +1060,7 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
                     MR_gen_detstack_zone_size_bytes, MR_default_handler);
         } else {
             c->MR_ctxt_detstack_zone = MR_create_or_reuse_zone(detstack_name,
-                    detstack_size, MR_next_offset(),
+                    detstack_size_bytes, MR_next_offset(),
                     MR_detstack_zone_size_bytes, MR_default_handler);
         }
 
@@ -1089,7 +1089,7 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
         } else {
             c->MR_ctxt_nondetstack_zone =
                 MR_create_or_reuse_zone(nondetstack_name,
-                    nondetstack_size, MR_next_offset(),
+                    nondetstack_size_bytes, MR_next_offset(),
                     MR_nondetstack_zone_size_bytes, MR_default_handler);
         }
 
