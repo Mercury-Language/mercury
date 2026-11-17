@@ -656,9 +656,9 @@ lookup_string_table(StringTable, NameCode) = Str :-
     str0 = MR_name_in_string_table(StringTableChars, StringTableSize,
         (MR_uint_least32_t)NameCode, &should_copy);
     if (should_copy) {
-        MR_make_aligned_string(Str, str0);
-    } else {
         MR_make_aligned_string_copy(Str, str0);
+    } else {
+        MR_make_aligned_string(Str, str0);
     }
 ").
 

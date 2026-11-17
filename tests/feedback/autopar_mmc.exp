@@ -2078,12 +2078,12 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % c12;
         % det
         % cost: 0.00 (not above threshold)
-        PolyConst1 <= 2
+        PolyConst2 <= 2
         ,
         % c13;
         % det
         % cost: 1.00 (not above threshold)
-        private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_54)
+        private_builtin.type_info_from_typeclass_info(V_46, PolyConst2, V_54)
         ,
         % c14;
         % det
@@ -2103,7 +2103,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % c17;
         % det
         % cost: 1.00 (not above threshold)
-        private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_56)
+        private_builtin.type_info_from_typeclass_info(V_46, PolyConst2, V_56)
 
       Parallel conjunction:
         (
@@ -2159,7 +2159,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           % c18;c2;c8;
           % det
           % cost: 1.00 (not above threshold)
-          private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_60)
+          private_builtin.type_info_from_typeclass_info(V_46, PolyConst2, V_60)
           ,
           % c18;c2;c9;
           % det
