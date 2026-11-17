@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -23,7 +23,7 @@
 % that is the body of the corresponding procedure. We use a simplified
 % representation partly because we want to insulate the code using procedure
 % representations from irrelevant changes in HLDS types, and partly because
-% we want to minimize the space taken in up in executables by these
+% we want to minimize the space taken up in executables by these
 % representations.
 %
 % The current representation is intended to contain all the information
@@ -853,7 +853,7 @@ goal_generates_internal_event(goal_rep(GoalExpr, _, _)) = InternalEvent :-
         InternalEvent = yes
     ).
 
-atomic_goal_identifiable(AtomicGoalExpr) = Identifieable :-
+atomic_goal_identifiable(AtomicGoalExpr) = Identifiable :-
     (
         ( AtomicGoalExpr = unify_construct_rep(_, _, _)
         ; AtomicGoalExpr = unify_deconstruct_rep(_, _, _)
@@ -867,13 +867,13 @@ atomic_goal_identifiable(AtomicGoalExpr) = Identifieable :-
         ; AtomicGoalExpr = method_call_rep(_, _, _)
         ; AtomicGoalExpr = event_call_rep(_, _)
         ),
-        Identifieable = no
+        Identifiable = no
     ;
         AtomicGoalExpr = builtin_call_rep(Module, Name, Args),
-        Identifieable = yes(atomic_goal_id(Module, Name, length(Args)))
+        Identifiable = yes(atomic_goal_id(Module, Name, length(Args)))
     ;
         AtomicGoalExpr = plain_call_rep(Module, Name, Args),
-        Identifieable = yes(atomic_goal_id(Module, Name, length(Args)))
+        Identifiable = yes(atomic_goal_id(Module, Name, length(Args)))
     ).
 
 head_var_to_var(head_var_rep(Var, _)) = Var.
@@ -1054,7 +1054,7 @@ read_prog_rep_file(FileName, Result, !IO) :-
                 read_line(ByteCode, Line, !Pos),
                 ( if Line = old_procrep_id_string then
                     ExpectNewFormat = no
-                else if Line = new_procrep_id_string  then
+                else if Line = new_procrep_id_string then
                     ExpectNewFormat = yes
                 else
                     fail
@@ -1843,7 +1843,7 @@ read_maybe_var(VarNumRep, ByteCode, MaybeVar, !Pos) :-
     ( if YesOrNo = 1 then
         read_var(VarNumRep, ByteCode, Var, !Pos),
         MaybeVar = yes(Var)
-    else if YesOrNo = 0  then
+    else if YesOrNo = 0 then
         MaybeVar = no
     else
         unexpected($pred, "invalid yes or no flag")
