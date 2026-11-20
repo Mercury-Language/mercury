@@ -98,16 +98,6 @@
 
 ////////////////////////////////////////////////////////////////////////////
 
-// Define the memory zones used by the Mercury runtime.
-// (The trail zone is declared in mercury_trail.c.)
-// XXX All the zones should be in mercury_engine.h
-
-#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
-  MR_MemoryZone *MR_genstack_zone;
-  MR_MemoryZone *MR_cutstack_zone;
-  MR_MemoryZone *MR_pnegstack_zone;
-#endif
-
 size_t      MR_alloc_unit_bytes;
 size_t      MR_page_size_bytes;
 
